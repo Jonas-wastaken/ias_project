@@ -9,4 +9,4 @@ with st.container():
     st.write("Number of edges:", G.number_of_edges())
 
 with st.container():
-    st.pyplot(G.generate_plot())
+    st.plotly_chart(G.generate_plot(), use_container_width=True)

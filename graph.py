@@ -2,6 +2,7 @@ import networkx as nx
 import random
 import pickle
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 class Graph(nx.Graph):
@@ -40,7 +41,8 @@ class Graph(nx.Graph):
 
         # Add edges between intersections
         for i in range(num_intersections):
-            for j in range(random.randint(2, 4)):
+            num_edges = random.randint(1, 4)
+            for _ in range(num_edges):
                 super().add_edge(
                     f"intersection_{i}",
                     f"intersection_{random.randint(0, (num_intersections - 1))}",
@@ -66,21 +68,87 @@ class Graph(nx.Graph):
 
         pickle.dump(self, open(filename, "wb"))
 
-    def generate_plot(self) -> plt:
+    def generate_plot(self) -> go.Figure:
         """Generate a plot of the graph.
 
         Returns:
             plt: A matplotlib.pyplot object with the graph plotted.
         """
 
-        pos = nx.spring_layout(self, seed=42)
+        # Create a list to store the positions of the nodes
+        pos = nx.spring_layout(self)
 
-        node_color = [
-            "red" if self.nodes[n]["type"] == "border" else "blue" for n in self.nodes
-        ]
-        nx.draw(self, pos, with_labels=True, node_color=node_color)
-        nx.draw_networkx_edge_labels(
-            self, pos, edge_labels=nx.get_edge_attributes(self, "weight")
+        # Assign the positions to the nodes
+        for node in self.nodes():
+            self.nodes[node]["pos"] = pos[node]
+
+        edge_x = []
+        edge_y = []
+        for edge in self.edges():
+            x0, y0 = self.nodes[edge[0]]["pos"]
+            x1, y1 = self.nodes[edge[1]]["pos"]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=0.5, color="#888"),
+            hoverinfo="none",
+            mode="lines",
         )
 
-        return plt
+        node_x = []
+        node_y = []
+        for node in self.nodes():
+            x, y = self.nodes[node]["pos"]
+            node_x.append(x)
+            node_y.append(y)
+
+        node_color = []
+        for node in self.nodes(data=True):
+            if node[1]["type"] == "intersection":
+                node_color.append("blue")
+            else:
+                node_color.append("red")
+
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers",
+            hoverinfo="text",
+            marker=dict(
+                color=node_color,
+                size=10,
+                line_width=2,
+            ),
+        )
+
+        node_adjacencies = []
+        node_text = []
+        for node, adjacencies in enumerate(self.adjacency()):
+            node_adjacencies.append(len(adjacencies[1]))
+            node_text.append("# of connections: " + str(len(adjacencies[1])))
+
+        node_trace.marker.color = node_adjacencies
+        node_trace.text = node_text
+
+        fig = go.Figure(
+            data=[edge_trace, node_trace],
+            layout=go.Layout(
+                title=dict(
+                    text="<br>Network graph made with Python", font=dict(size=16)
+                ),
+                showlegend=False,
+                hovermode="closest",
+                margin=dict(b=20, l=5, r=5, t=40),
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            ),
+        )
+
+        return fig
