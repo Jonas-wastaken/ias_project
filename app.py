@@ -47,7 +47,6 @@ with st.container():
         node_x.append(x)
         node_y.append(y)
 
-    # Create a trace for the nodes
     node_color = []
     for node in G.nodes(data=True):
         if node[1]["type"] == "intersection":
@@ -76,7 +75,6 @@ with st.container():
         node_text.append("# of connections: " + str(len(adjacency_dict[1])))
 
     # Update the node trace with the node text and color
-    node_trace.marker.color = node_adjacencies
     node_trace.text = node_text
 
     # Create the figure
