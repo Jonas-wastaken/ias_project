@@ -24,8 +24,18 @@ class Graph(nx.Graph):
         """
 
         super().__init__()
+        self.add_intersections(num_intersections)
+        self.add_borders(num_borders)
+        self.add_edges_intersections(num_intersections, weight_range)
+        self.add_edges_borders(num_intersections, num_borders, weight_range)
+        super().remove_edges_from(nx.selfloop_edges(self))
 
-        # Add nodes of type intersection
+    def add_intersections(self, num_intersections: int) -> None:
+        """Add intersection nodes to the graph.
+
+        Args:
+            num_intersections (int): The number of intersection nodes to add.
+        """
         super().add_nodes_from(
             [
                 (f"intersection_{i}", {"type": "intersection"})
@@ -33,12 +43,25 @@ class Graph(nx.Graph):
             ]
         )
 
-        # Add nodes of type border
+    def add_borders(self, num_borders: int) -> None:
+        """Add border nodes to the graph.
+
+        Args:
+            num_borders (int): The number of border nodes to add.
+        """
         super().add_nodes_from(
             [(f"border_{i}", {"type": "border"}) for i in range(num_borders)]
         )
 
-        # Add edges between intersections
+    def add_edges_intersections(
+        self, num_intersections: int, weight_range: tuple[int, int]
+    ) -> None:
+        """Add edges between intersection nodes with random weights.
+
+        Args:
+            num_intersections (int): The number of intersection nodes in the graph.
+            weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
+        """
         for i in range(num_intersections):
             num_edges = random.randint(1, 4)
             for _ in range(num_edges):
@@ -48,7 +71,16 @@ class Graph(nx.Graph):
                     weight=random.randint(weight_range[0], weight_range[1]),
                 )
 
-        # Add edges between intersections and borders
+    def add_edges_borders(
+        self, num_intersections: int, num_borders: int, weight_range: tuple[int, int]
+    ) -> None:
+        """Add edges between border and intersection nodes with random weights.
+
+        Args:
+            num_intersections (int): The number of intersection nodes in the graph.
+            num_borders (int): The number of border nodes in the graph.
+            weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
+        """
         for i in range(num_borders):
             super().add_edge(
                 f"border_{i}",
@@ -56,9 +88,7 @@ class Graph(nx.Graph):
                 weight=random.randint(weight_range[0], weight_range[1]),
             )
 
-        super().remove_edges_from(nx.selfloop_edges(self))
-
-    def save(self, filename: str):
+    def save(self, filename: str) -> None:
         """Save class instance to a pickle file.
 
         Args:
