@@ -5,24 +5,23 @@ Interactive network graph visualization using Streamlit and Plotly.
 import networkx as nx
 import plotly.graph_objects as go
 import streamlit as st
-from graph import Graph
+from model import TrafficModel
+
+model = TrafficModel(num_agents=5)
 
 with st.container():
-    # Create an instance of the Graph class
-    G = Graph()
-
     # Create a layout using the spring layout algorithm
-    pos = nx.spring_layout(G)
+    pos = nx.spring_layout(model.grid)
 
     # Assign the positions to the nodes using dictionary comprehension
-    nx.set_node_attributes(G, pos, "pos")
+    nx.set_node_attributes(model.grid, pos, "pos")
 
     # Create a list to store the x and y coordinates of the edges
     edge_x = []
     edge_y = []
-    for edge in G.edges():
-        x0, y0 = G.nodes[edge[0]]["pos"]
-        x1, y1 = G.nodes[edge[1]]["pos"]
+    for edge in model.grid.edges():
+        x0, y0 = model.grid.nodes[edge[0]]["pos"]
+        x1, y1 = model.grid.nodes[edge[1]]["pos"]
         edge_x.append(x0)
         edge_x.append(x1)
         edge_x.append(None)
@@ -42,13 +41,13 @@ with st.container():
     # Create a list to store the x and y coordinates of the nodes
     node_x = []
     node_y = []
-    for node in G.nodes():
-        x, y = G.nodes[node]["pos"]
+    for node in model.grid.nodes():
+        x, y = model.grid.nodes[node]["pos"]
         node_x.append(x)
         node_y.append(y)
 
     node_color = []
-    for node in G.nodes(data=True):
+    for node in model.grid.nodes(data=True):
         if node[1]["type"] == "intersection":
             node_color.append("blue")
         else:
@@ -70,7 +69,7 @@ with st.container():
     # Add the number of connections to the node text
     node_adjacencies = []
     node_text = []
-    for node, adjacency_dict in enumerate(G.adjacency()):
+    for node, adjacency_dict in enumerate(model.grid.adjacency()):
         node_adjacencies.append(len(adjacency_dict[1]))
         node_text.append("# of connections: " + str(len(adjacency_dict[1])))
 
@@ -90,3 +89,5 @@ with st.container():
         ),
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    st.json(model.grid.agent_positions)
