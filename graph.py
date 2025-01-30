@@ -29,6 +29,8 @@ class Graph(nx.Graph):
         self.add_edges_borders(num_intersections, num_borders, weight_range)
         super().remove_edges_from(nx.selfloop_edges(self))
 
+        self.agent_positions = {}
+
     def add_intersections(self, num_intersections: int) -> None:
         """Add intersection nodes to the graph.
 
@@ -86,6 +88,24 @@ class Graph(nx.Graph):
                 f"intersection_{random.randint(0, (num_intersections - 1))}",
                 weight=random.randint(weight_range[0], weight_range[1]),
             )
+
+    def place_agent(self, agent_id: int) -> str:
+        """Places an agent on a random border node and stores position internally.
+
+        Args:
+            agent_id (id): ID of agent being placed
+
+        Returns:
+            str: Border the agent is placed on
+        """
+        borders = [node for node in self.nodes if node.find("border") == 0]
+        assigned_border = borders[random.randint(0, (len(borders) - 1))]
+
+        if assigned_border not in self.agent_positions:
+            self.agent_positions[assigned_border] = []
+        self.agent_positions[assigned_border].append(agent_id)
+
+        return assigned_border
 
     def save(self, filename: str) -> None:
         """Save class instance to a pickle file.
