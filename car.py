@@ -38,9 +38,9 @@ class CarAgent(mesa.Agent):
 
     def move(self) -> None:
         """Moves the agent to it's next step on the path and sends updated position to the grid."""
-        if self.position != self.goal:
+        if self.position == self.goal:
+            pass
+        else:
             next_step = self.path[self.path.index(self.position) + 1]
             self.model.grid.move_agent(self, next_step)
             self.position = next_step
-        else:
-            pass
