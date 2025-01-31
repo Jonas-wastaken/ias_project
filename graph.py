@@ -96,16 +96,16 @@ class Graph(nx.Graph):
             agent_id (id): ID of agent being placed
 
         Returns:
-            str: Border the agent is placed on
+            str: ID of assigned node the agent spawns on
         """
         borders = [node for node in self.nodes if node.find("border") == 0]
-        assigned_border = borders[random.randint(0, (len(borders) - 1))]
+        assigned_start = borders[random.randint(0, (len(borders) - 1))]
 
-        if assigned_border not in self.agent_positions:
-            self.agent_positions[assigned_border] = []
-        self.agent_positions[assigned_border].append(agent_id)
+        if assigned_start not in self.agent_positions:
+            self.agent_positions[assigned_start] = []
+        self.agent_positions[assigned_start].append(agent_id)
 
-        return assigned_border
+        return assigned_start
 
     def save(self, filename: str) -> None:
         """Save class instance to a pickle file.
