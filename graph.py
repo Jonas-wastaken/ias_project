@@ -29,7 +29,7 @@ class Graph(nx.Graph):
         self.add_edges_borders(num_intersections, num_borders, weight_range)
         super().remove_edges_from(nx.selfloop_edges(self))
 
-        self.agent_positions = {}
+        self.agent_positions = {}  # Dict to keep track of agent positions
 
     def add_intersections(self, num_intersections: int) -> None:
         """Add intersection nodes to the graph.
@@ -106,6 +106,15 @@ class Graph(nx.Graph):
         self.agent_positions[assigned_start].append(agent_id)
 
         return assigned_start
+
+    def move_agent(self, agent_id: int, new_position: str) -> None:
+        """Moves an agent to it's next position
+
+        Args:
+            agent_id (int): ID of agent being placed.
+            new_position (str): ID of the node the agent moves to.
+        """
+        self.agent_positions[agent_id] = new_position
 
     def save(self, filename: str) -> None:
         """Save class instance to a pickle file.

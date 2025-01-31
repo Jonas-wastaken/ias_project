@@ -18,5 +18,6 @@ class TrafficModel(mesa.Model):
         # Create agents
         agents = CarAgent.create_agents(model=self, n=num_agents)
 
-    def step(self):
-        pass
+    def step(self) -> None:
+        """Actions the agents do each step."""
+        self.agents.do("move")

@@ -16,14 +16,19 @@ st.set_page_config(
     menu_items=None,
 )
 
-model = TrafficModel(num_agents=5)
 
-graph_col, pos_col = st.columns([2, 1])
+# Initialize the model in session state if it doesn't exist
+if "model" not in st.session_state:
+    st.session_state.model = TrafficModel(num_agents=3)
+model = st.session_state.model
 
-with graph_col:
-    with st.container():
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+    graph_container = st.container()
+    with graph_container:
         # Create a layout using the spring layout algorithm
-        pos = nx.spring_layout(model.grid)
+        pos = nx.spring_layout(model.grid, seed=42)
 
         # Assign the positions to the nodes using dictionary comprehension
         nx.set_node_attributes(model.grid, pos, "pos")
@@ -100,11 +105,19 @@ with graph_col:
                 yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             ),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=False)
 
-with pos_col:
-    with st.container():
-        agent_paths = pd.DataFrame(columns=["Agent", "Start", "Goal", "Path"])
+with right_col:
+    ui_container = st.container()
+    with ui_container:
+        if st.button("Step"):
+            model.step()
+
+    agent_paths_container = st.container()
+    with agent_paths_container:
+        agent_paths = pd.DataFrame(
+            columns=["Agent", "Start", "Goal", "Position", "Path"]
+        )
         for agent in model.agents:
             agent_path = pd.DataFrame(
                 [
@@ -112,6 +125,7 @@ with pos_col:
                         "Agent": agent.unique_id,
                         "Start": agent.start,
                         "Goal": agent.goal,
+                        "Position": agent.position,
                         "Path": agent.path[1:-1],
                     }
                 ]

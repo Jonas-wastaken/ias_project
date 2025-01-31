@@ -4,6 +4,12 @@ from networkx import dijkstra_path
 
 
 class CarAgent(mesa.Agent):
+    """Agent, which represents a car navigating an undirected graph. It receives it's starting position from the graph instance and then computes a random node as it's goal. Path computation uses Dijkstra's algorithm.
+
+    Args:
+        mesa (_type_): _description_
+    """
+
     def __init__(self, model: mesa.Model):
         """Agent, which represents a car navigating an undirected graph. It receives it's starting position from the graph instance and then computes a random node as it's goal. Path computation uses Dijkstra's algorithm.
 
@@ -16,13 +22,7 @@ class CarAgent(mesa.Agent):
         self.path = dijkstra_path(
             self.model.grid, self.start, self.goal, weight="weight"
         )
-
-    # def move(self):
-    #     possible_steps = self.model.grid.get_neighborhood(
-    #         self.pos, moore=True, include_center=False
-    #     )
-    #     new_position = self.random.choice(possible_steps)
-    #     self.model.grid.move_agent(self, new_position)
+        self.position = self.start
 
     def compute_goal(self) -> str:
         """Assigns a random border node, which is not the starting node, as the goal of the agent.
@@ -35,3 +35,12 @@ class CarAgent(mesa.Agent):
         assigned_goal = borders[random.randint(0, (len(borders) - 1))]
 
         return assigned_goal
+
+    def move(self) -> None:
+        """Moves the agent to it's next step on the path and sends updated position to the grid."""
+        if self.position != self.goal:
+            next_step = self.path[self.path.index(self.position) + 1]
+            self.model.grid.move_agent(self, next_step)
+            self.position = next_step
+        else:
+            pass
