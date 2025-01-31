@@ -108,10 +108,13 @@ with left_col:
         st.plotly_chart(fig, use_container_width=False)
 
 with right_col:
-    ui_container = st.container()
-    with ui_container:
-        if st.button("Step"):
+    ui_cols = st.columns(spec=2, gap="small")
+    with ui_cols[0]:
+        if st.button(label="Step", help="Execute one step"):
             model.step()
+    with ui_cols[1]:
+        if st.button(label="Reset", help="Not functional"):
+            st.rerun()
 
     agent_paths_container = st.container()
     with agent_paths_container:
