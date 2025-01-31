@@ -4,12 +4,6 @@ from networkx import dijkstra_path
 
 
 class CarAgent(mesa.Agent):
-    """Agent, which represents a car navigating an undirected graph. It receives it's starting position from the graph instance and then computes a random node as it's goal. Path computation uses Dijkstra's algorithm.
-
-    Args:
-        mesa (_type_): _description_
-    """
-
     def __init__(self, model: mesa.Model):
         """Agent, which represents a car navigating an undirected graph. It receives it's starting position from the graph instance and then computes a random node as it's goal. Path computation uses Dijkstra's algorithm.
 
@@ -39,8 +33,21 @@ class CarAgent(mesa.Agent):
     def move(self) -> None:
         """Moves the agent to it's next step on the path and sends updated position to the grid."""
         if self.position == self.goal:
-            pass
+            raise AgentArrived(
+                message=f"The Agent {self.unique_id} arrived at it's goal", error_code=0
+            )
         else:
             next_step = self.path[self.path.index(self.position) + 1]
             self.model.grid.move_agent(self, next_step)
             self.position = next_step
+
+
+class AgentArrived(Exception):
+    """Exception raised for custom error in the application."""
+
+    def __init__(self, message, error_code):
+        super().__init__(message)
+        self.error_code = error_code
+
+    def __str__(self):
+        return f"{self.message} (Error Code: {self.error_code})"

@@ -1,5 +1,5 @@
 import mesa
-from car import CarAgent
+from car import CarAgent, AgentArrived
 from graph import Graph
 
 
@@ -20,4 +20,8 @@ class TrafficModel(mesa.Model):
 
     def step(self) -> None:
         """Actions the agents do each step."""
-        self.agents.do("move")
+        for agent in self.agents[:]:
+            try:
+                agent.move()
+            except AgentArrived:
+                self.agents.remove(agent)
