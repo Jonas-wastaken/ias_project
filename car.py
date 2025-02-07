@@ -67,7 +67,7 @@ class CarAgent(mesa.Agent):
                     step, steps[steps.index(step) + 1]
                 )["weight"]
             except IndexError:
-                path[step] = "Goal"
+                path[step] = None
 
         return path
 
