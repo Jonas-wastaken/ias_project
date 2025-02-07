@@ -1,35 +1,60 @@
+"""This module contains:
+- Graph class: Represents an undirected graph with intersection and border nodes. It creates edges between them with random weights and stores agent positions."""
+
 import networkx as nx
 import random
 import pickle
 
 
 class Graph(nx.Graph):
+    """A class to represent an undirected graph.
+
+    The class inherits from the networkx.Graph class.
+    The class creates nodes labeled as 'intersection' and 'border', and adds edges between them with random weights.
+    Self-loops are removed from the graph.
+
+    Attributes:
+        agent_positions (dict): A dictionary to keep track of the agents' positions.
+
+    ## Methods:
+        **add_intersections(self, num_intersections: int) -> None**:
+            Add intersection nodes to the graph.
+        **add_borders(self, num_borders: int) -> None**:
+            Add border nodes to the graph.
+        **connect_intersections(self, num_intersections: int, weight_range: tuple[int, int]) -> None**:
+            Add edges between intersection nodes with random weights.
+        **connect_borders(self, num_intersections: int, num_borders: int, weight_range: tuple[int, int]) -> None**:
+            Add edges between border and intersection nodes with random weights.
+        **place_agent(self, agent_id: int) -> str**:
+            Place an agent on a random border node and store position internally.
+        **move_agent(self, agent_id: int, new_position: str) -> None**:
+            Move an agent to it's next position.
+        **save(self, filename: str = "graph.pickle") -> None**:
+            Save class instance to a pickle file.
+    """
+
     def __init__(
         self,
         num_intersections: int = 10,
         num_borders: int = 3,
         weight_range: tuple[int, int] = (1, 10),
     ):
-        """A class to represent a graph.
-
-        The class inherits from the networkx.Graph class and adds methods to save the graph to a file and generate a plot.
-        Creates nodes labeled as 'intersection' and 'border', and adds edges between them with random weights.
-        Self-loops are removed from the graph.
+        """Initializes a new Graph instance with intersection and border nodes and edges between them.
 
         Args:
             num_intersections (int, optional): The number of intersection nodes to create. Defaults to 10.
             num_borders (int, optional): The number of border nodes to create. Defaults to 3.
-            weight_range (tuple, optional): A tuple specifying the range of weights for the edges. Defaults to (1, 10).
+            weight_range (tuple[int, int], optional): A tuple specifying the range of weights for the edges. Defaults to (1, 10).
         """
 
         super().__init__()
         self.add_intersections(num_intersections)
         self.add_borders(num_borders)
-        self.add_edges_intersections(num_intersections, weight_range)
-        self.add_edges_borders(num_intersections, num_borders, weight_range)
+        self.connect_intersections(num_intersections, weight_range)
+        self.connect_borders(num_intersections, num_borders, weight_range)
         super().remove_edges_from(nx.selfloop_edges(self))
 
-        self.agent_positions = {}  # Dict to keep track of agent positions
+        self.agent_positions = {}
 
     def add_intersections(self, num_intersections: int) -> None:
         """Add intersection nodes to the graph.
@@ -54,7 +79,7 @@ class Graph(nx.Graph):
             [(f"border_{i}", {"type": "border"}) for i in range(num_borders)]
         )
 
-    def add_edges_intersections(
+    def connect_intersections(
         self, num_intersections: int, weight_range: tuple[int, int]
     ) -> None:
         """Add edges between intersection nodes with random weights.
@@ -72,7 +97,7 @@ class Graph(nx.Graph):
                     weight=random.randint(weight_range[0], weight_range[1]),
                 )
 
-    def add_edges_borders(
+    def connect_borders(
         self, num_intersections: int, num_borders: int, weight_range: tuple[int, int]
     ) -> None:
         """Add edges between border and intersection nodes with random weights.
@@ -116,11 +141,11 @@ class Graph(nx.Graph):
         """
         self.agent_positions[agent_id] = new_position
 
-    def save(self, filename: str) -> None:
+    def save(self, filename: str = "graph.pickle") -> None:
         """Save class instance to a pickle file.
 
         Args:
-            filename (str): The name of the file to save the class instance to.
+            filename (str, optional): The name of the file to save the class instance to.
         """
 
         pickle.dump(self, open(filename, "wb"))

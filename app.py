@@ -1,5 +1,6 @@
 """
-Interactive network graph visualization using Streamlit and Plotly.
+This Streamlit app visualizes a traffic grid using NetworkX and Plotly.
+It allows users to step through the simulation of traffic agents and view their paths.
 """
 
 import networkx as nx
