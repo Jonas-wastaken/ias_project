@@ -130,7 +130,7 @@ with right_col:
                         "Start": agent.start,
                         "Goal": agent.goal,
                         "Position": agent.position,
-                        "Path": agent.path[1:-1],
+                        "Path": agent.path,
                     }
                 ]
             )
