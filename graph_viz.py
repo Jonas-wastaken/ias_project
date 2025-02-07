@@ -162,7 +162,7 @@ class TrafficGraph(go.Figure):
             list: List of text for the nodes
         """
         node_text = [
-            f"# {node[0]}<br>Connections: {self._model.grid.degree(node[0])}"
+            f"{str(node[0]).capitalize()}<br>Connections: {self._model.grid.degree(node[0])}"
             for node in self._model.grid.nodes(data=True)
         ]
 
