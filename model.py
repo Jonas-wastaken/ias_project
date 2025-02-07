@@ -31,6 +31,7 @@ class TrafficModel(mesa.Model):
         self.num_agents = num_agents
         self.grid = Graph()
         _agents = CarAgent.create_agents(model=self, n=num_agents)
+        self.agent_paths = {agent.unique_id: agent.path.copy() for agent in _agents}
 
     def step(self) -> None:
         """Advances the environment to next state.

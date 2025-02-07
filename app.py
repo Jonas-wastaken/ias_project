@@ -4,6 +4,7 @@ It allows users to step through the simulation of traffic agents and view their 
 """
 
 import streamlit as st
+from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
 from model import TrafficModel
 from graph_viz import TrafficGraph
@@ -36,16 +37,42 @@ with right_col:
         if st.button(label="Step", help="Execute one step"):
             model.step()
     with ui_cols[1]:
-        if st.button(label="Reset", help="Not functional"):
+        if st.button(label="Reset", help="Reset the Environment"):
+            st.session_state.model = TrafficModel(num_agents=3)
+            model = st.session_state.model
             st.rerun()
 
     agent_paths_container = st.container()
     with agent_paths_container:
-        agent_paths = {agent.unique_id: agent.path for agent in model.agents}
-        for key, value in agent_paths.items():
-            st.subheader(f"Agent {key}")
+        for agent in model.agents:
+            left_col, right_col = st.columns(2)
+            with left_col:
+                st.subheader(f"Agent {agent.unique_id}")
+            with right_col:
+                with stylable_container(
+                    key=f"agent_{agent.unique_id}",
+                    css_styles="""
+                        button {
+                            background-color: white;
+                            color: black;
+                            border: none;
+                            white-space: nowrap;
+                            margin-top: 0.25rem;
+                        }
+                        """,
+                ):
+                    with st.popover("Show Details"):
+                        st.markdown("""##### Full Path""")
+                        st.dataframe(
+                            pd.DataFrame(
+                                model.agent_paths[agent.unique_id].items(),
+                                columns=["Node", "Distance"],
+                            ),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
             st.dataframe(
-                pd.DataFrame(value.items(), columns=["Node", "Distance"]),
+                pd.DataFrame(agent.path.items(), columns=["Node", "Distance"]),
                 use_container_width=True,
                 hide_index=True,
             )
