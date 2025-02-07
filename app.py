@@ -24,7 +24,7 @@ if "model" not in st.session_state:
     st.session_state.model = TrafficModel(num_agents=3)
 model = st.session_state.model
 
-left_col, right_col = st.columns([2, 1])
+left_col, right_col = st.columns([0.75, 0.25])
 
 with left_col:
     graph_container = st.container()
@@ -43,20 +43,11 @@ with right_col:
 
     agent_paths_container = st.container()
     with agent_paths_container:
-        agent_paths = pd.DataFrame(
-            columns=["Agent", "Start", "Goal", "Position", "Path"]
-        )
-        for agent in model.agents:
-            agent_path = pd.DataFrame(
-                [
-                    {
-                        "Agent": agent.unique_id,
-                        "Start": agent.start,
-                        "Goal": agent.goal,
-                        "Position": agent.position,
-                        "Path": agent.path,
-                    }
-                ]
+        agent_paths = {agent.unique_id: agent.path for agent in model.agents}
+        for key, value in agent_paths.items():
+            st.subheader(f"Agent {key}")
+            st.dataframe(
+                pd.DataFrame(value.items(), columns=["Node", "Distance"]),
+                use_container_width=True,
+                hide_index=True,
             )
-            agent_paths = pd.concat([agent_paths, agent_path], ignore_index=True)
-        st.dataframe(agent_paths, use_container_width=True, hide_index=True)
