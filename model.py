@@ -30,7 +30,7 @@ class TrafficModel(mesa.Model):
         super().__init__(seed=seed)
         self.num_agents = num_agents
         self.grid = Graph()
-        agents = CarAgent.create_agents(model=self, n=num_agents)
+        _agents = CarAgent.create_agents(model=self, n=num_agents)
 
     def step(self) -> None:
         """Advances the environment to next state.
