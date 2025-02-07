@@ -35,19 +35,22 @@ class Graph(nx.Graph):
 
     def __init__(
         self,
-        num_intersections: int = 10,
-        num_borders: int = 3,
-        weight_range: tuple[int, int] = (1, 10),
+        num_intersections: int,
+        num_borders: int,
+        weight_range: tuple[int, int],
     ):
         """Initializes a new Graph instance with intersection and border nodes and edges between them.
 
         Args:
-            num_intersections (int, optional): The number of intersection nodes to create. Defaults to 10.
-            num_borders (int, optional): The number of border nodes to create. Defaults to 3.
-            weight_range (tuple[int, int], optional): A tuple specifying the range of weights for the edges. Defaults to (1, 10).
+            num_intersections (int): The number of intersection nodes to create.
+            num_borders (int): The number of border nodes to create.
+            weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
         """
 
         super().__init__()
+        self.num_intersections = num_intersections
+        self.num_borders = num_borders
+        self.weight_range = weight_range
         self.add_intersections(num_intersections)
         self.add_borders(num_borders)
         self.connect_intersections(num_intersections, weight_range)

@@ -32,12 +32,52 @@ with left_col:
         st.plotly_chart(fig, use_container_width=False)
 
 with right_col:
-    ui_cols = st.columns(spec=2, gap="small")
+    ui_cols = st.columns(spec=[0.3, 0.4, 0.3], vertical_alignment="center")
     with ui_cols[0]:
-        if st.button(label="Step", help="Execute one step"):
+        if st.button(label="Step", help="Execute one step", use_container_width=True):
             model.step()
     with ui_cols[1]:
-        if st.button(label="Reset", help="Reset the Environment"):
+        options_popover = st.popover(
+            label="Options",
+            help="Change the environment settings",
+            use_container_width=True,
+        )
+        with options_popover:
+            st.markdown("### Options")
+            num_agents = st.number_input(
+                label="Number of Agents",
+                min_value=1,
+                value=model.num_agents,
+            )
+            num_intersections = st.number_input(
+                label="Number of Intersections",
+                min_value=1,
+                value=model.grid.num_intersections,
+            )
+            num_borders = st.number_input(
+                label="Number of Borders",
+                min_value=1,
+                value=model.grid.num_borders,
+            )
+            weight_range = st.slider(
+                label="Weight Range",
+                min_value=1,
+                max_value=100,
+                value=model.grid.weight_range,
+            )
+            if st.button(label="Apply", help="Apply the changes"):
+                st.session_state.model = TrafficModel(
+                    num_agents=num_agents,
+                    num_intersections=num_intersections,
+                    num_borders=num_borders,
+                    weight_range=weight_range,
+                )
+                model = st.session_state.model
+                st.rerun()
+    with ui_cols[2]:
+        if st.button(
+            label="Reset", help="Reset the Environment", use_container_width=True
+        ):
             st.session_state.model = TrafficModel(num_agents=3)
             model = st.session_state.model
             st.rerun()
