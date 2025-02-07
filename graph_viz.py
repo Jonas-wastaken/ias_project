@@ -132,31 +132,33 @@ class TrafficGraph(go.Figure):
             marker=dict(
                 color=node_color,
                 size=10,
-                line_width=2,
+                line_width=1,
             ),
         )
 
     def create_node_color(self) -> list:
-        """Create a list of colors for the nodes.
+        """Create a list of colors for the nodes based on type.
 
         Returns:
             list: List of colors for the nodes
         """
         return [
-            "blue" if node[1]["type"] == "intersection" else "red"
+            "#C140FF" if node[1]["type"] == "intersection" else "#7FF9E2"
             for node in self._model.grid.nodes(data=True)
         ]
 
     def create_node_text(self) -> list:
         """Create a list of text for the nodes.
 
+        - Node ID
+        - Number of connections
+
         Returns:
             list: List of text for the nodes
         """
-        node_adjacencies = []
-        node_text = []
-        for node, adjacency_dict in enumerate(self._model.grid.adjacency()):
-            node_adjacencies.append(len(adjacency_dict[1]))
-            node_text.append("# of connections: " + str(len(adjacency_dict[1])))
+        node_text = [
+            f"# {node[0]}<br>Connections: {self._model.grid.degree(node[0])}"
+            for node in self._model.grid.nodes(data=True)
+        ]
 
         return node_text
