@@ -1,3 +1,6 @@
+"""This module contains:
+- TrafficGraph class: A plotly figure of the traffic grid."""
+
 import networkx as nx
 import plotly.graph_objects as go
 from model import TrafficModel
