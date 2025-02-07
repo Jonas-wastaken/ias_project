@@ -67,7 +67,7 @@ class CarAgent(mesa.Agent):
                     step, steps[steps.index(step) + 1]
                 )["weight"]
             except IndexError:
-                path[step] = None
+                path[step] = "Goal"
 
         return path
 
@@ -82,9 +82,10 @@ class CarAgent(mesa.Agent):
         if self.position == self.goal:
             raise AgentArrived(message=f"Agent {self.unique_id} arrived at it's goal")
         else:
-            if self.path.get(self.position) == 0:
+            if self.path.get(self.position) == 1:
                 steps = list(self.path.keys())
                 next_index = steps.index(self.position) + 1
+                self.path.pop(self.position)
                 self.position = steps[next_index]
                 self.model.grid.move_agent(self, self.position)
             else:
