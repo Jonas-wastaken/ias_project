@@ -103,13 +103,14 @@ class TrafficGraph(go.Figure):
         Returns:
             go.Scatter: Plotly trace for the edges
         """
-        return go.Scatter(
+        edge_trace = go.Scatter(
             x=edge_x,
             y=edge_y,
             line=dict(width=0.5, color="#888"),
             hoverinfo="none",
             mode="lines",
         )
+        return edge_trace
 
     def create_trace_nodes(
         self, node_x: list, node_y: list, node_color: list
@@ -124,7 +125,7 @@ class TrafficGraph(go.Figure):
         Returns:
             go.Scatter: Plotly trace for the nodes
         """
-        return go.Scatter(
+        node_trace = go.Scatter(
             x=node_x,
             y=node_y,
             mode="markers",
@@ -136,16 +137,20 @@ class TrafficGraph(go.Figure):
             ),
         )
 
+        return node_trace
+
     def create_node_color(self) -> list:
         """Create a list of colors for the nodes based on type.
 
         Returns:
             list: List of colors for the nodes
         """
-        return [
+        node_color = [
             "#C140FF" if node[1]["type"] == "intersection" else "#7FF9E2"
             for node in self._model.grid.nodes(data=True)
         ]
+
+        return node_color
 
     def create_node_text(self) -> list:
         """Create a list of text for the nodes.
