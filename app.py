@@ -3,8 +3,6 @@ This Streamlit app visualizes a traffic grid using NetworkX and Plotly.
 It allows users to step through the simulation of traffic agents and view their paths.
 """
 
-import networkx as nx
-import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 from model import TrafficModel
