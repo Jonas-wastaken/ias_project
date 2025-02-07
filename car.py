@@ -15,12 +15,14 @@ class CarAgent(mesa.Agent):
     Attributes:
         start (str): The ID of the node, where the agent starts.
         goal (str): The ID of the node, which is the agent's goal.
-        path (list[str]): The path the agent takes to reach it's goal.
+        path (dict): A dictionary containing the steps in the agent's path as keys and the distance to the next step as values.
         position (str): The ID of the node, where the agent is currently located.
 
     ## Methods:
         **compute_goal(self) -> str**:
             Assigns a random border node, which is not the starting node, as the goal of the agent.
+        **compute_path(self) -> dict**:
+            Computes the path the agent takes to reach it's goal using Dijkstra's algorithm.
         **move(self) -> None**:
             Moves the agent to it's next step on the path and sends updated position to the grid.
     """
@@ -34,9 +36,7 @@ class CarAgent(mesa.Agent):
         super().__init__(model)
         self.start = self.model.grid.place_agent(agent_id=self.unique_id)
         self.goal = self.compute_goal()
-        self.path = dijkstra_path(
-            self.model.grid, self.start, self.goal, weight="weight"
-        )
+        self.path = self.compute_path()
         self.position = self.start
 
     def compute_goal(self) -> str:
@@ -51,20 +51,44 @@ class CarAgent(mesa.Agent):
 
         return assigned_goal
 
+    def compute_path(self) -> dict:
+        """Computes the path the agent takes to reach it's goal using Dijkstra's algorithm.
+
+        Returns:
+            dict: A dictionary containing the steps in the agent's path as keys and the distance to the next step as values.
+        """
+        steps = dijkstra_path(self.model.grid, self.start, self.goal, weight="weight")
+
+        path = {}
+
+        for step in steps:
+            try:
+                path[step] = self.model.grid.get_edge_data(
+                    step, steps[steps.index(step) + 1]
+                )["weight"]
+            except IndexError:
+                path[step] = None
+
+        return path
+
     def move(self) -> None:
         """Moves the agent to it's next step on the path and sends updated position to the grid.
 
+        The agent can only move if the distance to the next step in it's path is 0. Otherwise, the distance is decremented by 1.
+
         Raises:
-            AgentArrived: If the agent has reached it's goal, the exception is raised.
+            AgentArrived: If the agent has reached it's goal, this exception is raised.
         """
         if self.position == self.goal:
-            raise AgentArrived(
-                message=f"The Agent {self.unique_id} arrived at it's goal"
-            )
+            raise AgentArrived(message=f"Agent {self.unique_id} arrived at it's goal")
         else:
-            next_step = self.path[self.path.index(self.position) + 1]
-            self.model.grid.move_agent(self, next_step)
-            self.position = next_step
+            if self.path.get(self.position) == 0:
+                steps = list(self.path.keys())
+                next_index = steps.index(self.position) + 1
+                self.position = steps[next_index]
+                self.model.grid.move_agent(self, self.position)
+            else:
+                self.path[self.position] = self.path.get(self.position) - 1
 
 
 class AgentArrived(Exception):
