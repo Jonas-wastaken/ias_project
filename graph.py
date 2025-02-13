@@ -53,9 +53,8 @@ class Graph(nx.Graph):
         self.weight_range = weight_range
         self.add_intersections(num_intersections)
         self.add_borders(num_borders)
-        self.connect_intersections(num_intersections, weight_range)
-        self.connect_borders(num_intersections, num_borders, weight_range)
-        super().remove_edges_from(nx.selfloop_edges(self))
+        self.connect_intersections(weight_range)
+        self.connect_borders(weight_range)
 
         self.agent_positions = {}
 
@@ -83,39 +82,64 @@ class Graph(nx.Graph):
         )
 
     def connect_intersections(
-        self, num_intersections: int, weight_range: tuple[int, int]
+        self, weight_range: tuple[int, int]
     ) -> None:
-        """Add edges between intersection nodes with random weights.
+        """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
+
+        - Initializes a list with all nodes of type intersection.
+        - Initializes a dictionary to keep track of connections for each intersection node.
+        - For each intersection node:
+            - Ensures it is connected to at least 2 and at most 4 other intersection nodes.
+            - Selects available nodes that are not already fully connected.
+            - Randomly selects a number of nodes to connect to, ensuring it does not exceed the limits.
+            - Adds the selected nodes to the connections of the current node and vice versa.
+        - Adds weighted edges between connected nodes with weights randomly chosen from the specified range.
 
         Args:
-            num_intersections (int): The number of intersection nodes in the graph.
             weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
         """
-        for i in range(num_intersections):
-            num_edges = random.randint(1, 4)
-            for _ in range(num_edges):
-                super().add_edge(
-                    f"intersection_{i}",
-                    f"intersection_{random.randint(0, (num_intersections - 1))}",
-                    weight=random.randint(weight_range[0], weight_range[1]),
-                )
+        intersections = [node for node in self.nodes if node.startswith('intersection')]
+        connections = {node: set() for node in intersections}
+
+        for node in intersections:
+            while len(connections[node]) < 2 or len(connections[node]) > 4:
+                available_nodes = [x for x in intersections if x != node and len(connections[x]) < 4]
+                if not available_nodes:
+                    break
+
+                num_to_connect = min(4 - len(connections[node]), random.randint(1, 4))
+                num_to_connect = min(num_to_connect, len(available_nodes))
+                if num_to_connect <= 0:
+                    break
+                
+                selected_nodes = random.sample(available_nodes, num_to_connect)
+
+                for target_node in selected_nodes:
+                    connections[node].add(target_node)
+                    connections[target_node].add(node)
+
+        for node, target_nodes in connections.items():
+            edges = [(node, target_node, random.randint(weight_range[0], weight_range[1])) for target_node in target_nodes]
+            super().add_weighted_edges_from(edges)
 
     def connect_borders(
-        self, num_intersections: int, num_borders: int, weight_range: tuple[int, int]
+        self, weight_range: tuple[int, int]
     ) -> None:
         """Add edges between border and intersection nodes with random weights.
 
+        - Initializes a list with all nodes of type border.
+        - Initializes a list with all nodes of type intersection.
+        - Iterates through borders, adding an edge between the each border and a random intersection.
+
         Args:
-            num_intersections (int): The number of intersection nodes in the graph.
-            num_borders (int): The number of border nodes in the graph.
             weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
         """
-        for i in range(num_borders):
-            super().add_edge(
-                f"border_{i}",
-                f"intersection_{random.randint(0, (num_intersections - 1))}",
-                weight=random.randint(weight_range[0], weight_range[1]),
-            )
+        borders = [node for node in self.nodes if node.startswith('border')]
+        intersections = [node for node in self.nodes if node.startswith('intersection')]
+
+        while borders:
+            border = borders.pop()
+            super().add_edge(border, random.choice(intersections), weight=random.randint(weight_range[0], weight_range[1]))
 
     def place_agent(self, agent_id: int) -> str:
         """Places an agent on a random border node and stores position internally.
