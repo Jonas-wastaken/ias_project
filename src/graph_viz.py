@@ -159,13 +159,16 @@ class TrafficGraph(go.Figure):
         """Create a list of text for the nodes.
 
         - Node ID
-        - Number of connections
+        - Number of connected intersections (if type is intersection)
+        - Number of connected borders (if type is intersection)
 
         Returns:
             list: List of text for the nodes
         """
         node_text = [
-            f"{str(node[0]).capitalize()}<br>Connections: {self._model.grid.degree(node[0])}"
+            f"{str(node[0]).title().replace('_', ' ')}<br>Connected Routes: {len([node for node in list(self._model.grid.neighbors(node[0])) if node.startswith('intersection')])}<br>Connected Borders: {len([node for node in list(self._model.grid.neighbors(node[0])) if node.startswith('border')])}"
+            if node[1]["type"] == "intersection"
+            else f"{str(node[0]).title().replace('_', ' ')}"
             for node in self._model.grid.nodes(data=True)
         ]
 

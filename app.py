@@ -36,7 +36,7 @@ with left_col:
     graph_container = st.container()
     with graph_container:
         fig = TrafficGraph(model)
-        st.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=True)
 
 # Right column for the UI controls
 with right_col:
@@ -137,16 +137,32 @@ with right_col:
                         st.markdown("""##### Full Path""")
                         st.dataframe(
                             pd.DataFrame(
-                                model.agent_paths[agent.unique_id].items(),
+                                [
+                                    (node.title().replace("_", " "), distance)
+                                    for node, distance in model.agent_paths[
+                                        agent.unique_id
+                                    ].items()
+                                ],
                                 columns=["Node", "Distance"],
                             ),
                             use_container_width=True,
                             hide_index=True,
                         )
 
-            # Display the agent's current path
+            # Display the agent's current position, distance to next position and next position
+            current_position, next_position = list(agent.path.keys())[:2]
+            distance = list(agent.path.values())[0]
             st.dataframe(
-                pd.DataFrame(agent.path.items(), columns=["Node", "Distance"]),
+                pd.DataFrame(
+                    [
+                        (
+                            current_position.title().replace("_", " "),
+                            next_position.title().replace("_", " "),
+                            distance,
+                        )
+                    ],
+                    columns=["Current Position", "Next Position", "Distance"],
+                ),
                 use_container_width=True,
                 hide_index=True,
             )
