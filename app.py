@@ -59,18 +59,19 @@ with right_col:
                 min_value=1,
                 value=model.grid.num_borders,
             )
-            weight_range = st.slider(
-                label="Weight Range",
+            distance_range = st.slider(
+                label="Distance",
                 min_value=1,
                 max_value=100,
-                value=model.grid.weight_range,
+                value=(model.grid.min_distance, model.grid.max_distance),
             )
             if st.button(label="Apply", help="Apply the changes"):
                 st.session_state.model = TrafficModel(
                     num_agents=num_agents,
                     num_intersections=num_intersections,
                     num_borders=num_borders,
-                    weight_range=weight_range,
+                    min_distance=distance_range[0],
+                    max_distance=distance_range[1],
                 )
                 model = st.session_state.model
                 st.rerun()
