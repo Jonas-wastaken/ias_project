@@ -2,8 +2,8 @@
 - TrafficModel class: A Mesa model simulating traffic."""
 
 import mesa
-from src.car import CarAgent, AgentArrived
-from src.graph import Graph
+from car import CarAgent, AgentArrived
+from graph import Graph
 
 
 class TrafficModel(mesa.Model):
