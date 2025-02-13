@@ -6,8 +6,8 @@ It allows users to step through the simulation of traffic agents and view their 
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
-from model import TrafficModel
-from graph_viz import TrafficGraph
+from src.model import TrafficModel
+from src.graph_viz import TrafficGraph
 
 st.set_page_config(
     page_title=None,
