@@ -34,7 +34,8 @@ class TrafficModel(mesa.Model):
         self.grid = Graph(
             num_intersections=self.kwargs.get("num_intersections", 10),
             num_borders=self.kwargs.get("num_borders", 3),
-            weight_range=self.kwargs.get("weight_range", (1, 10)),
+            min_distance=self.kwargs.get("min_distance", 1),
+            max_distance=self.kwargs.get("max_distance", 10),
         )
         _agents = CarAgent.create_agents(model=self, n=num_agents)
         self.agent_paths = {agent.unique_id: agent.path.copy() for agent in _agents}
