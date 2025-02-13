@@ -3,7 +3,7 @@
 
 import networkx as nx
 import plotly.graph_objects as go
-from model import TrafficModel
+from src.model import TrafficModel
 
 
 class TrafficGraph(go.Figure):
