@@ -21,19 +21,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
+          
       - name: Build Docker Images
         id: build_image
         run: |
           docker-compose build --parallel
-          docker tag my_image:latest my_image:${{ github.sha }}
+          docker tag my_image:latest app:${{ github.sha }}
           echo "docker_image=my_image:${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Upload Docker Image as 
+          
+      - name: Upload Docker Image as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: my_image:${{ github.sha }}
+          path: app_${{ github.sha }}.tar
+          run: |
+            docker save -o my_image_${{ github.sha }}.tar app:${{ github.sha }}
+
 
   test:
     runs-on: ubuntu-latest
@@ -47,12 +50,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
+          
       - name: Download Docker Image Artifact
         uses: actions/download-artifact@v4
         with:
           name: docker-image
           path: ./
+      
+      - name: Load Docker Image
+        run: |
+          docker load -i app_${{ github.sha }}.tar
+
 
       - name: Run Tests
         run: docker-compose run --rm test
