@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y \
 
 COPY . /app
 
-RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade pip --root-user-action
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt --root-user-action
 
 EXPOSE 8501
 
