@@ -22,11 +22,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y docker-compose
 
-    - name: Build and start Docker containers
-      run: docker-compose up -d --build
+    - name: Build and start app container
+      run: docker-compose up -d --build app
 
-    - name: Run tests
-      run: docker-compose up test --exit-code-from test
+    - name: Run tests inside the container
+      run: docker-compose up --exit-code-from test test
 
     - name: Stop and clean up Docker containers
       run: docker-compose down
