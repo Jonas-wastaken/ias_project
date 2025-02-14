@@ -22,7 +22,7 @@ jobs:
 
     - name: Build Docker Images
       run: |
-        docker-compose build --parallel  # Removed cache-related flags
+        docker-compose build --parallel
 
     - name: Run Tests
       run: docker-compose run --rm test
