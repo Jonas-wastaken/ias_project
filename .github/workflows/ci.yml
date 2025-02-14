@@ -23,25 +23,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y docker-compose
 
-    - name: Create Cache Directory
+    - name: Build Docker Images
       run: |
-        mkdir -p /tmp/.buildx-cache
+        docker-compose build --parallel  # Removed cache-related flags
 
-    - name: Cache Docker Layers
-      uses: actions/cache@v3
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-docker-
-
-    - name: Build Docker Images (With Cache)
-      run: |
-        docker-compose build --parallel \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache,mode=max
-
-    - name: Run Tests Inside the Container
+    - name: Run Tests
       run: docker-compose run --rm test
 
     - name: Stop and Clean Up Containers
