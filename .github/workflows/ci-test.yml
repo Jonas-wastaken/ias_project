@@ -1,0 +1,34 @@
+name: CI Test
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Download Docker Image Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-image
+
+    - name: Load Docker Image
+      run: |
+        gunzip -c app.tar.gz | docker load
+
+    - name: Install Dependencies (Docker & Compose)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+
+    - name: Run Tests
+      run: docker-compose run --rm test
+
+    - name: Stop and Clean Up Containers
+      if: always()
+      run: docker-compose down --volumes --remove-orphans

@@ -1,11 +1,11 @@
-name: CI
+name: CI Build
 
 on:
   pull_request:
     branches: [ "main" ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,11 +22,13 @@ jobs:
 
     - name: Build Docker Images
       run: |
-        docker-compose build --parallel  # Removed cache-related flags
+        docker-compose build --parallel
 
-    - name: Run Tests
-      run: docker-compose run --rm test
-
-    - name: Stop and Clean Up Containers
-      if: always()
-      run: docker-compose down --volumes --remove-orphans
+    - name: Save Docker Image as Artifact
+      run: |
+        docker save app:latest | gzip > app.tar.gz
+    - name: Upload Docker Image Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image
+        path: app.tar.gz
