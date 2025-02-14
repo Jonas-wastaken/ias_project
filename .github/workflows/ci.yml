@@ -1,35 +1,70 @@
 name: CI
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}  # Run only for PR events
+    outputs:
+      docker_image: ${{ steps.build_image.outputs.docker_image }}
 
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Install Dependencies (Docker & Compose)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
+      - name: Install Dependencies (Docker & Compose)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
 
-    - name: Build Docker Images
-      run: |
-        docker-compose build --parallel  # Removed cache-related flags
+      - name: Build Docker Images
+        id: build_image
+        run: |
+          docker-compose build --parallel
+          docker tag my_image:latest my_image:${{ github.sha }}
+          echo "docker_image=my_image:${{ github.sha }}" >> $GITHUB_ENV
 
-    - name: Run Tests
-      run: docker-compose run --rm test
+      - name: Upload Docker Image as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: my_image:${{ github.sha }}
 
-    - name: Stop and Clean Up Containers
-      if: always()
-      run: docker-compose down --volumes --remove-orphans
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies (Docker & Compose)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Download Docker Image Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: ./
+
+      - name: Run Tests
+        run: docker-compose run --rm test
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Stop and Clean Up Containers
+        if: always()
+        run: docker-compose down --volumes --remove-orphans
