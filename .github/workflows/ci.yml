@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,16 +17,28 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Install Docker Compose
+    - name: Install Dependencies (Docker & Compose)
       run: |
         sudo apt-get update
         sudo apt-get install -y docker-compose
 
-    - name: Build and start app container
-      run: docker-compose up -d --build test
+    - name: Cache Docker Layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-docker-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-docker-
 
-    - name: Run tests inside the container
-      run: docker-compose up --exit-code-from test test
+    - name: Build Docker Images (With Cache)
+      run: |
+        docker-compose build --parallel \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache,mode=max
 
-    - name: Stop and clean up Docker containers
-      run: docker-compose down
+    - name: Run Tests Inside the Container
+      run: docker-compose run --rm test
+
+    - name: Stop and Clean Up Containers
+      if: always()
+      run: docker-compose down --volumes --remove-orphans
