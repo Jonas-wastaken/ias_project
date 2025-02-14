@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Build and start Docker containers
+      run: docker-compose up -d --build
+
+    - name: Run tests inside the container
+      run: docker-compose exec -T app python -m unittest discover -s tests
+
+    - name: Stop and clean up Docker containers
+      run: docker-compose down
