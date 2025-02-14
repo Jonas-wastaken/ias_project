@@ -24,6 +24,20 @@ logging.basicConfig(
 
 
 class TestCarAgent(unittest.TestCase):
+    """Unit tests for the CarAgent class.
+
+    This class contains unit tests for the CarAgent class, which is part of the TrafficModel.
+    It tests the initialization, goal computation, path computation, movement, and exception handling of the CarAgent.
+
+    Attributes:
+        num_agents (int): Number of agents in the TrafficModel.
+        num_intersections (int): Number of intersections in the TrafficModel.
+        num_borders (int): Number of borders in the TrafficModel.
+        min_distance (int): Minimum distance between intersections.
+        max_distance (int): Maximum distance between intersections.
+        model (TrafficModel): Instance of the TrafficModel.
+        agent (CarAgent): Instance of the CarAgent being tested.
+    """   
     def setUp(self):
         self.num_agents = 1
         self.num_intersections = 10
@@ -47,6 +61,14 @@ class TestCarAgent(unittest.TestCase):
         logging.info("Setup complete: CarAgent initialized")
 
     def test_compute_goal(self):
+        """Test the compute_goal method of the CarAgent class.
+
+        - Test if the goal is a border node.
+        - Test if the goal is not the same as the start node.
+
+        Raises:
+            AssertionError: If the goal is not a border node or if the goal is the same as the start node.
+        """        
         logging.info("Test compute_goal")
         try:
             self.assertTrue(self.agent.goal.startswith("border"))
@@ -57,6 +79,16 @@ class TestCarAgent(unittest.TestCase):
             raise
 
     def test_compute_path(self):
+        """Test the compute_path method of the CarAgent class.
+
+        - Test if the path is a dictionary.
+        - Test if the start node is the first node in the path.
+        - Test if the goal node is the last node in the path.
+        - Test if other nodes in the path are intersection nodes.
+
+        Raises:
+            AssertionError: If the path is not a dictionary, if the start node is not the first node in the path, if the goal node is not the last node in the path, or if other nodes in the path are not intersection nodes.
+        """
         logging.info("Test compute_path")
         try:
             self.assertIsInstance(self.agent.path, dict)
@@ -70,6 +102,13 @@ class TestCarAgent(unittest.TestCase):
             raise
 
     def test_move(self):
+        """Test the move method of the CarAgent class.
+
+        - Test if the agent moves to the next node in the path.
+
+        Raises:
+            AssertionError: If the agent does not move to the next node in the path
+        """
         logging.info("Test move")
         try:
             for _ in range(self.agent.path[self.agent.start] + 1):
@@ -83,6 +122,13 @@ class TestCarAgent(unittest.TestCase):
             raise
 
     def test_agent_arrived_exception(self):
+        """Test the AgentArrived exception of the CarAgent class.
+
+        - Test if the exception is raised when the agent reaches it's goal.
+
+        Raises:
+            AssertionError: If the exception is not raised when the agent reaches it's goal
+        """
         logging.info("Test agent_arrived_exception")
         try:
             self.agent.position = self.agent.goal

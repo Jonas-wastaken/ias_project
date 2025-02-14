@@ -39,6 +39,16 @@ class TestTrafficModel(unittest.TestCase):
         logging.info("Setup complete: TrafficModel initialized")
 
     def test_initial_agents(self):
+        """Test initial agents.
+
+        - This test checks if the agents are initialized correctly.
+            - Check if the agents are instances of the CarAgent class.
+            - Check if the agent paths are initialized as dictionaries.
+            - Assert that the number of agents matches the expected number.
+
+        Raises:
+            AssertionError: If the agents are not instances of the CarAgent class, the agent paths are not initialized as dictionaries, or the number of agents does not match the expected number.
+        """
         logging.info("Test initial agents")
         logging.info(f"Initialized {self.num_agents} Agents!")
         try:
@@ -55,6 +65,15 @@ class TestTrafficModel(unittest.TestCase):
             raise
 
     def test_graph_initialization(self):
+        """Test graph initialization.
+
+        - This test checks if the graph is initialized correctly.
+            - Check if the grid is an instance of the Graph class.
+            - Assert that the number of nodes in the graph matches the expected number of intersections and borders.
+
+        Raises:
+            AssertionError: If the grid is not an instance of the Graph class or the number of nodes in the graph does not match the expected number of intersections and borders.
+        """
         logging.info("Test graph initialization")
         logging.info(f"Graph nodes: {self.model.grid.nodes}")
         try:
@@ -69,6 +88,16 @@ class TestTrafficModel(unittest.TestCase):
             raise
 
     def test_step(self):
+        """Test step.
+
+        - This test checks if the agents move to their next positions after a step.
+            - Save the initial positions of the agents.
+            - Call the step method of the model.
+            - Assert that the initial positions are not the same as the current positions.
+
+        Raises:
+            AssertionError: If the initial positions are the same as the current positions.
+        """
         logging.info("Test step")
         initial_positions = self.model.agent_paths.copy()
         logging.info(f"{[path for path in self.model.agent_paths.values()]}")
@@ -81,6 +110,15 @@ class TestTrafficModel(unittest.TestCase):
             raise
 
     def test_agent_removal(self):
+        """Test agent removal.
+
+        - This test checks if the agents are removed from the model after reaching their goals.
+            - Save the highest path length of the agents.
+            - Call the step method of the model until there are no agents left or the steps exceed the highest path length.
+
+        Raises:
+            AssertionError: If there are agents left after the step method is called or if the steps exceed the highest path length.
+        """
         logging.info("Test agent removal")
         highest_path_length = 0
         for agent in self.model.agents:
