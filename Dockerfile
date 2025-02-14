@@ -3,6 +3,7 @@ FROM python:3.12.8-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
+    apt-utils \
     build-essential \
     curl \
     software-properties-common \
