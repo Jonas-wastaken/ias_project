@@ -22,6 +22,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y docker-compose
 
+    - name: Create Cache Directory
+      run: |
+        mkdir -p /tmp/.buildx-cache
+
     - name: Cache Docker Layers
       uses: actions/cache@v3
       with:
@@ -36,7 +40,7 @@ jobs:
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache,mode=max
 
-    - name: Run Tests Inside the Container
+    - name: Run Tests
       run: docker-compose run --rm test
 
     - name: Stop and Clean Up Containers
