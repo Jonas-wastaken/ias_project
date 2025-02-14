@@ -26,8 +26,8 @@ jobs:
         id: build_image
         run: |
           docker-compose build --parallel
-          docker tag my_image:latest app:${{ github.sha }}
-          echo "docker_image=my_image:${{ github.sha }}" >> $GITHUB_ENV
+          docker tag app:latest app:${{ github.sha }}
+          echo "docker_image=app:${{ github.sha }}" >> $GITHUB_ENV
           
       - name: Upload Docker Image as Artifact
         uses: actions/upload-artifact@v4
@@ -35,7 +35,7 @@ jobs:
           name: docker-image
           path: app_${{ github.sha }}.tar
           run: |
-            docker save -o my_image_${{ github.sha }}.tar app:${{ github.sha }}
+            docker save -o app_${{ github.sha }}.tar app:${{ github.sha }}
 
 
   test:
