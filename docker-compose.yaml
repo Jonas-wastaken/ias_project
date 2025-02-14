@@ -1,5 +1,5 @@
 services:
-  streamlit:
+  app:
     build:
       context: .
     ports:
