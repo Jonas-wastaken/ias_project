@@ -27,6 +27,7 @@ jobs:
         run: |
           docker-compose build --parallel
           docker tag app:latest app:${{ github.sha }}
+          docker tag app:${{ github.sha }} app:latest
           echo "docker_image=app:${{ github.sha }}" >> $GITHUB_ENV
           
       - name: Upload Docker Image as Artifact
@@ -61,9 +62,8 @@ jobs:
         run: |
           docker load -i app_${{ github.sha }}.tar
 
-
       - name: Run Tests
-        run: docker-compose run --rm test
+        run: docker-compose run --rm test --image app:${{ github.sha }}
 
   cleanup:
     runs-on: ubuntu-latest
