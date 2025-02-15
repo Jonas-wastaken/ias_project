@@ -46,7 +46,20 @@ with left_col:
         fig = TrafficGraph(model)
         st.plotly_chart(fig, use_container_width=True)
 
-        st.json(graph_config)
+        # Display the graph config and connections
+        graph_config_col, connections_col = st.columns([0.25, 0.75])
+        with graph_config_col:
+            st.dataframe(
+                pd.DataFrame(graph_config.items(), columns=["Setting", "Value"]),
+                use_container_width=False,
+                hide_index=True,
+            )
+        with connections_col:
+            connections = model.grid.get_connections()
+            connections_df = pd.DataFrame(columns=["Node", "Connected Nodes"])
+            for node in connections:
+                connections_df.loc[node] = [node, connections[node]]
+            st.dataframe(connections_df, use_container_width=False, hide_index=True)
 
 # Right column for the UI controls
 with right_col:
