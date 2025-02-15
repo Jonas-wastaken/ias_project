@@ -32,8 +32,8 @@ model = st.session_state.model
 graph_config = {
     "num_intersections": len(model.grid.get_nodes("intersection")),
     "num_borders": len(model.grid.get_nodes("border")),
-    "min_distance": 1,
-    "max_distance": 100,
+    "min_distance": model.grid.min_distance,
+    "max_distance": model.grid.max_distance,
 }
 
 # Create two columns for layout
@@ -86,7 +86,7 @@ with right_col:
             # Input for number of borders
             num_borders = st.number_input(
                 label="Number of Borders",
-                min_value=1,
+                min_value=2,
                 value=graph_config["num_borders"],
             )
 
@@ -113,6 +113,18 @@ with right_col:
                     model.grid.add_borders(num_borders - graph_config["num_borders"])
                 elif num_borders < graph_config["num_borders"]:
                     model.grid.remove_borders(graph_config["num_borders"] - num_borders)
+
+                if distance_range != (model.grid.min_distance, model.grid.max_distance):
+                    # Initialize the model in session state if it doesn't exist
+                    st.session_state.model = TrafficModel(
+                        num_agents=3,
+                        num_intersections=num_intersections,
+                        num_borders=num_borders,
+                        min_distance=distance_range[0],
+                        max_distance=distance_range[1],
+                    )
+                    model = st.session_state.model
+
                 st.rerun()
 
     # Reset button to reset the environment
