@@ -62,6 +62,8 @@ class Graph(nx.Graph):
         self.connect_intersections()
         self.connect_borders()
 
+        self.pos = nx.spring_layout(self, seed=42)
+
         self.agent_positions = {}
 
     def add_intersections(self) -> None:

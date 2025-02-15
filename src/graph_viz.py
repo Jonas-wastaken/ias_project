@@ -39,7 +39,7 @@ class TrafficGraph(go.Figure):
         """
         super().__init__()
         self._model = model
-        pos = nx.spring_layout(self._model.grid, seed=42)  # Create layout for the graph
+        pos = self._model.grid.pos
         nx.set_node_attributes(
             self._model.grid, pos, "pos"
         )  # Assign positions to nodes
