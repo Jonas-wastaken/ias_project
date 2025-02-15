@@ -28,6 +28,14 @@ if "model" not in st.session_state:
     st.session_state.model = TrafficModel(num_agents=3)
 model = st.session_state.model
 
+# Graph config
+graph_config = {
+    "num_intersections": len(model.grid.get_nodes("intersection")),
+    "num_borders": 3,
+    "min_distance": 1,
+    "max_distance": 100,
+}
+
 # Create two columns for layout
 left_col, right_col = st.columns([0.75, 0.25])
 
@@ -37,6 +45,8 @@ with left_col:
     with graph_container:
         fig = TrafficGraph(model)
         st.plotly_chart(fig, use_container_width=True)
+
+        st.json(graph_config)
 
 # Right column for the UI controls
 with right_col:
@@ -70,7 +80,7 @@ with right_col:
             num_intersections = st.number_input(
                 label="Number of Intersections",
                 min_value=1,
-                value=model.grid.num_intersections,
+                value=graph_config["num_intersections"],
             )
 
             # Input for number of borders
@@ -90,14 +100,10 @@ with right_col:
 
             # Apply button to update the model with new settings
             if st.button(label="Apply", help="Apply the changes"):
-                st.session_state.model = TrafficModel(
-                    num_agents=num_agents,
-                    num_intersections=num_intersections,
-                    num_borders=num_borders,
-                    min_distance=distance_range[0],
-                    max_distance=distance_range[1],
-                )
-                model = st.session_state.model
+                if num_intersections != graph_config["num_intersections"]:
+                    model.grid.add_intersections(
+                        num_intersections - graph_config["num_intersections"]
+                    )
                 st.rerun()
 
     # Reset button to reset the environment

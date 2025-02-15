@@ -53,27 +53,27 @@ class Graph(nx.Graph):
         """
 
         super().__init__()
-        self.num_intersections = num_intersections
         self.num_borders = num_borders
         self.min_distance = min_distance
         self.max_distance = max_distance
-        self.add_intersections()
+        self.add_intersections(num_intersections)
         self.add_borders()
-        self.connect_intersections()
         self.connect_borders()
-
-        self.pos = nx.spring_layout(self, seed=42)
 
         self.agent_positions = {}
 
-    def add_intersections(self) -> None:
+    def add_intersections(self, num_intersections: int) -> None:
         """Add intersection nodes to the graph."""
-        super().add_nodes_from(
-            [
-                (f"intersection_{i}", {"type": "intersection"})
-                for i in range(self.num_intersections)
-            ]
-        )
+
+        index = len(self.get_nodes("intersection"))
+
+        new_intersections = [
+            (f"intersection_{i}", {"type": "intersection"})
+            for i in range(index, index + num_intersections)
+        ]
+        super().add_nodes_from(new_intersections)
+
+        self.connect_intersections(new_intersections)
 
     def add_borders(self) -> None:
         """Add border nodes to the graph."""
@@ -81,7 +81,7 @@ class Graph(nx.Graph):
             [(f"border_{i}", {"type": "border"}) for i in range(self.num_borders)]
         )
 
-    def connect_intersections(self) -> None:
+    def connect_intersections(self, new_intersections: list) -> None:
         """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
 
         - Initializes a list with all nodes of type intersection.
@@ -91,11 +91,12 @@ class Graph(nx.Graph):
             - Selects available nodes that are not already fully connected.
             - Randomly selects a number of nodes to connect to, ensuring it does not exceed the limits.
             - Adds the selected nodes to the connections of the current node and vice versa.
-        - Adds weighted edges between connected nodes with weights randomly chosen from the specified range."""
-        intersections = [node for node in self.nodes if node.startswith("intersection")]
-        connections = {node: set() for node in intersections}
+        - Adds weighted edges between connected nodes with weights randomly chosen from the specified range.
+        """
+        intersections = self.get_nodes("intersection")
+        connections = self.get_connections("intersection")
 
-        for node in intersections:
+        for node, _ in new_intersections:
             while len(connections[node]) < 2 or len(connections[node]) > 4:
                 available_nodes = [
                     x for x in intersections if x != node and len(connections[x]) < 4
@@ -111,8 +112,8 @@ class Graph(nx.Graph):
                 selected_nodes = random.sample(available_nodes, num_to_connect)
 
                 for target_node in selected_nodes:
-                    connections[node].add(target_node)
-                    connections[target_node].add(node)
+                    connections[node].append(target_node)
+                    connections[target_node].append(node)
 
         for node, target_nodes in connections.items():
             edges = [
@@ -177,3 +178,46 @@ class Graph(nx.Graph):
         """
 
         pickle.dump(self, open(filename, "wb"))
+
+    @classmethod
+    def load(cls, filename: str = "graph.pickle") -> "Graph":
+        """Load a class instance from a pickle file.
+
+        Args:
+            filename (str, optional): The name of the file to load the class instance from.
+
+        Returns:
+            Graph: A new instance of the Graph class loaded from
+            the specified pickle file.
+        """
+
+        return pickle.load(open(filename, "rb"))
+
+    def get_nodes(self, type: str = None) -> list:
+        """Get all nodes of a specific type.
+
+        Args:
+            type (str, optional): The type of nodes to get.
+
+        Returns:
+            list: A list of nodes of the specified type.
+        """
+        if type:
+            return [node for node in self.nodes if node.startswith(type)]
+        return self.nodes
+
+    def get_connections(self, type: str = None) -> dict:
+        """Get all connections between nodes.
+
+        Args:
+            type (str, optional): The type of nodes to get connections for.
+
+        Returns:
+            dict: A dictionary with nodes as keys and a list of their connected nodes as values.
+        """
+        if type:
+            nodes = [node for node in self.nodes if node.startswith(type)]
+        else:
+            nodes = self.nodes
+
+        return {node: [x[1] for x in list(self.edges(node))] for node in nodes}
