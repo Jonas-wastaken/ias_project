@@ -115,15 +115,24 @@ with right_col:
                     model.grid.remove_borders(graph_config["num_borders"] - num_borders)
 
                 if distance_range != (model.grid.min_distance, model.grid.max_distance):
-                    # Initialize the model in session state if it doesn't exist
                     st.session_state.model = TrafficModel(
-                        num_agents=3,
+                        num_agents=num_agents,
                         num_intersections=num_intersections,
                         num_borders=num_borders,
                         min_distance=distance_range[0],
                         max_distance=distance_range[1],
                     )
                     model = st.session_state.model
+
+                for agent in model.agents[:]:
+                    if (
+                        agent.position not in model.grid.nodes
+                        or agent.goal not in model.grid.nodes
+                    ):
+                        model.agents.remove(agent)
+                        continue
+                    agent.path = agent.compute_path()
+                    model.agent_paths[agent.unique_id] = agent.path.copy()
 
                 st.rerun()
 
@@ -132,7 +141,13 @@ with right_col:
         if st.button(
             label="Reset", help="Reset the Environment", use_container_width=True
         ):
-            st.session_state.model = TrafficModel(num_agents=3)
+            st.session_state.model = TrafficModel(
+                num_agents=num_agents,
+                num_intersections=num_intersections,
+                num_borders=num_borders,
+                min_distance=distance_range[0],
+                max_distance=distance_range[1],
+            )
             model = st.session_state.model
             st.rerun()
 
