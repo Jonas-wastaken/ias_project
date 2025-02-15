@@ -31,7 +31,7 @@ model = st.session_state.model
 # Graph config
 graph_config = {
     "num_intersections": len(model.grid.get_nodes("intersection")),
-    "num_borders": 3,
+    "num_borders": len(model.grid.get_nodes("border")),
     "min_distance": 1,
     "max_distance": 100,
 }
@@ -87,7 +87,7 @@ with right_col:
             num_borders = st.number_input(
                 label="Number of Borders",
                 min_value=1,
-                value=model.grid.num_borders,
+                value=graph_config["num_borders"],
             )
 
             # Slider for distance range
@@ -104,6 +104,9 @@ with right_col:
                     model.grid.add_intersections(
                         num_intersections - graph_config["num_intersections"]
                     )
+
+                if num_borders != graph_config["num_borders"]:
+                    model.grid.add_borders(num_borders - graph_config["num_borders"])
                 st.rerun()
 
     # Reset button to reset the environment

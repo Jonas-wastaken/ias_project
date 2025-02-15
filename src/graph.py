@@ -57,8 +57,7 @@ class Graph(nx.Graph):
         self.min_distance = min_distance
         self.max_distance = max_distance
         self.add_intersections(num_intersections)
-        self.add_borders()
-        self.connect_borders()
+        self.add_borders(num_borders)
 
         self.agent_positions = {}
 
@@ -71,15 +70,24 @@ class Graph(nx.Graph):
             (f"intersection_{i}", {"type": "intersection"})
             for i in range(index, index + num_intersections)
         ]
+
         super().add_nodes_from(new_intersections)
 
         self.connect_intersections(new_intersections)
 
-    def add_borders(self) -> None:
+    def add_borders(self, num_borders: int) -> None:
         """Add border nodes to the graph."""
-        super().add_nodes_from(
-            [(f"border_{i}", {"type": "border"}) for i in range(self.num_borders)]
-        )
+
+        index = len(self.get_nodes("border"))
+
+        new_borders = [
+            (f"border_{i}", {"type": "border"})
+            for i in range(index, index + num_borders)
+        ]
+
+        super().add_nodes_from(new_borders)
+
+        self.connect_borders(new_borders)
 
     def connect_intersections(self, new_intersections: list) -> None:
         """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
@@ -126,17 +134,16 @@ class Graph(nx.Graph):
             ]
             super().add_weighted_edges_from(edges)
 
-    def connect_borders(self) -> None:
+    def connect_borders(self, new_borders: list) -> None:
         """Add edges between border and intersection nodes with random weights.
 
         - Initializes a list with all nodes of type border.
         - Initializes a list with all nodes of type intersection.
         - Iterates through borders, adding an edge between the each border and a random intersection."""
-        borders = [node for node in self.nodes if node.startswith("border")]
-        intersections = [node for node in self.nodes if node.startswith("intersection")]
+        intersections = self.get_nodes("intersection")
 
-        while borders:
-            border = borders.pop()
+        while new_borders:
+            border, _ = new_borders.pop()
             super().add_edge(
                 border,
                 random.choice(intersections),
