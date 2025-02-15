@@ -98,7 +98,7 @@ class Graph(nx.Graph):
             new_intersections (list): A list of new intersection nodes to connect to other intersection nodes
         """
         intersections = self.get_nodes("intersection")
-        connections = self.get_connections("intersection")
+        connections = self.get_connections(type="intersection", weights=False)
 
         for node, _ in new_intersections:
             while len(connections[node]) < 2 or len(connections[node]) > 4:
@@ -226,18 +226,22 @@ class Graph(nx.Graph):
             return [node for node in self.nodes if node.startswith(type)]
         return self.nodes
 
-    def get_connections(self, type: str = None) -> dict:
+    def get_connections(self, type: str = None, weights: bool = False) -> dict:
         """Get all connections between nodes.
 
         Args:
             type (str, optional): The type of nodes to get connections for.
+            weights (bool, optional): Whether to include edge weights in the result. Defaults to False.
 
         Returns:
-            dict: A dictionary with nodes as keys and a list of their connected nodes as values.
+            dict: A dictionary with nodes as keys and a list of their connected nodes as values. If weights is True, the list will contain tuples with the connected node and the edge weight.
         """
-        if type:
-            nodes = [node for node in self.nodes if node.startswith(type)]
-        else:
-            nodes = self.nodes
+        nodes = self.get_nodes(type)
 
-        return {node: [x[1] for x in list(self.edges(node))] for node in nodes}
+        if weights:
+            return {
+                node: [x[1:] for x in list(self.edges(node, data="weight"))]
+                for node in nodes
+            }
+        else:
+            return {node: [x[1] for x in list(self.edges(node))] for node in nodes}
