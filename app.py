@@ -100,13 +100,19 @@ with right_col:
 
             # Apply button to update the model with new settings
             if st.button(label="Apply", help="Apply the changes"):
-                if num_intersections != graph_config["num_intersections"]:
+                if num_intersections > graph_config["num_intersections"]:
                     model.grid.add_intersections(
                         num_intersections - graph_config["num_intersections"]
                     )
+                elif num_intersections < graph_config["num_intersections"]:
+                    model.grid.remove_intersections(
+                        graph_config["num_intersections"] - num_intersections
+                    )
 
-                if num_borders != graph_config["num_borders"]:
+                if num_borders > graph_config["num_borders"]:
                     model.grid.add_borders(num_borders - graph_config["num_borders"])
+                elif num_borders < graph_config["num_borders"]:
+                    model.grid.remove_borders(graph_config["num_borders"] - num_borders)
                 st.rerun()
 
     # Reset button to reset the environment

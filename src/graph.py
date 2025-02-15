@@ -80,7 +80,20 @@ class Graph(nx.Graph):
 
         super().add_nodes_from(new_intersections)
 
-        self.connect_intersections(new_intersections)
+        self.connect_intersections([node[0] for node in new_intersections])
+
+    def remove_intersections(self, num_intersections: int) -> None:
+        """Removes the last n intersection nodes from the graph.
+
+        Args:
+            num_intersections (int): The number of intersection nodes to remove.
+        """
+        intersections_to_remove = self.get_nodes("intersection")[-num_intersections:]
+
+        super().remove_nodes_from(intersections_to_remove)
+
+        self.connect_intersections(self.get_nodes("intersection"))
+        self.connect_borders()
 
     def connect_intersections(self, new_intersections: list) -> None:
         """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
@@ -98,9 +111,9 @@ class Graph(nx.Graph):
             new_intersections (list): A list of new intersection nodes to connect to other intersection nodes
         """
         intersections = self.get_nodes("intersection")
-        connections = self.get_connections(type="intersection", weights=False)
+        connections = self.get_connections(type="intersection")
 
-        for node, _ in new_intersections:
+        for node in new_intersections:
             while len(connections[node]) < 2 or len(connections[node]) > 4:
                 available_nodes = [
                     x for x in intersections if x != node and len(connections[x]) < 4
@@ -145,18 +158,29 @@ class Graph(nx.Graph):
 
         super().add_nodes_from(new_borders)
 
-        self.connect_borders(new_borders)
+        self.connect_borders()
 
-    def connect_borders(self, new_borders: list) -> None:
-        """Add edges between new borders and a random intersection node with random weights.
+    def remove_borders(self, num_borders: int) -> None:
+        """Removes the last n border nodes from the graph.
 
         Args:
-            new_borders (list): A list of new border nodes to connect to intersection nodes.
+            num_borders (int): The number of border nodes to remove.
         """
+
+        super().remove_nodes_from(self.get_nodes("border")[-num_borders:])
+
+    def connect_borders(self) -> None:
+        """Add edges between free borders and a random intersection node with random weights."""
         intersections = self.get_nodes("intersection")
 
-        while new_borders:
-            border, _ = new_borders.pop()
+        free_borders = [
+            border[0]
+            for border in dict(self.degree(self.get_nodes("border"))).items()
+            if border[1] == 0
+        ]
+
+        while free_borders:
+            border = free_borders.pop()
             super().add_edge(
                 border,
                 random.choice(intersections),
