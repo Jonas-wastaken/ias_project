@@ -100,6 +100,7 @@ with right_col:
 
             # Apply button to update the model with new settings
             if st.button(label="Apply", help="Apply the changes"):
+                # Update the model with new settings for number of intersections
                 if num_intersections > graph_config["num_intersections"]:
                     model.grid.add_intersections(
                         num_intersections - graph_config["num_intersections"]
@@ -109,11 +110,13 @@ with right_col:
                         graph_config["num_intersections"] - num_intersections
                     )
 
+                # Update the model with new settings for number of borders
                 if num_borders > graph_config["num_borders"]:
                     model.grid.add_borders(num_borders - graph_config["num_borders"])
                 elif num_borders < graph_config["num_borders"]:
                     model.grid.remove_borders(graph_config["num_borders"] - num_borders)
 
+                # Update the model with new settings for distance range
                 if distance_range != (model.grid.min_distance, model.grid.max_distance):
                     st.session_state.model = TrafficModel(
                         num_agents=num_agents,
@@ -124,6 +127,7 @@ with right_col:
                     )
                     model = st.session_state.model
 
+                # Update the paths for each agent or delete agents if they are not on the grid
                 for agent in model.agents[:]:
                     if (
                         agent.position not in model.grid.nodes
