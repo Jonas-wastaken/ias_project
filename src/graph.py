@@ -57,7 +57,6 @@ class Graph(nx.Graph):
         """
 
         super().__init__()
-        self.num_borders = num_borders
         self.min_distance = min_distance
         self.max_distance = max_distance
         self.add_intersections(num_intersections)
