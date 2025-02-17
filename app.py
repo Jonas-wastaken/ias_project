@@ -32,8 +32,8 @@ model = st.session_state.model
 graph_config = {
     "num_intersections": len(model.grid.get_nodes("intersection")),
     "num_borders": len(model.grid.get_nodes("border")),
-    "min_distance": model.grid.min_distance,
-    "max_distance": model.grid.max_distance,
+    "min_distance": min([edge[2] for edge in model.grid.edges(data="weight")]),
+    "max_distance": max([edge[2] for edge in model.grid.edges(data="weight")]),
 }
 
 # Create two columns for layout
@@ -139,15 +139,13 @@ with right_col:
                     model.grid.remove_borders(graph_config["num_borders"] - num_borders)
 
                 # Update the model with new settings for distance range
-                if distance_range != (model.grid.min_distance, model.grid.max_distance):
-                    st.session_state.model = TrafficModel(
-                        num_agents=num_agents,
-                        num_intersections=num_intersections,
-                        num_borders=num_borders,
-                        min_distance=distance_range[0],
-                        max_distance=distance_range[1],
+                if distance_range != (
+                    graph_config["min_distance"],
+                    graph_config["max_distance"],
+                ):
+                    model.grid.change_weights(
+                        min_distance=distance_range[0], max_distance=distance_range[1]
                     )
-                    model = st.session_state.model
 
                 # Update the paths for each agent or delete agents if they are not on the grid
                 for agent in model.agents[:]:
