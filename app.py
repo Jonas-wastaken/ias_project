@@ -47,11 +47,11 @@ with left_col:
         st.plotly_chart(fig, use_container_width=True)
 
         # Display the graph config and connections
-        graph_config_col, connections_col = st.columns([0.25, 0.75])
+        graph_config_col, connections_col, edges_col = st.columns([0.25, 0.50, 0.25])
         with graph_config_col:
             st.dataframe(
                 pd.DataFrame(graph_config.items(), columns=["Setting", "Value"]),
-                use_container_width=False,
+                use_container_width=True,
                 hide_index=True,
             )
         with connections_col:
@@ -59,7 +59,16 @@ with left_col:
             connections_df = pd.DataFrame(columns=["Node", "Connected Nodes"])
             for node in connections:
                 connections_df.loc[node] = [node, connections[node]]
-            st.dataframe(connections_df, use_container_width=False, hide_index=True)
+            st.dataframe(connections_df, use_container_width=True, hide_index=True)
+        with edges_col:
+            st.dataframe(
+                pd.DataFrame(
+                    [(u, v, w) for u, v, w in model.grid.edges(data="weight")],
+                    columns=["U", "V", "Weight"],
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 # Right column for the UI controls
 with right_col:
