@@ -11,7 +11,6 @@ class Graph(nx.Graph):
 
     The class inherits from the networkx.Graph class.
     The class creates nodes labeled as 'intersection' and 'border', and adds edges between them with random weights.
-    Self-loops are removed from the graph.
 
     Attributes:
         min_distance (int): Minimum distance between two connected nodes.
@@ -21,12 +20,18 @@ class Graph(nx.Graph):
     ## Methods:
         **add_intersections(self, num_intersections: int) -> None**:
             Add intersection nodes to the graph.
+        **remove_intersections(self, num_intersections: int) -> None**:
+            Remove the last n intersection nodes from the graph.
         **connect_intersections(self, new_intersections: list) -> None**:
             Connects each intersection node to min. 2 and max. 4 other intersection nodes.
         **add_borders(self, num_borders: int) -> None**:
             Add border nodes to the graph.
-        **connect_borders(self, new_borders: list) -> None**:
+        **remove_borders(self, num_borders: int) -> None**:
+            Remove the last n border nodes from the graph.
+        **connect_borders(self) -> None**:
             Add edges between new borders and a random intersection node with random weights.
+        **change_weights(self, min_distance: int, max_distance: int) -> None**:
+            Change the weights of the edges in the graph.
         **place_agent(self, agent_id: int) -> str**:
             Place an agent on a random border node and store position internally.
         **move_agent(self, agent_id: int, new_position: str) -> None**:
@@ -37,7 +42,7 @@ class Graph(nx.Graph):
             Load a class instance from a pickle file.
         **get_nodes(self, type: str = None) -> list**:
             Get all nodes of a specific type.
-        **get_connections(self, type: str = None) -> dict**:
+        **get_connections(self, type: str = None, weights: bool = False) -> dict**:
             Get all connections between nodes.
     """
 
@@ -53,7 +58,8 @@ class Graph(nx.Graph):
         Args:
             num_intersections (int): The number of intersection nodes to create.
             num_borders (int): The number of border nodes to create.
-            weight_range (tuple[int, int]): A tuple specifying the range of weights for the edges.
+            min_distance (int): The minimum distance between nodes.
+            max_distance (int): The maximum distance between nodes.
         """
 
         super().__init__()
@@ -185,6 +191,25 @@ class Graph(nx.Graph):
                 random.choice(intersections),
                 weight=random.randint(self.min_distance, self.max_distance),
             )
+
+    def change_weights(self, min_distance: int, max_distance: int) -> None:
+        """Change the weights of the edges in the graph.
+
+        Args:
+            min_distance (int): The new minimum distance between two connected nodes.
+            max_distance (int): The new maximum distance between two connected nodes.
+        """
+        [
+            nx.set_edge_attributes(
+                self,
+                {
+                    (edge[0], edge[1]): {
+                        "weight": random.randint(min_distance, max_distance)
+                    }
+                },
+            )
+            for edge in self.edges(data="weight")
+        ]
 
     def place_agent(self, agent_id: int) -> str:
         """Places an agent on a random border node and stores position internally.
