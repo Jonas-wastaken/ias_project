@@ -28,6 +28,14 @@ if "model" not in st.session_state:
     st.session_state.model = TrafficModel(num_agents=3)
 model = st.session_state.model
 
+# Graph config
+graph_config = {
+    "num_intersections": len(model.grid.get_nodes("intersection")),
+    "num_borders": len(model.grid.get_nodes("border")),
+    "min_distance": model.grid.min_distance,
+    "max_distance": model.grid.max_distance,
+}
+
 # Create two columns for layout
 left_col, right_col = st.columns([0.75, 0.25])
 
@@ -37,6 +45,30 @@ with left_col:
     with graph_container:
         fig = TrafficGraph(model)
         st.plotly_chart(fig, use_container_width=True)
+
+        # Display the graph config and connections
+        graph_config_col, connections_col, edges_col = st.columns([0.25, 0.50, 0.25])
+        with graph_config_col:
+            st.dataframe(
+                pd.DataFrame(graph_config.items(), columns=["Setting", "Value"]),
+                use_container_width=True,
+                hide_index=True,
+            )
+        with connections_col:
+            connections = model.grid.get_connections()
+            connections_df = pd.DataFrame(columns=["Node", "Connected Nodes"])
+            for node in connections:
+                connections_df.loc[node] = [node, connections[node]]
+            st.dataframe(connections_df, use_container_width=True, hide_index=True)
+        with edges_col:
+            st.dataframe(
+                pd.DataFrame(
+                    [(u, v, w) for u, v, w in model.grid.edges(data="weight")],
+                    columns=["U", "V", "Weight"],
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 # Right column for the UI controls
 with right_col:
@@ -70,14 +102,14 @@ with right_col:
             num_intersections = st.number_input(
                 label="Number of Intersections",
                 min_value=1,
-                value=model.grid.num_intersections,
+                value=graph_config["num_intersections"],
             )
 
             # Input for number of borders
             num_borders = st.number_input(
                 label="Number of Borders",
-                min_value=1,
-                value=model.grid.num_borders,
+                min_value=2,
+                value=graph_config["num_borders"],
             )
 
             # Slider for distance range
@@ -90,14 +122,44 @@ with right_col:
 
             # Apply button to update the model with new settings
             if st.button(label="Apply", help="Apply the changes"):
-                st.session_state.model = TrafficModel(
-                    num_agents=num_agents,
-                    num_intersections=num_intersections,
-                    num_borders=num_borders,
-                    min_distance=distance_range[0],
-                    max_distance=distance_range[1],
-                )
-                model = st.session_state.model
+                # Update the model with new settings for number of intersections
+                if num_intersections > graph_config["num_intersections"]:
+                    model.grid.add_intersections(
+                        num_intersections - graph_config["num_intersections"]
+                    )
+                elif num_intersections < graph_config["num_intersections"]:
+                    model.grid.remove_intersections(
+                        graph_config["num_intersections"] - num_intersections
+                    )
+
+                # Update the model with new settings for number of borders
+                if num_borders > graph_config["num_borders"]:
+                    model.grid.add_borders(num_borders - graph_config["num_borders"])
+                elif num_borders < graph_config["num_borders"]:
+                    model.grid.remove_borders(graph_config["num_borders"] - num_borders)
+
+                # Update the model with new settings for distance range
+                if distance_range != (model.grid.min_distance, model.grid.max_distance):
+                    st.session_state.model = TrafficModel(
+                        num_agents=num_agents,
+                        num_intersections=num_intersections,
+                        num_borders=num_borders,
+                        min_distance=distance_range[0],
+                        max_distance=distance_range[1],
+                    )
+                    model = st.session_state.model
+
+                # Update the paths for each agent or delete agents if they are not on the grid
+                for agent in model.agents[:]:
+                    if (
+                        agent.position not in model.grid.nodes
+                        or agent.goal not in model.grid.nodes
+                    ):
+                        model.agents.remove(agent)
+                        continue
+                    agent.path = agent.compute_path()
+                    model.agent_paths[agent.unique_id] = agent.path.copy()
+
                 st.rerun()
 
     # Reset button to reset the environment
@@ -105,7 +167,13 @@ with right_col:
         if st.button(
             label="Reset", help="Reset the Environment", use_container_width=True
         ):
-            st.session_state.model = TrafficModel(num_agents=3)
+            st.session_state.model = TrafficModel(
+                num_agents=num_agents,
+                num_intersections=num_intersections,
+                num_borders=num_borders,
+                min_distance=distance_range[0],
+                max_distance=distance_range[1],
+            )
             model = st.session_state.model
             st.rerun()
 

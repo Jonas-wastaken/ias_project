@@ -2,6 +2,9 @@ import os
 import unittest
 import sys
 import logging
+import re
+import random
+from math import sqrt
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -33,9 +36,10 @@ class TestGraph(unittest.TestCase):
         max_distance (int): Maximum distance between intersections.
         graph (Graph): Instance of the Graph.
     """
+
     def setUp(self):
-        self.num_intersections = 10
-        self.num_borders = 3
+        self.num_intersections = random.randint(10, 100)
+        self.num_borders = random.randint(3, int(sqrt(self.num_intersections)))
         self.min_distance = 1
         self.max_distance = 10
         self.graph = Graph(
@@ -44,110 +48,202 @@ class TestGraph(unittest.TestCase):
             self.min_distance,
             self.max_distance,
         )
-        logging.info("Setup complete: Graph initialized")
+
+        logging.info(
+            f"Test setup:\n Number of Intersections: {self.num_intersections}\n Number of Borders: {self.num_borders}\n Minimum Distance: {self.min_distance}\n Maximum Distance: {self.max_distance}"
+        )
+
+    def _test_intersections(self, expected_num_intersections: int):
+        """Ensure that graph has the specified number of intersections
+
+        Args:
+            expected_num_intersections (int): Expected number of intersections
+
+        Raises:
+            AssertionError: If the graph does not have the specified number of intersections
+        """
+        try:
+            self.assertEqual(
+                len(self.graph.get_nodes("intersection")), expected_num_intersections
+            )
+            logging.info(f"Graph has {expected_num_intersections} intersections")
+        except AssertionError as e:
+            logging.error(
+                f"Graph does not have {expected_num_intersections} intersections: {e}"
+            )
+            raise
+
+    def _test_intersection_connections(self):
+        """Ensure that intersections are connected to minimum 2 and maximum 4 other intersections
+
+        Raises:
+            AssertionError: If intersections are not connected to between 2 and 4 other intersections
+        """
+        try:
+            intersection_pattern = re.compile(r"intersection_\d+")
+            for _, connections in self.graph.get_connections("intersection").items():
+                matches = [
+                    re.findall(intersection_pattern, connection)
+                    for connection in connections
+                ]
+                flattened_matches = [item for sublist in matches for item in sublist]
+                self.assertGreaterEqual(len(flattened_matches), 2)
+                self.assertLessEqual(len(flattened_matches), 4)
+            logging.info("Graph intersections connected correctly")
+        except AssertionError as e:
+            logging.error(
+                f"Intersections do not have between 2 and 4 connections to other intersection nodes: {e}"
+            )
+            raise
+
+    def _test_borders(self, expected_num_borders: int):
+        """Ensure that graph has the specified number of borders
+
+        Args:
+            expected_num_borders (int): Expected number of borders
+
+        Raises:
+            AssertionError: If the graph does not have the specified number of borders
+        """
+        try:
+            self.assertEqual(len(self.graph.get_nodes("border")), expected_num_borders)
+            logging.info(f"Graph has {expected_num_borders} borders")
+        except AssertionError as e:
+            logging.error(f"Graph does not have {expected_num_borders} borders: {e}")
+            raise
+
+    def _test_border_connections(self):
+        """Ensure that borders are connected to exactly 1 intersection
+
+        Raises:
+            AssertionError: If borders are not connected to exactly 1 intersection
+        """
+        try:
+            intersection_pattern = re.compile(r"intersection_\d+")
+            for _, connections in self.graph.get_connections("border").items():
+                matches = [
+                    re.findall(intersection_pattern, connection)
+                    for connection in connections
+                ]
+                flattened_matches = [item for sublist in matches for item in sublist]
+                self.assertEqual(len(flattened_matches), 1)
+            logging.info("Graph borders connected correctly")
+        except AssertionError as e:
+            logging.error(
+                f"Borders are not connected to exactly 1 intersection node: {e}"
+            )
+            raise
+
+    def test_graph_init(self):
+        logging.info("Test initializing Graph")
+        try:
+            self.assertIsInstance(self.graph, Graph)
+            self._test_intersections(expected_num_intersections=self.num_intersections)
+            self._test_intersection_connections()
+            self._test_borders(expected_num_borders=self.num_borders)
+            self._test_border_connections()
+            logging.info("Setup complete: Graph initialized")
+        except AssertionError as e:
+            logging.error(f"Failed to initialize Graph: {e}")
+            raise
 
     def test_add_intersections(self):
         """Test the addition of intersections to the graph.
 
-        - This test checks if the number of nodes in the graph that start with "intersection" matches the expected number of intersections.
-            - Collect all nodes in the graph that start with "intersection".
-            - Assert that the number of collected intersections matches the expected number.
+        - This test checks if intersections are added to the graph.
+            - Add intersections to the graph.
+            - Assert that the number of intersections in the graph is equal to the expected number.
 
         Raises:
-            AssertionError: If the number of intersections does not match the expected number.
+            AssertionError: If the number of intersections in the graph is not equal to the expected number.
         """
-        intersections = [
-            node for node in self.graph.nodes if node.startswith("intersection")
-        ]
-        logging.info(f"Intersections added: {intersections}")
+        logging.info("Testing adding intersections to Graph")
+        num_initial_intersections = len(self.graph.get_nodes("intersection"))
+        num_added_intersections = 5
+        self.graph.add_intersections(num_added_intersections)
         try:
-            self.assertEqual(len(intersections), self.num_intersections)
-            logging.info("Passed test_add_intersections")
-        except AssertionError:
-            logging.error(
-                f"Failed test_add_intersections: Expected {self.num_intersections}, got {len(intersections)}"
+            self._test_intersections(
+                expected_num_intersections=num_initial_intersections
+                + num_added_intersections
             )
+            self._test_intersection_connections()
+            logging.info("Passed test_add_intersections")
+        except AssertionError as e:
+            logging.error(f"Failed test_add_intersections: {e}")
+            raise
+
+    def test_remove_intersections(self):
+        """Test the removal of intersections from the graph.
+
+        - This test checks if intersections are removed from the graph.
+            - Remove intersections from the graph.
+            - Assert that the number of intersections in the graph is equal to the expected number.
+
+        Raises:
+            AssertionError: If the number of intersections in the graph is not equal to the expected number.
+        """
+        logging.info("Testing removing intersections from Graph")
+        num_initial_intersections = len(self.graph.get_nodes("intersection"))
+        num_removed_intersections = 5
+        self.graph.remove_intersections(num_removed_intersections)
+        try:
+            self._test_intersections(
+                expected_num_intersections=num_initial_intersections
+                - num_removed_intersections
+            )
+            self._test_intersection_connections()
+            self._test_border_connections()
+            logging.info("Passed test_remove_intersections")
+        except AssertionError as e:
+            logging.error(f"Failed test_remove_intersections: {e}")
             raise
 
     def test_add_borders(self):
         """Test the addition of borders to the graph.
 
-        - This test checks if the number of nodes in the graph that start with "border" matches the expected number of borders.
-            - Collect all nodes in the graph that start with "border".
-            - Assert that the number of collected borders matches the expected number.
+        - This test checks if borders are added to the graph.
+            - Add borders to the graph.
+            - Assert that the number of borders in the graph is equal to the expected number.
 
         Raises:
-            AssertionError: If the number of borders does not match the expected number.
+            AssertionError: If the number of borders in the graph is not equal to the expected number.
         """
-        borders = [node for node in self.graph.nodes if node.startswith("border")]
-        logging.info(f"Borders added: {borders}")
+        logging.info("Testing adding borders to Graph")
+        num_initial_borders = len(self.graph.get_nodes("border"))
+        num_added_borders = 2
+        self.graph.add_borders(num_added_borders)
         try:
-            self.assertEqual(len(borders), self.num_borders)
-            logging.info("Passed test_add_borders")
-        except AssertionError:
-            logging.error(
-                f"Failed test_add_borders: Expected {self.num_borders}, got {len(borders)}"
+            self._test_borders(
+                expected_num_borders=num_initial_borders + num_added_borders
             )
+            self._test_border_connections()
+            logging.info("Passed test_add_borders")
+        except AssertionError as e:
+            logging.error(f"Failed test_add_borders: {e}")
             raise
 
-    def test_connect_intersections(self):
-        """Test the connections between intersections in the graph.
+    def test_remove_borders(self):
+        """Test the removal of borders from the graph.
 
-        - This test checks if each intersection is connected to at least 2 and at most 4 other intersections.
-            - Collect all nodes in the graph that start with "intersection".
-            - For each intersection, count the number of neighbors that are also intersections.
-            - Assert that the number of connected intersections is at least 2 and at most 4.
-
-        Raises:
-            AssertionError: If an intersection is not connected to at least 2 or at most 4 other intersections.
-        """
-        intersections = [
-            node for node in self.graph.nodes if node.startswith("intersection")
-        ]
-        for intersection in intersections:
-            neighbors = len(
-                [
-                    node
-                    for node in self.graph.neighbors(intersection)
-                    if node.startswith("intersection")
-                ]
-            )
-            logging.info(
-                f"Intersection {intersection} connected intersections: {neighbors}"
-            )
-            try:
-                self.assertGreaterEqual(neighbors, 2)
-                self.assertLessEqual(neighbors, 4)
-            except AssertionError:
-                logging.error(
-                    f"Failed test_connect_intersections: Intersection {intersection} is connected to {neighbors} intersections"
-                )
-                raise
-        logging.info("Passed test_connect_intersections")
-
-    def test_connect_borders(self):
-        """Test the connections between borders in the graph.
-
-        - This test checks if each border is connected to exactly 1 intersection.
-            - Collect all nodes in the graph that start with "border".
-            - For each border, count the number of neighbors that are intersections.
-            - Assert that the number of connected intersections is exactly 1.
+        - This test checks if borders are removed from the graph.
+            - Remove borders from the graph.
+            - Assert that the number of borders in the graph is equal to the expected number.
 
         Raises:
-            AssertionError: If a border is not connected to exactly 1 intersection.
+            AssertionError: If the number of borders in the graph is not equal to the expected number.
         """
-        borders = [node for node in self.graph.nodes if node.startswith("border")]
-        for border in borders:
-            logging.info(f"Border {border} connections: {self.graph.degree(border)}")
-            try:
-                self.assertEqual(self.graph.degree(border), 1)
-                self.assertTrue(list(self.graph.neighbors(border))[0].startswith("intersection"))
-            except AssertionError:
-                logging.error(
-                    f"Failed test_connect_borders: Border {border} has {self.graph.degree(border)} connections"
-                )
-                raise
-        logging.info("Passed test_connect_borders")
+        logging.info("Testing removing borders from Graph")
+        num_initial_borders = len(self.graph.get_nodes("border"))
+        num_removed_borders = 2
+        self.graph.remove_borders(num_removed_borders)
+        try:
+            self._test_borders(
+                expected_num_borders=num_initial_borders - num_removed_borders
+            )
+            logging.info("Passed test_remove_borders")
+        except AssertionError as e:
+            logging.error(f"Failed test_remove_borders: {e}")
+            raise
 
     def test_place_agent(self):
         """Test the placement of an agent in the graph.
@@ -159,16 +255,16 @@ class TestGraph(unittest.TestCase):
         Raises:
             AssertionError: If the agent is not placed at a border node.
         """
+        logging.info("Testing placing agent in Graph")
         agent_id = 1
         start_node = self.graph.place_agent(agent_id)
-        logging.info(f"Agent {agent_id} placed at {start_node}")
         try:
             self.assertIn(agent_id, self.graph.agent_positions[start_node])
             self.assertTrue(start_node.startswith("border"))
             logging.info("Passed test_place_agent")
-        except AssertionError:
+        except AssertionError as e:
             logging.error(
-                f"Failed test_place_agent: Agent {agent_id} not placed correctly at {start_node}"
+                f"Failed test_place_agent: Agent {agent_id} not placed correctly at {start_node}: {e}"
             )
             raise
 
@@ -183,17 +279,16 @@ class TestGraph(unittest.TestCase):
         Raises:
             AssertionError: If the agent is not moved to the new node.
         """
+        logging.info("Testing moving agent in Graph")
         agent_id = 1
-        start_node = self.graph.place_agent(agent_id)
         new_position = "intersection_0"
         self.graph.move_agent(agent_id, new_position)
-        logging.info(f"Agent {agent_id} moved from {start_node} to {new_position}")
         try:
             self.assertEqual(self.graph.agent_positions[agent_id], new_position)
             logging.info("Passed test_move_agent")
-        except AssertionError:
+        except AssertionError as e:
             logging.error(
-                f"Failed test_move_agent: Agent {agent_id} not moved correctly to {new_position}"
+                f"Failed test_move_agent: Agent {agent_id} not moved correctly to {new_position}: {e}"
             )
             raise
 
@@ -203,33 +298,51 @@ class TestGraph(unittest.TestCase):
         - This test checks if the graph is saved to a file.
             - Save the graph to a file.
             - Assert that the file exists.
-            - Remove the file.
 
         Raises:
             AssertionError: If the file does not exist.
         """
         filename = "test_graph.pickle"
         self.graph.save(filename)
-        logging.info(f"Graph saved to {filename}")
         try:
             self.assertTrue(os.path.exists(filename))
             os.remove(filename)
-            logging.info(f"Graph file {filename} removed")
             logging.info("Passed test_save")
-        except AssertionError:
-            logging.error(f"Failed test_save: File {filename} does not exist")
+        except AssertionError as e:
+            logging.error(f"Failed test_save: File {filename} does not exist: {e}")
+            raise
+
+    def test_load(self):
+        """Test the loading of the graph from a file.
+
+        - This test checks if the graph is loaded from a file.
+
+        Raises:
+            AssertionError: If the graph is not loaded from the file.
+        """
+        try:
+            filename = "test_graph.pickle"
+            self.graph.save(filename)
+            self.graph = Graph.load(filename)
+            self.assertIsInstance(self.graph, Graph)
+            os.remove(filename)
+            logging.info(f"Graph loaded from {filename}")
+        except Exception as e:
+            logging.error(f"Failed to load graph: {e}")
             raise
 
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(TestGraph("test_graph_init"))
     suite.addTest(TestGraph("test_add_intersections"))
+    suite.addTest(TestGraph("test_remove_intersections"))
     suite.addTest(TestGraph("test_add_borders"))
-    suite.addTest(TestGraph("test_connect_intersections"))
-    suite.addTest(TestGraph("test_connect_borders"))
+    suite.addTest(TestGraph("test_remove_borders"))
     suite.addTest(TestGraph("test_place_agent"))
     suite.addTest(TestGraph("test_move_agent"))
     suite.addTest(TestGraph("test_save"))
+    suite.addTest(TestGraph("test_load"))
     return suite
 
 

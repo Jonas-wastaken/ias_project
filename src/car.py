@@ -35,9 +35,9 @@ class CarAgent(mesa.Agent):
         """
         super().__init__(model)
         self.start = self.model.grid.place_agent(agent_id=self.unique_id)
+        self.position = self.start
         self.goal = self.compute_goal()
         self.path = self.compute_path()
-        self.position = self.start
 
     def compute_goal(self) -> str:
         """Assigns a random border node, which is not the starting node, as the goal of the agent.
@@ -57,7 +57,9 @@ class CarAgent(mesa.Agent):
         Returns:
             dict: A dictionary containing the steps in the agent's path as keys and the distance to the next step as values.
         """
-        steps = dijkstra_path(self.model.grid, self.start, self.goal, weight="weight")
+        steps = dijkstra_path(
+            self.model.grid, self.position, self.goal, weight="weight"
+        )
 
         path = {}
 
