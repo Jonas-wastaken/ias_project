@@ -119,7 +119,7 @@ class Graph(nx.Graph):
         connections = self.get_connections(type="intersection")
 
         for node in new_intersections:
-            while len(connections[node]) < 2 or len(connections[node]) > 4:
+            while len(connections[node]) < 2:
                 available_nodes = [
                     x for x in intersections if x != node and len(connections[x]) < 4
                 ]
