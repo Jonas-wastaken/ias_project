@@ -2,6 +2,7 @@
 - TrafficModel class: A Mesa model simulating traffic."""
 
 import mesa
+import random
 from car import CarAgent, AgentArrived
 from graph import Graph
 
@@ -37,8 +38,8 @@ class TrafficModel(mesa.Model):
             min_distance=self.kwargs.get("min_distance", 1),
             max_distance=self.kwargs.get("max_distance", 10),
         )
-        _agents = CarAgent.create_agents(model=self, n=num_agents)
-        self.agent_paths = {agent.unique_id: agent.path.copy() for agent in _agents}
+        CarAgent.create_agents(model=self, n=num_agents)
+        self.agent_paths = {agent.unique_id: agent.path.copy() for agent in self.agents}
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -50,3 +51,21 @@ class TrafficModel(mesa.Model):
                 agent.move()
             except AgentArrived:
                 self.agents.remove(agent)
+
+    def create_agents(self, num_agents: int) -> None:
+        """Function to add agents to the model.
+
+        Args:
+            num_agents (int): Number of agents to add.
+        """
+        CarAgent.create_agents(model=self, n=num_agents)
+
+    def remove_agents(self, num_agents: int) -> None:
+        """Function to randomly remove n agents from the model.
+
+        Args:
+            num_agents (int): Number of agents to remove.
+        """
+        for i in range(num_agents):
+            agent = random.choice(self.agents)
+            self.agents.remove(agent)
