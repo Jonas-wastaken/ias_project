@@ -79,6 +79,7 @@ with right_col:
     with ui_cols[0]:
         if st.button(label="Step", help="Execute one step", use_container_width=True):
             model.step()
+            st.rerun()
 
     # Options popover to change environment settings
     with ui_cols[1]:

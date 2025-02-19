@@ -49,9 +49,11 @@ class TrafficGraph(go.Figure):
         node_color = self.create_node_color()
         node_trace = self.create_trace_nodes(node_x, node_y, node_color)
         node_trace.text = self.create_node_text()
+        car_x, car_y = self.get_coords_cars()
+        car_trace = self.create_trace_cars(car_x, car_y)
 
         # Create the figure
-        self.add_traces([edge_trace, node_trace])
+        self.add_traces([edge_trace, node_trace, car_trace])
         self.update_layout(
             title=dict(text="<br>Traffic Grid", font=dict(size=16)),
             showlegend=False,
@@ -173,3 +175,83 @@ class TrafficGraph(go.Figure):
         ]
 
         return node_text
+
+    def get_coords_cars(self) -> tuple:
+        """Get the x and y coordinates of the cars.
+
+        - Gets current position, next position, distance to next position and edge weight of each agent
+        - Computes path vectors
+            - Computes vector between current and next position
+            - Computes steps as vector length divided by edge weight
+            - Computes current position on path by getting total steps taken on current path
+
+        Returns:
+            tuple: Lists of x and y coordinates of the cars
+        """
+        car_x = []
+        car_y = []
+
+        for agent in self._model.agents:
+            try:
+                current_pos = agent.position
+                next_pos = list(agent.path.keys())[1]
+                distance = agent.path[current_pos]
+                edge_weight = self._model.grid.get_edge_data(current_pos, next_pos)[
+                    "weight"
+                ]
+
+                current_pos_coords = self._model.grid.nodes[current_pos]["pos"]
+                next_pos_coords = self._model.grid.nodes[next_pos]["pos"]
+
+                x_vector = [
+                    (
+                        current_pos_coords[0]
+                        + i
+                        * ((next_pos_coords[0] - current_pos_coords[0]) / edge_weight)
+                    )
+                    for i in range(edge_weight + 1)
+                ]
+                y_vector = [
+                    (
+                        current_pos_coords[1]
+                        + i
+                        * ((next_pos_coords[1] - current_pos_coords[1]) / edge_weight)
+                    )
+                    for i in range(edge_weight + 1)
+                ]
+
+                x = x_vector[edge_weight - distance]
+                y = y_vector[edge_weight - distance]
+                car_x.append(x)
+                car_y.append(y)
+            except IndexError:
+                x, y = self._model.grid.nodes[agent.goal]["pos"]
+                car_x.append(x)
+                car_y.append(y)
+
+        return car_x, car_y
+
+    def create_trace_cars(self, car_x: list, car_y: list) -> go.Scatter:
+        """Create a plotly trace for the nodes.
+
+        Args:
+            car_x (list): X coordinates of the cars
+            car_y (list): Y coordinates of the cars
+            node_color (list): Colors of the nodes
+
+        Returns:
+            go.Scatter: Plotly trace for the cars
+        """
+        car_trace = go.Scatter(
+            x=car_x,
+            y=car_y,
+            mode="markers",
+            hoverinfo=None,
+            marker=dict(
+                color="red",
+                size=5,
+                line_width=1,
+            ),
+        )
+
+        return car_trace
