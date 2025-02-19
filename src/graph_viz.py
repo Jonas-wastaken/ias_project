@@ -179,6 +179,12 @@ class TrafficGraph(go.Figure):
     def get_coords_cars(self) -> tuple:
         """Get the x and y coordinates of the cars.
 
+        - Gets current position, next position, distance to next position and edge weight of each agent
+        - Computes path vectors
+            - Computes vector between current and next position
+            - Computes steps as vector length divided by edge weight
+            - Computes current position on path by getting total steps taken on current path
+
         Returns:
             tuple: Lists of x and y coordinates of the cars
         """
@@ -186,9 +192,42 @@ class TrafficGraph(go.Figure):
         car_y = []
 
         for agent in self._model.agents:
-            x, y = self._model.grid.nodes[agent.position]["pos"]
-            car_x.append(x)
-            car_y.append(y)
+            try:
+                current_pos = agent.position
+                next_pos = list(agent.path.keys())[1]
+                distance = agent.path[current_pos]
+                edge_weight = self._model.grid.get_edge_data(current_pos, next_pos)[
+                    "weight"
+                ]
+
+                current_pos_coords = self._model.grid.nodes[current_pos]["pos"]
+                next_pos_coords = self._model.grid.nodes[next_pos]["pos"]
+
+                x_vector = [
+                    (
+                        current_pos_coords[0]
+                        + i
+                        * ((next_pos_coords[0] - current_pos_coords[0]) / edge_weight)
+                    )
+                    for i in range(edge_weight + 1)
+                ]
+                y_vector = [
+                    (
+                        current_pos_coords[1]
+                        + i
+                        * ((next_pos_coords[1] - current_pos_coords[1]) / edge_weight)
+                    )
+                    for i in range(edge_weight + 1)
+                ]
+
+                x = x_vector[edge_weight - distance]
+                y = y_vector[edge_weight - distance]
+                car_x.append(x)
+                car_y.append(y)
+            except IndexError:
+                x, y = self._model.grid.nodes[agent.goal]["pos"]
+                car_x.append(x)
+                car_y.append(y)
 
         return car_x, car_y
 
@@ -201,7 +240,7 @@ class TrafficGraph(go.Figure):
             node_color (list): Colors of the nodes
 
         Returns:
-            go.Scatter: Plotly trace for the nodes
+            go.Scatter: Plotly trace for the cars
         """
         car_trace = go.Scatter(
             x=car_x,
