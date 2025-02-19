@@ -2,6 +2,7 @@ import os
 import unittest
 import sys
 import logging
+import random
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -109,7 +110,7 @@ class TestTrafficModel(unittest.TestCase):
             logging.error(f"Failed test_step: {e}")
             raise
 
-    def test_agent_removal(self):
+    def test_agent_arrived(self):
         """Test agent removal.
 
         - This test checks if the agents are removed from the model after reaching their goals.
@@ -119,7 +120,7 @@ class TestTrafficModel(unittest.TestCase):
         Raises:
             AssertionError: If there are agents left after the step method is called or if the steps exceed the highest path length.
         """
-        logging.info("Test agent removal")
+        logging.info("Test agent removal on arrival")
         highest_path_length = 0
         for agent in self.model.agents:
             path_length = sum(value for value in agent.path.values() if value)
@@ -144,13 +145,52 @@ class TestTrafficModel(unittest.TestCase):
             )
             raise
 
+    def test_create_agents(self):
+        """Test adding agents.
+
+        Raises:
+            AssertionError: If the number of agents is not increased by the expected number
+        """
+        logging.info("Testing adding agents")
+        initial_num_agents = len(self.model.agents)
+        additional_num_agents = random.randint(3, 100)
+        try:
+            self.model.create_agents(additional_num_agents)
+            self.assertEqual(
+                (initial_num_agents + additional_num_agents), len(self.model.agents)
+            )
+            logging.info("Passed test_create_agents")
+        except AssertionError as e:
+            logging.error(f"Failed to add agents: {e}")
+            raise
+
+    def test_remove_agents(self):
+        """Test removing agents.
+
+        Raises:
+            AssertionError: If the number of agents is not decreased by the expected number
+        """
+        logging.info("Testing removal of agents")
+        initial_num_agents = len(self.model.agents)
+        removed_num_agents = min(random.randint(3, 100), initial_num_agents)
+        try:
+            self.model.remove_agents(removed_num_agents)
+            self.assertEqual(
+                (initial_num_agents - removed_num_agents), len(self.model.agents)
+            )
+        except AssertionError as e:
+            logging.error(f"Failed to remove agents: {e}")
+            raise
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestTrafficModel("test_initial_agents"))
     suite.addTest(TestTrafficModel("test_graph_initialization"))
     suite.addTest(TestTrafficModel("test_step"))
-    suite.addTest(TestTrafficModel("test_agent_removal"))
+    suite.addTest(TestTrafficModel("test_agent_arrived"))
+    suite.addTest(TestTrafficModel("test_create_agents"))
+    suite.addTest(TestTrafficModel("test_remove_agents"))
     return suite
 
 
