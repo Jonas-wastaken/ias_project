@@ -81,7 +81,9 @@ class TestGraph(unittest.TestCase):
         """
         try:
             intersection_pattern = re.compile(r"intersection_\d+")
-            for _, connections in self.graph.get_connections("intersection").items():
+            for intersection, connections in self.graph.get_connections(
+                "intersection"
+            ).items():
                 matches = [
                     re.findall(intersection_pattern, connection)
                     for connection in connections
@@ -94,6 +96,9 @@ class TestGraph(unittest.TestCase):
             logging.error(
                 f"Intersections do not have between 2 and 4 connections to other intersection nodes: {e}"
             )
+            logging.info(intersection)
+            logging.info(matches)
+            logging.info(flattened_matches)
             raise
 
     def _test_borders(self, expected_num_borders: int):

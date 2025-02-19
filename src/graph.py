@@ -104,7 +104,7 @@ class Graph(nx.Graph):
         """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
 
         - Initializes a list with all nodes of type intersection.
-        - Gets established connections between nodes.
+        - Gets established connections between intersection nodes.
         - For each new intersection node:
             - Ensures it is connected to at least 2 and at most 4 other intersection nodes.
             - Selects available nodes that are not already fully connected.
@@ -116,17 +116,37 @@ class Graph(nx.Graph):
             new_intersections (list): A list of new intersection nodes to connect to other intersection nodes
         """
         intersections = self.get_nodes("intersection")
-        connections = self.get_connections(type="intersection")
+        intersection_connections = {
+            key: [v for v in value if v.startswith("intersection")]
+            for key, value in self.get_connections(type="intersection").items()
+        }
 
         for node in new_intersections:
-            while len(connections[node]) < 2 or len(connections[node]) > 4:
+            while len(intersection_connections[node]) < 2:
                 available_nodes = [
-                    x for x in intersections if x != node and len(connections[x]) < 4
+                    x
+                    for x in intersections
+                    if x != node and len(intersection_connections[x]) < 4
                 ]
                 if not available_nodes:
+                    for u, connected_intersections in intersection_connections.items():
+                        if len(connected_intersections) > 2:
+                            for v in connected_intersections:
+                                if len(intersection_connections[v]) > 2:
+                                    intersection_connections[u].remove(v)
+                                    intersection_connections[v].remove(u)
+                                    available_nodes = [u, v]
+                                    break
+                            else:
+                                continue
+                            break
+                    else:
+                        continue
                     break
 
-                num_to_connect = min(4 - len(connections[node]), random.randint(1, 4))
+                num_to_connect = min(
+                    4 - len(intersection_connections[node]), random.randint(2, 4)
+                )
                 num_to_connect = min(num_to_connect, len(available_nodes))
                 if num_to_connect <= 0:
                     break
@@ -134,10 +154,10 @@ class Graph(nx.Graph):
                 selected_nodes = random.sample(available_nodes, num_to_connect)
 
                 for target_node in selected_nodes:
-                    connections[node].append(target_node)
-                    connections[target_node].append(node)
+                    intersection_connections[node].append(target_node)
+                    intersection_connections[target_node].append(node)
 
-        for node, target_nodes in connections.items():
+        for node, target_nodes in intersection_connections.items():
             edges = [
                 (
                     node,
