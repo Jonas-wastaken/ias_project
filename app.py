@@ -28,12 +28,14 @@ if "model" not in st.session_state:
     st.session_state.model = TrafficModel(num_agents=3)
 model = st.session_state.model
 
-# Graph config
-graph_config = {
+# Environment config
+env_config = {
     "num_intersections": len(model.grid.get_nodes("intersection")),
     "num_borders": len(model.grid.get_nodes("border")),
     "min_distance": min([edge[2] for edge in model.grid.edges(data="weight")]),
     "max_distance": max([edge[2] for edge in model.grid.edges(data="weight")]),
+    "num_agents": len(model.agents),
+    "auto_run_steps": 5,
 }
 
 # Create two columns for layout
@@ -50,7 +52,7 @@ with left_col:
         graph_config_col, connections_col, edges_col = st.columns([0.25, 0.50, 0.25])
         with graph_config_col:
             st.dataframe(
-                pd.DataFrame(graph_config.items(), columns=["Setting", "Value"]),
+                pd.DataFrame(env_config.items(), columns=["Setting", "Value"]),
                 use_container_width=True,
                 hide_index=True,
             )
@@ -96,21 +98,21 @@ with right_col:
             num_agents = st.number_input(
                 label="Number of Agents",
                 min_value=1,
-                value=model.num_agents,
+                value=env_config["num_agents"],
             )
 
             # Input for number of intersections
             num_intersections = st.number_input(
                 label="Number of Intersections",
                 min_value=1,
-                value=graph_config["num_intersections"],
+                value=env_config["num_intersections"],
             )
 
             # Input for number of borders
             num_borders = st.number_input(
                 label="Number of Borders",
                 min_value=2,
-                value=graph_config["num_borders"],
+                value=env_config["num_borders"],
             )
 
             # Slider for distance range
@@ -123,26 +125,31 @@ with right_col:
 
             # Apply button to update the model with new settings
             if st.button(label="Apply", help="Apply the changes"):
+                # Update the model with new settings for number of agents
+                if num_agents > env_config["num_agents"]:
+                    model.create_agents(num_agents - env_config["num_agents"])
+                elif num_agents < env_config["num_agents"]:
+                    model.remove_agents(env_config["num_agents"] - num_agents)
                 # Update the model with new settings for number of intersections
-                if num_intersections > graph_config["num_intersections"]:
+                if num_intersections > env_config["num_intersections"]:
                     model.grid.add_intersections(
-                        num_intersections - graph_config["num_intersections"]
+                        num_intersections - env_config["num_intersections"]
                     )
-                elif num_intersections < graph_config["num_intersections"]:
+                elif num_intersections < env_config["num_intersections"]:
                     model.grid.remove_intersections(
-                        graph_config["num_intersections"] - num_intersections
+                        env_config["num_intersections"] - num_intersections
                     )
 
                 # Update the model with new settings for number of borders
-                if num_borders > graph_config["num_borders"]:
-                    model.grid.add_borders(num_borders - graph_config["num_borders"])
-                elif num_borders < graph_config["num_borders"]:
-                    model.grid.remove_borders(graph_config["num_borders"] - num_borders)
+                if num_borders > env_config["num_borders"]:
+                    model.grid.add_borders(num_borders - env_config["num_borders"])
+                elif num_borders < env_config["num_borders"]:
+                    model.grid.remove_borders(env_config["num_borders"] - num_borders)
 
                 # Update the model with new settings for distance range
                 if distance_range != (
-                    graph_config["min_distance"],
-                    graph_config["max_distance"],
+                    env_config["min_distance"],
+                    env_config["max_distance"],
                 ):
                     model.grid.change_weights(
                         min_distance=distance_range[0], max_distance=distance_range[1]
