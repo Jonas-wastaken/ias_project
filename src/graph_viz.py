@@ -49,9 +49,11 @@ class TrafficGraph(go.Figure):
         node_color = self.create_node_color()
         node_trace = self.create_trace_nodes(node_x, node_y, node_color)
         node_trace.text = self.create_node_text()
+        car_x, car_y = self.get_coords_cars()
+        car_trace = self.create_trace_cars(car_x, car_y)
 
         # Create the figure
-        self.add_traces([edge_trace, node_trace])
+        self.add_traces([edge_trace, node_trace, car_trace])
         self.update_layout(
             title=dict(text="<br>Traffic Grid", font=dict(size=16)),
             showlegend=False,
@@ -173,3 +175,44 @@ class TrafficGraph(go.Figure):
         ]
 
         return node_text
+
+    def get_coords_cars(self) -> tuple:
+        """Get the x and y coordinates of the cars.
+
+        Returns:
+            tuple: Lists of x and y coordinates of the cars
+        """
+        car_x = []
+        car_y = []
+
+        for agent in self._model.agents:
+            x, y = self._model.grid.nodes[agent.position]["pos"]
+            car_x.append(x)
+            car_y.append(y)
+
+        return car_x, car_y
+
+    def create_trace_cars(self, car_x: list, car_y: list) -> go.Scatter:
+        """Create a plotly trace for the nodes.
+
+        Args:
+            car_x (list): X coordinates of the cars
+            car_y (list): Y coordinates of the cars
+            node_color (list): Colors of the nodes
+
+        Returns:
+            go.Scatter: Plotly trace for the nodes
+        """
+        car_trace = go.Scatter(
+            x=car_x,
+            y=car_y,
+            mode="markers",
+            hoverinfo=None,
+            marker=dict(
+                color="red",
+                size=5,
+                line_width=1,
+            ),
+        )
+
+        return car_trace
