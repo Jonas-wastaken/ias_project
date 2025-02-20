@@ -55,7 +55,6 @@ class TrafficGraph(go.Figure):
         # Create the figure
         self.add_traces([edge_trace, node_trace, car_trace])
         self.update_layout(
-            title=dict(text="<br>Traffic Grid", font=dict(size=16)),
             showlegend=False,
             hovermode="closest",
             margin=dict(b=20, l=5, r=5, t=40),

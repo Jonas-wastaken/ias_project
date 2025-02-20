@@ -51,6 +51,7 @@ class App:
         with left_col:
             graph_container = st.container()
             with graph_container:
+                st.subheader("Graph")
                 st.plotly_chart(self.create_graph_fig(), use_container_width=True)
 
                 # Display the graph config and connections
