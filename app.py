@@ -51,31 +51,37 @@ class App:
         with left_col:
             graph_container = st.container()
             with graph_container:
-                st.subheader("Graph")
+                with st.container():
+                    header_cols = st.columns(
+                        [0.125, 0.2, 0.15, 0.525],
+                        gap="small",
+                        vertical_alignment="center",
+                    )
+                    with header_cols[0]:
+                        st.popover(
+                            label="Settings", use_container_width=True
+                        ).dataframe(
+                            self.create_env_conf_df(),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    with header_cols[1]:
+                        st.popover(
+                            label="Show Connections", use_container_width=True
+                        ).dataframe(
+                            self.create_connections_df(),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    with header_cols[2]:
+                        st.popover(
+                            label="Show Edges", use_container_width=True
+                        ).dataframe(
+                            self.create_edges_df(),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
                 st.plotly_chart(self.create_graph_fig(), use_container_width=True)
-
-                # Display the graph config and connections
-                graph_config_col, connections_col, edges_col = st.columns(
-                    [0.25, 0.50, 0.25]
-                )
-                with graph_config_col:
-                    st.dataframe(
-                        self.create_env_conf_df(),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-                with connections_col:
-                    st.dataframe(
-                        self.create_connections_df(),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-                with edges_col:
-                    st.dataframe(
-                        self.create_edges_df(),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
 
         # Right column for the UI controls
         with right_col:
