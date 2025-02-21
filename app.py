@@ -11,8 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
-from src.model import TrafficModel
-from src.graph_viz import TrafficGraph
+from model import TrafficModel
+from graph_viz import TrafficGraph
 
 
 class App:
@@ -49,39 +49,28 @@ class App:
 
         # Left column for the traffic graph visualization
         with left_col:
-            graph_container = st.container()
-            with graph_container:
-                with st.container():
-                    header_cols = st.columns(
-                        [0.125, 0.2, 0.15, 0.525],
-                        gap="small",
-                        vertical_alignment="center",
+            with st.container():
+                header_cols = st.columns(
+                    [0.125, 0.2, 0.15, 0.525],
+                    gap="small",
+                    vertical_alignment="center",
+                )
+                with header_cols[0]:
+                    st.popover(label="Settings").dataframe(
+                        self.create_env_conf_df(),
+                        hide_index=True,
                     )
-                    with header_cols[0]:
-                        st.popover(
-                            label="Settings", use_container_width=True
-                        ).dataframe(
-                            self.create_env_conf_df(),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                    with header_cols[1]:
-                        st.popover(
-                            label="Show Connections", use_container_width=True
-                        ).dataframe(
-                            self.create_connections_df(),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                    with header_cols[2]:
-                        st.popover(
-                            label="Show Edges", use_container_width=True
-                        ).dataframe(
-                            self.create_edges_df(),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                st.plotly_chart(self.create_graph_fig(), use_container_width=True)
+                with header_cols[1]:
+                    st.popover(label="Show Connections").dataframe(
+                        self.create_connections_df(),
+                        hide_index=True,
+                    )
+                with header_cols[2]:
+                    st.popover(label="Show Edges").dataframe(
+                        self.create_edges_df(),
+                        hide_index=True,
+                    )
+            st.plotly_chart(self.create_graph_fig(), use_container_width=True)
 
         # Right column for the UI controls
         with right_col:
