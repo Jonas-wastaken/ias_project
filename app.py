@@ -5,6 +5,7 @@ It allows users to step through the simulation of traffic agents and view their 
 
 import sys
 import os
+import time
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
@@ -69,7 +70,7 @@ class App:
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
             "num_agents": len(self.model.agents),
-            "auto_run_steps": 5,
+            "auto_run_steps": 20,
         }
 
         # Create two columns for layout
@@ -78,6 +79,12 @@ class App:
         # Render UI elements
         self.render_left_column(left_col)
         self.render_right_column(right_col)
+
+        # Check for auto run loop
+        if (st.query_params["run_steps"]) and (int(st.query_params["run_steps"]) > 0):
+            time.sleep(0.1)
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+            self.step()
 
     def render_left_column(self, left_col):
         """Renders the left column with the traffic graph visualization."""
@@ -123,6 +130,7 @@ class App:
                 help="Execute one step",
                 use_container_width=True,
             ):
+                st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
                 self.step()
 
         with ui_cols[1]:
