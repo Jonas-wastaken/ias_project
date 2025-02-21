@@ -81,10 +81,13 @@ class App:
         self.render_right_column(right_col)
 
         # Check for auto run loop
-        if (st.query_params["run_steps"]) and (int(st.query_params["run_steps"]) > 0):
-            time.sleep(0.1)
-            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            self.step()
+        try:
+            if int(st.query_params["run_steps"]) > 0:
+                time.sleep(0.1)
+                st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+                self.step()
+        except KeyError:
+            pass
 
     def render_left_column(self, left_col):
         """Renders the left column with the traffic graph visualization."""
