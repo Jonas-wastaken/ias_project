@@ -5,6 +5,7 @@ It allows users to step through the simulation of traffic agents and view their 
 
 import sys
 import os
+import time
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
@@ -69,144 +70,157 @@ class App:
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
             "num_agents": len(self.model.agents),
-            "auto_run_steps": 5,
+            "auto_run_steps": 20,
         }
 
         # Create two columns for layout
         left_col, right_col = st.columns([0.75, 0.25])
 
-        # Left column for the traffic graph visualization
+        # Render UI elements
+        self.render_left_column(left_col)
+        self.render_right_column(right_col)
+
+        # Check for auto run loop
+        try:
+            if int(st.query_params["run_steps"]) > 0:
+                time.sleep(0.1)
+                st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+                self.step()
+        except KeyError:
+            pass
+
+    def render_left_column(self, left_col):
+        """Renders the left column with the traffic graph visualization."""
         with left_col:
             header_cols = st.columns(
                 [0.125, 0.2, 0.15, 0.525],
                 gap="small",
                 vertical_alignment="center",
             )
-            with header_cols[0]:
-                st.popover(label="Settings").dataframe(
-                    self.create_env_conf_df(),
-                    hide_index=True,
-                )
-            with header_cols[1]:
-                st.popover(label="Show Connections").dataframe(
-                    self.create_connections_df(),
-                    hide_index=True,
-                )
-            with header_cols[2]:
-                st.popover(label="Show Edges").dataframe(
-                    self.create_edges_df(),
-                    hide_index=True,
-                )
+            self.render_header_cols(header_cols)
             st.plotly_chart(self.create_graph_fig(), use_container_width=True)
 
-        # Right column for the UI controls
+    def render_header_cols(self, header_cols):
+        """Renders the header columns with popovers."""
+        with header_cols[0]:
+            st.popover(label="Settings").dataframe(
+                self.create_env_conf_df(),
+                hide_index=True,
+            )
+        with header_cols[1]:
+            st.popover(label="Show Connections").dataframe(
+                self.create_connections_df(),
+                hide_index=True,
+            )
+        with header_cols[2]:
+            st.popover(label="Show Edges").dataframe(
+                self.create_edges_df(),
+                hide_index=True,
+            )
+
+    def render_right_column(self, right_col):
+        """Renders the right column with UI controls."""
         with right_col:
-            # Create sub-columns for user controls
             ui_cols = st.columns(spec=[0.3, 0.4, 0.3], vertical_alignment="center")
+            self.render_ui_controls(ui_cols)
+            self.render_agent_paths()
 
-            # Step button to advance the simulation
-            with ui_cols[0]:
-                if st.button(
-                    label="Step",
-                    help="Execute one step",
-                    use_container_width=True,
-                ):
-                    self.step()
+    def render_ui_controls(self, ui_cols):
+        """Renders the UI controls in the right column."""
+        with ui_cols[0]:
+            if st.button(
+                label="Step",
+                help="Execute one step",
+                use_container_width=True,
+            ):
+                st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
+                self.step()
 
-            # Options popover to change environment settings
-            with ui_cols[1]:
-                options_popover = st.popover(
-                    label="Options",
-                    help="Change the environment settings",
+        with ui_cols[1]:
+            self.render_options_popover()
+
+        with ui_cols[2]:
+            if st.button(
+                label="Reset",
+                help="Reset the Environment",
+                use_container_width=True,
+            ):
+                self.reset_environment()
+
+    def render_options_popover(self):
+        """Renders the options popover for changing environment settings."""
+        options_popover = st.popover(
+            label="Options",
+            help="Change the environment settings",
+            use_container_width=True,
+        )
+
+        with options_popover:
+            st.markdown("### Options")
+            self.num_agents = st.number_input(
+                label="Number of Agents",
+                min_value=0,
+                value=self.env_config["num_agents"],
+            )
+            self.num_intersections = st.number_input(
+                label="Number of Intersections",
+                min_value=1,
+                value=self.env_config["num_intersections"],
+            )
+            self.num_borders = st.number_input(
+                label="Number of Borders",
+                min_value=2,
+                value=self.env_config["num_borders"],
+            )
+            self.distance_range = st.slider(
+                label="Distance",
+                min_value=1,
+                max_value=100,
+                value=(
+                    self.model.grid.min_distance,
+                    self.model.grid.max_distance,
+                ),
+            )
+            if st.button(label="Apply", help="Apply the changes"):
+                self.update_env_config()
+
+    def render_agent_paths(self):
+        """Renders the agent paths in the right column."""
+        agent_paths_container = st.container()
+        with agent_paths_container:
+            for agent in self.model.agents:
+                left_col, right_col = st.columns(2)
+                with left_col:
+                    st.subheader(f"Agent {agent.unique_id}")
+                with right_col:
+                    self.render_agent_details(agent)
+                st.dataframe(
+                    self.create_current_path_df(agent),
                     use_container_width=True,
+                    hide_index=True,
                 )
 
-                with options_popover:
-                    st.markdown("### Options")
-
-                    # Input for number of agents
-                    self.num_agents = st.number_input(
-                        label="Number of Agents",
-                        min_value=0,
-                        value=self.env_config["num_agents"],
-                    )
-
-                    # Input for number of intersections
-                    self.num_intersections = st.number_input(
-                        label="Number of Intersections",
-                        min_value=1,
-                        value=self.env_config["num_intersections"],
-                    )
-
-                    # Input for number of borders
-                    self.num_borders = st.number_input(
-                        label="Number of Borders",
-                        min_value=2,
-                        value=self.env_config["num_borders"],
-                    )
-
-                    # Slider for distance range
-                    self.distance_range = st.slider(
-                        label="Distance",
-                        min_value=1,
-                        max_value=100,
-                        value=(
-                            self.model.grid.min_distance,
-                            self.model.grid.max_distance,
-                        ),
-                    )
-
-                    # Apply button to update the model with new settings
-                    if st.button(label="Apply", help="Apply the changes"):
-                        self.update_env_config()
-
-            # Reset button to reset the environment
-            with ui_cols[2]:
-                if st.button(
-                    label="Reset",
-                    help="Reset the Environment",
+    def render_agent_details(self, agent):
+        """Renders the details of an agent."""
+        with stylable_container(
+            key=f"agent_{agent.unique_id}",
+            css_styles="""
+                button {
+                    background-color: white;
+                    color: black;
+                    border: none;
+                    white-space: nowrap;
+                    margin-top: 0.25rem;
+                }
+                """,
+        ):
+            with st.popover("Show Details"):
+                st.markdown("""##### Full Path""")
+                st.dataframe(
+                    self.create_full_path_df(agent_id=agent.unique_id),
                     use_container_width=True,
-                ):
-                    self.reset_environment()
-
-            # Container to display agent paths
-            agent_paths_container = st.container()
-
-            with agent_paths_container:
-                # Loop through each agent and display their paths
-                for agent in self.model.agents:
-                    left_col, right_col = st.columns(2)
-
-                    with left_col:
-                        st.subheader(f"Agent {agent.unique_id}")
-
-                    with right_col:
-                        with stylable_container(
-                            key=f"agent_{agent.unique_id}",
-                            css_styles="""
-                                button {
-                                    background-color: white;
-                                    color: black;
-                                    border: none;
-                                    white-space: nowrap;
-                                    margin-top: 0.25rem;
-                                }
-                                """,
-                        ):
-                            with st.popover("Show Details"):
-                                st.markdown("""##### Full Path""")
-                                st.dataframe(
-                                    self.create_full_path_df(agent_id=agent.unique_id),
-                                    use_container_width=True,
-                                    hide_index=True,
-                                )
-
-                    # Display the agent's current position, distance to next position and next position
-                    st.dataframe(
-                        self.create_current_path_df(agent),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    hide_index=True,
+                )
 
     def create_graph_fig(self) -> TrafficGraph:
         """Creates figure of Graph object used as a grid in TrafficModel.
