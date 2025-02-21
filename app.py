@@ -5,18 +5,46 @@ It allows users to step through the simulation of traffic agents and view their 
 
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
-
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
 from model import TrafficModel
 from graph_viz import TrafficGraph
 
 
 class App:
+    """A class to represent the Streamlit application for visualizing a traffic grid.
+
+    The class initializes the Streamlit app, sets up the environment configuration, and provides methods to interact with the traffic model.
+
+    ## Methods:
+        **__init__(self)**:
+            Initializes the Streamlit app and sets up the environment configuration.
+        **create_graph_fig(self) -> TrafficGraph**:
+            Creates a figure of the Graph object used as a grid in TrafficModel.
+        **create_env_conf_df(self) -> pd.DataFrame**:
+            Creates a pandas DataFrame of the environment configuration.
+        **create_connections_df(self) -> pd.DataFrame**:
+            Creates a DataFrame containing connections for each node in the Graph.
+        **create_edges_df(self) -> pd.DataFrame**:
+            Creates a DataFrame with information about each edge in the graph.
+        **step(self) -> None**:
+            Advances the environment by one step.
+        **update_env_config(self) -> None**:
+            Applies changes to the environment from user options.
+        **reset_environment(self) -> None**:
+            Resets the environment with user-specified config options.
+        **create_full_path_df(self, agent_id: int) -> pd.DataFrame**:
+            Creates a DataFrame with the full path a car agent takes.
+        **create_current_path_df(self, agent) -> pd.DataFrame**:
+            Creates a DataFrame with the current (last) position, next position, and distance to the next position of an agent.
+    """
+
     def __init__(self):
+        """Initializes the Streamlit app and sets up the environment configuration."""
         st.set_page_config(
             page_title=None,
             page_icon=None,
@@ -49,27 +77,26 @@ class App:
 
         # Left column for the traffic graph visualization
         with left_col:
-            with st.container():
-                header_cols = st.columns(
-                    [0.125, 0.2, 0.15, 0.525],
-                    gap="small",
-                    vertical_alignment="center",
+            header_cols = st.columns(
+                [0.125, 0.2, 0.15, 0.525],
+                gap="small",
+                vertical_alignment="center",
+            )
+            with header_cols[0]:
+                st.popover(label="Settings").dataframe(
+                    self.create_env_conf_df(),
+                    hide_index=True,
                 )
-                with header_cols[0]:
-                    st.popover(label="Settings").dataframe(
-                        self.create_env_conf_df(),
-                        hide_index=True,
-                    )
-                with header_cols[1]:
-                    st.popover(label="Show Connections").dataframe(
-                        self.create_connections_df(),
-                        hide_index=True,
-                    )
-                with header_cols[2]:
-                    st.popover(label="Show Edges").dataframe(
-                        self.create_edges_df(),
-                        hide_index=True,
-                    )
+            with header_cols[1]:
+                st.popover(label="Show Connections").dataframe(
+                    self.create_connections_df(),
+                    hide_index=True,
+                )
+            with header_cols[2]:
+                st.popover(label="Show Edges").dataframe(
+                    self.create_edges_df(),
+                    hide_index=True,
+                )
             st.plotly_chart(self.create_graph_fig(), use_container_width=True)
 
         # Right column for the UI controls
@@ -100,7 +127,7 @@ class App:
                     # Input for number of agents
                     self.num_agents = st.number_input(
                         label="Number of Agents",
-                        min_value=1,
+                        min_value=0,
                         value=self.env_config["num_agents"],
                     )
 
@@ -326,7 +353,11 @@ class App:
         Returns:
             pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
         """
-        current_position, next_position = list(agent.path.keys())[:2]
+        try:
+            current_position, next_position = list(agent.path.keys())[:2]
+        except ValueError:
+            current_position = list(agent.path.keys())[0]
+            next_position = "None"
         distance = list(agent.path.values())[0]
 
         current_path_df = pd.DataFrame(
