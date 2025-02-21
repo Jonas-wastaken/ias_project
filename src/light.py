@@ -60,24 +60,27 @@ class LightAgent(mesa.Agent):
     def update_waiting_cars(self) -> None:
         """Updates the details of the cars waiting at the intersection (waiting_cars)"""
 
+        if self.waiting_cars is not None:
         # Remove all cars that have moved from the waiting_cars list
-        for car in self.waiting_cars:
-            if not car.waiting:
-                self.waiting_cars.remove(car)
+            for car in self.waiting_cars.keys():
+                if not car.waiting:
+                    self.waiting_cars.pop(car)
 
         # Add all new cars that are now waiting at the intersection 
-        for car in self.model.get_agents_by_type("CarAgent"):
-            if car.position == self.position and car not in self.waiting_cars and car.waiting:
-                self.waiting_cars.append(car)
-
-                # TODO: hier funktion nutzen
-    
-                self.waiting_cars[car] = {"last_intersection": car.last_inRtersection_of_car, "local_waiting_time": 0}
+            for car in self.model.get_agents_by_type("CarAgent"):
+                if car.position == self.position and car not in self.waiting_cars.keys() and car.waiting:
+                    self.waiting_cars.append(car)
+                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0}
 
         # Update car attributes in the waiting_cars list
-        for car in self.waiting_cars:
-            self.waiting_cars[car]["local_waiting_time"] += 1
-            self.waiting_cars[car]["global_waiting_time"] += 1
+            for car in self.waiting_cars.keys():
+                self.waiting_cars[car]["local_waiting_time"] += 1
+                self.waiting_cars[car]["global_waiting_time"] += 1
+        
+        else:
+            for car in self.model.get_agents_by_type("CarAgent"):
+                if car.position == self.position and car.waiting:
+                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0, "global_waiting_time": 0}
 
 
     def change_open_lane(self, lane: str) -> None:

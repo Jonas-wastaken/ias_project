@@ -30,7 +30,7 @@ class TrafficModel(mesa.Model):
             Function to get all agents of a certain type.
         **get_agents_by_id(self, agent_id: list) -> list**:
             Function to get all agents by their unique ID.
-        **get_last_position_of_car(self, car_id: int) -> str**:
+        **get_last_intersection_of_car(self, car_id: int) -> str**:
             Function to get the last position of a car.
     """
 
@@ -67,7 +67,7 @@ class TrafficModel(mesa.Model):
                 car.remove()
 
         for light in self.get_agents_by_type("LightAgent"):
-            # light.update_waiting_cars()
+            light.update_waiting_cars()
             
             # Decide if the light should change the open lane (if the cooldown is over)
             

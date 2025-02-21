@@ -22,4 +22,11 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-# TODO: schreib Tests ()
+class TestLightAgent(unittest.TestCase):
+    # TODO: Setup the test environment
+    # TODO: testen, ob jede Ampel genau eine open_lane hat und ob diese in den neighbor_lights enthalten ist
+    # TODO: testen, ob cooldown beim ändern von open_lane beachtet wird
+
+    # TODO später: update_waiting_cars testen, ob waiting_cars richtig aktualisiert wird
+    
+    pass
