@@ -11,9 +11,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY . /app
 
-RUN pip3 install --root-user-action=ignore --upgrade pip
-
-RUN pip3 install --root-user-action=ignore -r requirements.txt
+RUN pip3 install --root-user-action=ignore --upgrade pip \
+    && pip3 install --root-user-action=ignore --no-cache-dir -r requirements.txt
 
 EXPOSE 8501
 
