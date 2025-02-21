@@ -70,20 +70,7 @@ class LightAgent(mesa.Agent):
             if car.position == self.position and car not in self.waiting_cars and car.waiting:
                 self.waiting_cars.append(car)
 
-                # Get last intersection of the car
-                car_full_path = car.model.agent_paths[car.unique_id]
-                car_full_path_keys = list(car_full_path.keys())
-                current_position_index = car_full_path_keys.index(car.position)
-
-                if current_position_index == 0:
-                    previous_position = car.position
-                else:
-                    previous_position = car_full_path_keys[current_position_index - 1]
-
-                # Get the corresponding intersection, if the cars last position was a border node (TODO)
-                if previous_position.startswith("border"):
-                    # TODO: Logik einbauen, um die letzte Intersection zu finden (z.B.: list(model.grid.get_connections("border_0").values())[0][0])
-                    pass
+                # TODO: hier funktion nutzen
     
                 self.waiting_cars[car] = {"last_intersection": car.last_inRtersection_of_car, "local_waiting_time": 0}
 

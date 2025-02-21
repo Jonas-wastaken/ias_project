@@ -191,11 +191,11 @@ class TrafficGraph(go.Figure):
         car_x = []
         car_y = []
 
-        for agent in self._model.agents:
+        for car in self._model.get_agents_by_type("CarAgent"):
             try:
-                current_pos = agent.position
-                next_pos = list(agent.path.keys())[1]
-                distance = agent.path[current_pos]
+                current_pos = car.position
+                next_pos = list(car.path.keys())[1]
+                distance = car.path[current_pos]
                 edge_weight = self._model.grid.get_edge_data(current_pos, next_pos)[
                     "weight"
                 ]
@@ -225,7 +225,7 @@ class TrafficGraph(go.Figure):
                 car_x.append(x)
                 car_y.append(y)
             except IndexError:
-                x, y = self._model.grid.nodes[agent.goal]["pos"]
+                x, y = self._model.grid.nodes[car.goal]["pos"]
                 car_x.append(x)
                 car_y.append(y)
 

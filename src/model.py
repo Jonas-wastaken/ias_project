@@ -28,6 +28,10 @@ class TrafficModel(mesa.Model):
             Function to add traffic lights to the model.
         **get_agents_by_type(self, agent_type: str) -> list**:
             Function to get all agents of a certain type.
+        **get_agents_by_id(self, agent_id: list) -> list**:
+            Function to get all agents by their unique ID.
+        **get_last_position_of_car(self, car_id: int) -> str**:
+            Function to get the last position of a car.
     """
 
     def __init__(self, num_agents: int, seed: int = None, **kwargs):
@@ -113,6 +117,43 @@ class TrafficModel(mesa.Model):
             return [agent for agent in self.agents if isinstance(agent, LightAgent)]
         else:
             raise ValueError(f"Agent type {agent_type} not found")
+        
+    def get_agents_by_id(self, agent_id: list) -> list:
+        """Function to get all agents by their unique ID.
+
+        Args:
+            agent_id (list): List of unique agent IDs.
+
+        Returns:
+            list: A list of agents with the given unique IDs.
+        """
+        return [agent for agent in self.agents if agent.unique_id in agent_id]
+        
+    def get_last_intersection_of_car(self, agent_unique_id: int) -> str:
+        """Function to get the last position of a car.
+
+        Args:
+            car_id (int): ID of the car.
+
+        Returns:
+            str: The last position of the car.
+        """
+        car = self.get_agents_by_id([agent_unique_id])[0]
+        car_full_path = self.agent_paths[agent_unique_id]
+        car_full_path_keys = list(car_full_path.keys())
+        current_position_index = car_full_path_keys.index(car.position)
+
+        if current_position_index == 0:
+            previous_position = car.position
+        else:
+            previous_position = car_full_path_keys[current_position_index - 1]
+
+        # Get the corresponding intersection, if the cars last position was a border node (TODO)
+        if previous_position.startswith("border"):
+            # TODO: Logik einbauen, um die letzte Intersection zu finden (z.B.: list(model.grid.get_connections("border_0").values())[0][0])
+            pass
+
+        return previous_position
 
 
     
