@@ -63,7 +63,7 @@ class TrafficModel(mesa.Model):
                 car.remove()
 
         for light in self.get_agents_by_type("LightAgent"):
-            light.update_waiting_cars()
+            # light.update_waiting_cars()
             
             # Decide if the light should change the open lane (if the cooldown is over)
             
@@ -85,7 +85,7 @@ class TrafficModel(mesa.Model):
             num_agents (int): Number of agents to remove.
         """
         for i in range(num_agents):
-            agent = random.choice(self.agents)
+            agent = random.choice(self.get_agents_by_type("CarAgent"))
             self.agents.remove(agent)
 
     def create_light_agents(self) -> None:

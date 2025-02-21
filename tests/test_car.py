@@ -51,7 +51,7 @@ class TestCarAgent(unittest.TestCase):
             min_distance=self.min_distance,
             max_distance=self.max_distance,
         )
-        self.agent = self.model.agents[0]
+        self.agent = self.model.get_agents_by_type("CarAgent")[0]
         self.assertIsInstance(self.agent, CarAgent)
         logging.info(f"Agent {self.agent.unique_id} initialized")
         logging.info(f"Agent start: {self.agent.start}")

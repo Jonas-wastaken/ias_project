@@ -11,6 +11,7 @@ sys.path.insert(
 from model import TrafficModel
 from car import CarAgent
 from graph import Graph
+from light import LightAgent
 
 log_dir = os.path.join("tests", "logs")
 os.makedirs(log_dir, exist_ok=True)
@@ -25,13 +26,13 @@ logging.basicConfig(
 
 class TestTrafficModel(unittest.TestCase):
     def setUp(self):
-        self.num_agents = 5
+        self.num_cars = 5
         self.num_intersections = 10
         self.num_borders = 3
         self.min_distance = 1
         self.max_distance = 10
         self.model = TrafficModel(
-            num_agents=self.num_agents,
+            num_agents=self.num_cars,
             num_intersections=self.num_intersections,
             num_borders=self.num_borders,
             min_distance=self.min_distance,
@@ -39,30 +40,57 @@ class TestTrafficModel(unittest.TestCase):
         )
         logging.info("Setup complete: TrafficModel initialized")
 
-    def test_initial_agents(self):
-        """Test initial agents.
+    def test_initial_cars(self):
+        """Test initial CarAgents.
 
-        - This test checks if the agents are initialized correctly.
-            - Check if the agents are instances of the CarAgent class.
-            - Check if the agent paths are initialized as dictionaries.
-            - Assert that the number of agents matches the expected number.
+        - This test checks if the cars are initialized correctly.
+            - Check if the cars are instances of the CarAgent class.
+            - Check if the cars paths are initialized as dictionaries
+            - Assert that the number of cars matches the expected number.
 
         Raises:
-            AssertionError: If the agents are not instances of the CarAgent class, the agent paths are not initialized as dictionaries, or the number of agents does not match the expected number.
+            AssertionError: If the cars are not instances of the CarAgent class, the cars paths are not initialized as dictionaries, or the number of cars does not match the expected number.
         """
-        logging.info("Test initial agents")
-        logging.info(f"Initialized {self.num_agents} Agents!")
+        logging.info("Test initial cars")
+        logging.info(f"Initialized {self.num_cars} CarAgents!")
         try:
-            for agent in self.model.agents:
-                logging.info(f"Agent {agent.unique_id}")
-                logging.info(f"{self.model.agent_paths[agent.unique_id]}")
-                self.assertIsInstance(agent, CarAgent)
-                self.assertIsInstance(self.model.agent_paths[agent.unique_id], dict)
-            self.assertEqual(len(self.model.agents), self.num_agents)
-            self.assertEqual(len(self.model.agent_paths), self.num_agents)
-            logging.info("Passed test_initial_agents")
+            for car in self.model.get_agents_by_type("CarAgent"):
+                logging.info(f"Agent {car.unique_id}")
+                logging.info(f"{self.model.agent_paths[car.unique_id]}")
+                self.assertIsInstance(car, CarAgent)
+                self.assertIsInstance(self.model.agent_paths[car.unique_id], dict)
+            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), self.num_cars)
+            self.assertEqual(len(self.model.agent_paths), self.num_cars)
+            logging.info("Passed test_initial_cars")
         except AssertionError as e:
-            logging.error(f"Failed test_initial_agents: {e}")
+            logging.error(f"Failed test_initial_cars: {e}")
+            raise
+
+    def test_initial_lights(self):
+        """Test initial LightAgents.
+
+        - This test checks if the lights are initialized correctly.
+            - Check if the lights are instances of the LightAgent class.
+            - Assert that the number of lights matches the expected number (= the number of intersections).
+            - Check if each intersection has a LightAgent and each LightAgent is placed on an intersection.
+
+        Raises:
+            AssertionError: If the lights are not instances of the LightAgent class, or the number of lights does not match the expected number, or if each intersection does not have a LightAgent or if each LightAgent is not placed on an intersection.
+        """
+        logging.info("Test initial lights")
+        logging.info(f"Initialized {self.num_intersections} LightAgents!")
+        try:
+            for light in self.model.get_agents_by_type("LightAgent"):
+                logging.info(f"Light {light.unique_id}")
+                self.assertIsInstance(light, LightAgent)
+            self.assertEqual(
+                len(self.model.get_agents_by_type("LightAgent")), self.num_intersections
+            )
+            lights_positions = [light.position for light in self.model.get_agents_by_type("LightAgent")]
+            self.assertEqual(lights_positions, self.model.grid.get_nodes("intersection"))
+            logging.info("Passed test_initial_lights")
+        except AssertionError as e:
+            logging.error(f"Failed test_initial_lights: {e}")
             raise
 
     def test_graph_initialization(self):
@@ -91,10 +119,11 @@ class TestTrafficModel(unittest.TestCase):
     def test_step(self):
         """Test step.
 
-        - This test checks if the agents move to their next positions after a step.
-            - Save the initial positions of the agents.
+        - This test checks if the cars move to their next positions after a step.
+            - Save the initial positions of the cars.
             - Call the step method of the model.
             - Assert that the initial positions are not the same as the current positions.
+        - TODO: This test checks if the lights step functions work
 
         Raises:
             AssertionError: If the initial positions are the same as the current positions.
@@ -104,93 +133,98 @@ class TestTrafficModel(unittest.TestCase):
         logging.info(f"{[path for path in self.model.agent_paths.values()]}")
         try:
             self.model.step()
-            self.assertIsNot(initial_positions, self.model.agent_paths)
+            self.assertIsNot(initial_positions, self.model.agent_paths)                 # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
             logging.info("Passed test_step")
         except AssertionError as e:
             logging.error(f"Failed test_step: {e}")
             raise
 
-    def test_agent_arrived(self):
-        """Test agent removal.
+    def test_car_arrived(self):
+        """Test car removal.
 
-        - This test checks if the agents are removed from the model after reaching their goals.
-            - Save the highest path length of the agents.
-            - Call the step method of the model until there are no agents left or the steps exceed the highest path length.
+        - This test checks if the cars are removed from the model after reaching their goals.
+            - Save the highest path length of the cars.
+            - Call the step method of the model until there are no cars left or the steps exceed the highest path length.
 
         Raises:
-            AssertionError: If there are agents left after the step method is called or if the steps exceed the highest path length.
+            AssertionError: If there are cars left after the step method is called or if the steps exceed the highest path length.
         """
-        logging.info("Test agent removal on arrival")
+        logging.info("Test cars removal on arrival")
         highest_path_length = 0
-        for agent in self.model.agents:
-            path_length = sum(value for value in agent.path.values() if value)
+        for car in self.model.get_agents_by_type("CarAgent"):
+            path_length = sum(value for value in car.path.values() if value)
             if path_length > highest_path_length:
                 highest_path_length = path_length
         logging.info(f"Highest path length: {highest_path_length}")
         steps = 0
         try:
-            while self.model.agents and steps <= highest_path_length:
+            while self.model.get_agents_by_type("CarAgent") and steps <= highest_path_length:
                 steps += 1
                 self.model.step()
-                logging.info(f"Agents left: {len(self.model.agents)}")
-                for agent in self.model.agents:
-                    logging.info(f"Agent {agent.unique_id}")
-                    logging.info(f"Position: {agent.position}")
-                    logging.info(f"Goal: {agent.goal}")
-            self.assertEqual(len(self.model.agents), 0)
-            logging.info("Passed test_agent_removal")
+                logging.info(f"Cars left: {len(self.model.get_agents_by_type("CarAgent"))}")
+                for car in self.model.get_agents_by_type("CarAgent"):
+                    logging.info(f"Car {car.unique_id}")
+                    logging.info(f"Position: {car.position}")
+                    logging.info(f"Goal: {car.goal}")
+            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), 0)
+            logging.info("Passed test_car_removal")
         except AssertionError as e:
             logging.error(
-                f"Failed test_agent_removal. Max steps: {highest_path_length} is exceeded: {e}"
+                f"Failed test_car_removal. Max steps: {highest_path_length} is exceeded: {e}"
             )
             raise
 
-    def test_create_agents(self):
-        """Test adding agents.
+    def test_create_cars(self):
+        """Test adding cars.
 
         Raises:
-            AssertionError: If the number of agents is not increased by the expected number
+            AssertionError: If the number of cars is not increased by the expected number
         """
-        logging.info("Testing adding agents")
-        initial_num_agents = len(self.model.agents)
-        additional_num_agents = random.randint(3, 100)
+        logging.info("Testing adding car")
+        initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
+        additional_num_cars = random.randint(3, 100)
         try:
-            self.model.create_agents(additional_num_agents)
+            self.model.create_agents(additional_num_cars)
             self.assertEqual(
-                (initial_num_agents + additional_num_agents), len(self.model.agents)
+                (initial_num_cars + additional_num_cars), len(self.model.get_agents_by_type("CarAgent"))
             )
-            logging.info("Passed test_create_agents")
+            logging.info("Passed test_create_cars")
         except AssertionError as e:
-            logging.error(f"Failed to add agents: {e}")
+            logging.error(f"Failed to add cars: {e}")
             raise
 
-    def test_remove_agents(self):
-        """Test removing agents.
+    def test_remove_cars(self):
+        """Test removing cars.
 
         Raises:
-            AssertionError: If the number of agents is not decreased by the expected number
+            AssertionError: If the number of cars is not decreased by the expected number
         """
-        logging.info("Testing removal of agents")
-        initial_num_agents = len(self.model.agents)
-        removed_num_agents = min(random.randint(3, 100), initial_num_agents)
+        logging.info("Testing removal of cars")
+        initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
+        removed_num_cars = min(random.randint(3, 100), initial_num_cars)
+        logging.info(f"Initial number of cars: {initial_num_cars}")
+        logging.info(f"Removing {removed_num_cars} cars")
         try:
-            self.model.remove_agents(removed_num_agents)
+            self.model.remove_agents(removed_num_cars)
             self.assertEqual(
-                (initial_num_agents - removed_num_agents), len(self.model.agents)
+                (initial_num_cars - removed_num_cars), len(self.model.get_agents_by_type("CarAgent"))
             )
+
         except AssertionError as e:
-            logging.error(f"Failed to remove agents: {e}")
+            logging.error(f"Failed to remove cars: {e}")
             raise
+
 
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(TestTrafficModel("test_initial_agents"))
+    suite.addTest(TestTrafficModel("test_initial_cars"))
+    suite.addTest(TestTrafficModel("test_initial_lights"))
     suite.addTest(TestTrafficModel("test_graph_initialization"))
     suite.addTest(TestTrafficModel("test_step"))
-    suite.addTest(TestTrafficModel("test_agent_arrived"))
-    suite.addTest(TestTrafficModel("test_create_agents"))
-    suite.addTest(TestTrafficModel("test_remove_agents"))
+    suite.addTest(TestTrafficModel("test_car_arrived"))
+    suite.addTest(TestTrafficModel("test_create_cars"))
+    suite.addTest(TestTrafficModel("test_remove_cars"))
     return suite
 
 

@@ -22,4 +22,4 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-# TODO: schreib Tests (haben alle intersections ampeln? haben alle ampeln eine position?)
+# TODO: schreib Tests ()
