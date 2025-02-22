@@ -52,6 +52,8 @@ class Graph(nx.Graph):
     ):
         """Initializes a new Graph instance with intersection and border nodes and edges between them.
 
+        Forces min_distance of 2, to ensure correct insertion of border node between intersection nodes.
+
         Args:
             num_intersections (int): The number of intersection nodes to create.
             num_borders (int): The number of border nodes to create.
