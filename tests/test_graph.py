@@ -125,19 +125,16 @@ class TestGraph(unittest.TestCase):
         """
         try:
             intersection_pattern = re.compile(r"intersection_\d+")
-            for _, connections in self.graph.get_connections(
+            for border, connections in self.graph.get_connections(
                 filter_by="border"
             ).items():
-                matches = [
-                    re.findall(intersection_pattern, connection)
-                    for connection in connections
-                ]
-                flattened_matches = [item for sublist in matches for item in sublist]
-                self.assertEqual(len(flattened_matches), 2)
+                self.assertTrue(connections[0].startswith("intersection"))
+                self.assertTrue(connections[1].startswith("intersection"))
+                self.assertEqual(len(connections), 2)
             logging.info("Graph borders connected correctly")
         except AssertionError as e:
             logging.error(
-                f"Borders are not connected to exactly 1 intersection node: {e}"
+                f"Borders are not connected correctly: {e}\n{border}, {connections[0]}, {connections[1], {(len(connections))}}"
             )
             raise
 

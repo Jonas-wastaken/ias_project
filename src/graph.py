@@ -216,15 +216,17 @@ class Graph(nx.Graph):
                 intersection_1 = list(self.neighbors(border))[0]
             else:
                 continue
-            intersection_2 = random.choice(list(self.neighbors(intersection_1)))
+            intersection_2 = random.choice(
+                [
+                    node
+                    for node in list(self.neighbors(intersection_1))
+                    if node.startswith("intersection")
+                ]
+            )
             total_weight = super().get_edge_data(intersection_1, intersection_2)[
                 "weight"
             ]
-            weight_1 = (
-                random.randint(self.min_distance, total_weight)
-                if self.min_distance != total_weight
-                else total_weight - 1
-            )
+            weight_1 = random.randint(int(self.min_distance / 2), total_weight)
             weight_2 = total_weight - weight_1
 
             super().add_edge(
