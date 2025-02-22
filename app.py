@@ -77,7 +77,7 @@ class App:
         left_col, right_col = st.columns([0.75, 0.25])
 
         # Render UI elements
-        # self.render_left_column(left_col)
+        self.render_left_column(left_col)
         self.render_right_column(right_col)
 
         # Check for auto run loop
