@@ -70,7 +70,7 @@ class App:
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
             "num_cars": len(self.model.get_agents_by_type("CarAgent")),
-            "auto_run_steps": 20,
+            "auto_run_steps": 100,
         }
 
         # Create two columns for layout
@@ -85,6 +85,8 @@ class App:
             if int(st.query_params["run_steps"]) > 0:
                 time.sleep(0.1)
                 st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+                if len(self.model.get_agents_by_type("CarAgent")) == 0:
+                    st.query_params["run_steps"] = 0
                 self.step()
         except KeyError:
             pass
