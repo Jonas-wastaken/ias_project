@@ -29,7 +29,7 @@ class TestTrafficModel(unittest.TestCase):
         self.num_cars = 5
         self.num_intersections = 10
         self.num_borders = 3
-        self.min_distance = 1
+        self.min_distance = 2
         self.max_distance = 10
         self.model = TrafficModel(
             num_agents=self.num_cars,

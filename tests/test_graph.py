@@ -40,7 +40,7 @@ class TestGraph(unittest.TestCase):
     def setUp(self):
         self.num_intersections = random.randint(10, 100)
         self.num_borders = random.randint(3, int(sqrt(self.num_intersections)))
-        self.min_distance = 1
+        self.min_distance = 2
         self.max_distance = 10
         self.graph = Graph(
             self.num_intersections,

@@ -177,7 +177,7 @@ class App:
             )
             self.distance_range = st.slider(
                 label="Distance",
-                min_value=1,
+                min_value=2,
                 max_value=100,
                 value=(
                     self.model.grid.min_distance,

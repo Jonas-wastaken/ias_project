@@ -213,17 +213,15 @@ class Graph(nx.Graph):
             if self.degree(border) == 0:
                 intersection_1 = random.choice(intersections)
             elif self.degree(border) == 1:
-                intersection_1 = self.neighbors(border)[0]
+                intersection_1 = list(self.neighbors(border))[0]
             else:
                 continue
-            intersection_2 = random.choice(
-                list(self.get_connections(filter_by=intersection_1).values())[0]
-            )
+            intersection_2 = random.choice(list(self.neighbors(intersection_1)))
             total_weight = super().get_edge_data(intersection_1, intersection_2)[
                 "weight"
             ]
             weight_1 = (
-                random.randint(self.min_distance, total_weight - 1)
+                random.randint(self.min_distance, total_weight)
                 if self.min_distance != total_weight
                 else total_weight - 1
             )
@@ -267,8 +265,8 @@ class Graph(nx.Graph):
             intersection_2 = border_connections[key][1]
             total_weight = self.get_edge_data(intersection_1, intersection_2)["weight"]
             weight_1 = (
-                random.randint(self.min_distance, total_weight - 1)
-                if self.min_distance != total_weight
+                random.randint(min_distance, total_weight - 1)
+                if min_distance != total_weight
                 else total_weight - 1
             )
             weight_2 = total_weight - weight_1
@@ -316,8 +314,8 @@ class Graph(nx.Graph):
         Args:
             filename (str, optional): The name of the file to save the class instance to.
         """
-
-        pickle.dump(self, open(filename, "wb"))
+        with open(filename, "wb") as file:
+            pickle.dump(self, file)
 
     @classmethod
     def load(cls, filename: str = "graph.pickle") -> "Graph":
@@ -331,7 +329,8 @@ class Graph(nx.Graph):
             the specified pickle file.
         """
 
-        return pickle.load(open(filename, "rb"))
+        with open(filename, "rb") as file:
+            return pickle.load(file)
 
     def get_nodes(self, type: str = None) -> list:
         """Get all nodes of a specific type.
