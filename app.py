@@ -371,17 +371,22 @@ class App:
             pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
         """
         try:
-            current_position, next_position = list(agent.path.keys())[:2]
-        except ValueError:
-            current_position = list(agent.path.keys())[0]
-            next_position = "None"
-        distance = list(agent.path.values())[0]
+            current_position = agent.position
+            next_position = list(agent.path.keys())[1]
+        except IndexError:
+            current_position = agent.position
+            next_position = None
+        distance = (
+            self.model.grid.get_edge_data(current_position, next_position)["weight"]
+            if next_position
+            else None
+        )
 
         current_path_df = pd.DataFrame(
             [
                 (
                     current_position.title().replace("_", " "),
-                    next_position.title().replace("_", " "),
+                    str(next_position).title().replace("_", " "),
                     distance,
                 )
             ],
