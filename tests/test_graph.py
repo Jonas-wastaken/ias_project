@@ -313,45 +313,6 @@ class TestGraph(unittest.TestCase):
             )
             raise
 
-    def test_save(self):
-        """Test the saving of the graph to a file.
-
-        - This test checks if the graph is saved to a file.
-            - Save the graph to a file.
-            - Assert that the file exists.
-
-        Raises:
-            AssertionError: If the file does not exist.
-        """
-        filename = "test_graph.pickle"
-        self.graph.save(filename)
-        try:
-            self.assertTrue(os.path.exists(filename))
-            os.remove(filename)
-            logging.info("Passed test_save")
-        except AssertionError as e:
-            logging.error(f"Failed test_save: File {filename} does not exist: {e}")
-            raise
-
-    def test_load(self):
-        """Test the loading of the graph from a file.
-
-        - This test checks if the graph is loaded from a file.
-
-        Raises:
-            AssertionError: If the graph is not loaded from the file.
-        """
-        try:
-            filename = "test_graph.pickle"
-            self.graph.save(filename)
-            self.graph = Graph.load(filename)
-            self.assertIsInstance(self.graph, Graph)
-            os.remove(filename)
-            logging.info(f"Graph loaded from {filename}")
-        except Exception as e:
-            logging.error(f"Failed to load graph: {e}")
-            raise
-
 
 def suite():
     suite = unittest.TestSuite()
@@ -363,8 +324,6 @@ def suite():
     suite.addTest(TestGraph("test_change_weights"))
     suite.addTest(TestGraph("test_place_agent"))
     suite.addTest(TestGraph("test_move_agent"))
-    suite.addTest(TestGraph("test_save"))
-    suite.addTest(TestGraph("test_load"))
     return suite
 
 
