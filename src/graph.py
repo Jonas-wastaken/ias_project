@@ -4,6 +4,7 @@
 import networkx as nx
 import random
 import pickle
+import re
 
 
 class Graph(nx.Graph):
@@ -206,10 +207,30 @@ class Graph(nx.Graph):
 
         while free_borders:
             border = free_borders.pop()
+            intersection_1 = random.choice(intersections)
+            intersection_2 = random.choice(
+                list(self.get_connections(filter_by=intersection_1).values())[0]
+            )
+            total_weight = super().get_edge_data(intersection_1, intersection_2)[
+                "weight"
+            ]
+            weight_1 = (
+                random.randint(self.min_distance, total_weight)
+                if self.min_distance != total_weight
+                else total_weight - 1
+            )
+            weight_2 = total_weight - weight_1
+
             super().add_edge(
-                border,
-                random.choice(intersections),
-                weight=random.randint(self.min_distance, self.max_distance),
+                u_of_edge=border,
+                v_of_edge=intersection_1,
+                weight=weight_1,
+            )
+
+            super().add_edge(
+                u_of_edge=border,
+                v_of_edge=intersection_2,
+                weight=weight_2,
             )
 
     def change_weights(self, min_distance: int, max_distance: int) -> None:
@@ -294,17 +315,33 @@ class Graph(nx.Graph):
             return [node for node in self.nodes if node.startswith(type)]
         return self.nodes
 
-    def get_connections(self, type: str = None, weights: bool = False) -> dict:
+    def get_connections(self, **kwargs) -> dict:
         """Get all connections between nodes.
 
         Args:
-            type (str, optional): The type of nodes to get connections for.
-            weights (bool, optional): Whether to include edge weights in the result. Defaults to False.
+            **kwargs
+                filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
+                                        If only type is provided, all nodes of that type are considered. Defaults to None.
+                weights (bool, optional): Specifies whether weights should be returned.
 
         Returns:
-            dict: A dictionary with nodes as keys and a list of their connected nodes as values. If weights is True, the list will contain tuples with the connected node and the edge weight.
+            dict: A dictionary with nodes as keys and a list of their connected nodes as values.
+                  If weights is True, the list will contain tuples with the connected node and the edge weight.
         """
-        nodes = self.get_nodes(type)
+        filter_by = kwargs.get("filter_by", None)
+        weights = kwargs.get("weights", False)
+
+        if filter_by:
+            try:
+                type, id = filter_by.split("_")
+            except ValueError:
+                type, id = filter_by, None
+            if id:
+                nodes = [f"{type}_{id}"]
+            else:
+                nodes = self.get_nodes(type)
+        else:
+            nodes = self.nodes
 
         if weights:
             return {
