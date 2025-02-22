@@ -75,12 +75,11 @@ class LightAgent(mesa.Agent):
         # Update car attributes in the waiting_cars list
             for car in self.waiting_cars.keys():
                 self.waiting_cars[car]["local_waiting_time"] += 1
-                self.waiting_cars[car]["global_waiting_time"] += 1
         
         else:
             for car in self.model.get_agents_by_type("CarAgent"):
                 if car.position == self.position and car.waiting:
-                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0, "global_waiting_time": 0}
+                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 1}
 
 
     def change_open_lane(self, lane: str) -> None:

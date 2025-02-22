@@ -18,6 +18,8 @@ class CarAgent(mesa.Agent):
         path (dict): A dictionary containing the steps in the car's path as keys and the distance to the next step as values.
         position (str): The ID of the node, where the car is currently located.
         waiting (bool): A flag indicating whether the car is waiting at a traffic light.
+        global_waiting_time (int): The total time the car has spent waiting at traffic lights.
+        travel_time (int): The total time the car has spent traveling.
 
     ## Methods:
         **compute_goal(self) -> str**:
@@ -42,6 +44,8 @@ class CarAgent(mesa.Agent):
         self.goal = self.compute_goal()
         self.path = self.compute_path()
         self.waiting = False
+        self.global_waiting_time = 0
+        self.travel_time = 0
 
     def compute_goal(self) -> str:
         """Assigns a random border node, which is not the starting node, as the goal of the car.

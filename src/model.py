@@ -63,6 +63,7 @@ class TrafficModel(mesa.Model):
         for car in self.get_agents_by_type("CarAgent")[:]:
             try:
                 car.move()
+                car.travel_time += 1
             except AgentArrived:
                 car.remove()
 
