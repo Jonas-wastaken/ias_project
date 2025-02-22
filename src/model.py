@@ -71,6 +71,8 @@ class TrafficModel(mesa.Model):
             light.update_waiting_cars()
             
             # Decide if the light should change the open lane (if the cooldown is over)
+            if light.current_switching_cooldown <= 0:
+                light.rotate_in_open_lane_cycle()
             
 
             light.current_switching_cooldown -= 1

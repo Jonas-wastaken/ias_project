@@ -25,6 +25,8 @@ class LightAgent(mesa.Agent):
             Updates the details of the cars waiting at the intersection (waiting_cars).
         **change_open_lane (self) -> None**:
             Changes from where cars are allowed to cross the intersection.
+        **rotate_in_open_lane_cycle(self) -> None**:
+            Rotates the open lane to the next neighbor light in the cycle.
 
         **Coming soon**:
         - decide_open_lane?
@@ -97,6 +99,11 @@ class LightAgent(mesa.Agent):
         else:
             raise LightCooldown("The current switching cooldown does not allow changing the open lane.")
         
+    def rotate_in_open_lane_cycle(self) -> None:
+        """Rotates the open lane to the next neighbor light in the cycle."""
+        current_index = self.neighbor_lights.index(self.open_lane)
+        next_index = (current_index + 1) % len(self.neighbor_lights)
+        self.change_open_lane(self.neighbor_lights[next_index])        
 
 
 
