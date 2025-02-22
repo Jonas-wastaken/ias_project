@@ -290,12 +290,8 @@ class Graph(nx.Graph):
         Returns:
             str: ID of assigned node the agent spawns on
         """
-        borders = [node for node in self.nodes if node.find("border") == 0]
+        borders = self.get_nodes(type="border")
         assigned_start = borders[random.randint(0, (len(borders) - 1))]
-
-        if assigned_start not in self.agent_positions:
-            self.agent_positions[assigned_start] = []
-        self.agent_positions[assigned_start].append(agent_id)
 
         return assigned_start
 
