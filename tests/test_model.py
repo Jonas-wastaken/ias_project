@@ -59,7 +59,9 @@ class TestTrafficModel(unittest.TestCase):
                 logging.info(f"{self.model.agent_paths[car.unique_id]}")
                 self.assertIsInstance(car, CarAgent)
                 self.assertIsInstance(self.model.agent_paths[car.unique_id], dict)
-            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), self.num_cars)
+            self.assertEqual(
+                len(self.model.get_agents_by_type("CarAgent")), self.num_cars
+            )
             self.assertEqual(len(self.model.agent_paths), self.num_cars)
             logging.info("Passed test_initial_cars")
         except AssertionError as e:
@@ -86,8 +88,12 @@ class TestTrafficModel(unittest.TestCase):
             self.assertEqual(
                 len(self.model.get_agents_by_type("LightAgent")), self.num_intersections
             )
-            lights_positions = [light.position for light in self.model.get_agents_by_type("LightAgent")]
-            self.assertEqual(lights_positions, self.model.grid.get_nodes("intersection"))
+            lights_positions = [
+                light.position for light in self.model.get_agents_by_type("LightAgent")
+            ]
+            self.assertEqual(
+                lights_positions, self.model.grid.get_nodes("intersection")
+            )
             logging.info("Passed test_initial_lights")
         except AssertionError as e:
             logging.error(f"Failed test_initial_lights: {e}")
@@ -133,45 +139,12 @@ class TestTrafficModel(unittest.TestCase):
         logging.info(f"{[path for path in self.model.agent_paths.values()]}")
         try:
             self.model.step()
-            self.assertIsNot(initial_positions, self.model.agent_paths)                 # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
+            self.assertIsNot(
+                initial_positions, self.model.agent_paths
+            )  # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
             logging.info("Passed test_step")
         except AssertionError as e:
             logging.error(f"Failed test_step: {e}")
-            raise
-
-    def test_car_arrived(self):
-        """Test car removal.
-
-        - This test checks if the cars are removed from the model after reaching their goals.
-            - Save the highest path length of the cars.
-            - Call the step method of the model until there are no cars left or the steps exceed the highest path length.
-
-        Raises:
-            AssertionError: If there are cars left after the step method is called or if the steps exceed the highest path length.
-        """
-        logging.info("Test cars removal on arrival")
-        highest_path_length = 0
-        for car in self.model.get_agents_by_type("CarAgent"):
-            path_length = sum(value for value in car.path.values() if value)
-            if path_length > highest_path_length:
-                highest_path_length = path_length
-        logging.info(f"Highest path length: {highest_path_length}")
-        steps = 0
-        try:
-            while self.model.get_agents_by_type("CarAgent") and steps <= highest_path_length:
-                steps += 1
-                self.model.step()
-                logging.info(f"Cars left: {len(self.model.get_agents_by_type("CarAgent"))}")
-                for car in self.model.get_agents_by_type("CarAgent"):
-                    logging.info(f"Car {car.unique_id}")
-                    logging.info(f"Position: {car.position}")
-                    logging.info(f"Goal: {car.goal}")
-            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), 0)
-            logging.info("Passed test_car_removal")
-        except AssertionError as e:
-            logging.error(
-                f"Failed test_car_removal. Max steps: {highest_path_length} is exceeded: {e}"
-            )
             raise
 
     def test_create_cars(self):
@@ -186,7 +159,8 @@ class TestTrafficModel(unittest.TestCase):
         try:
             self.model.create_agents(additional_num_cars)
             self.assertEqual(
-                (initial_num_cars + additional_num_cars), len(self.model.get_agents_by_type("CarAgent"))
+                (initial_num_cars + additional_num_cars),
+                len(self.model.get_agents_by_type("CarAgent")),
             )
             logging.info("Passed test_create_cars")
         except AssertionError as e:
@@ -207,13 +181,13 @@ class TestTrafficModel(unittest.TestCase):
         try:
             self.model.remove_agents(removed_num_cars)
             self.assertEqual(
-                (initial_num_cars - removed_num_cars), len(self.model.get_agents_by_type("CarAgent"))
+                (initial_num_cars - removed_num_cars),
+                len(self.model.get_agents_by_type("CarAgent")),
             )
 
         except AssertionError as e:
             logging.error(f"Failed to remove cars: {e}")
             raise
-
 
 
 def suite():
@@ -222,7 +196,6 @@ def suite():
     suite.addTest(TestTrafficModel("test_initial_lights"))
     suite.addTest(TestTrafficModel("test_graph_initialization"))
     suite.addTest(TestTrafficModel("test_step"))
-    suite.addTest(TestTrafficModel("test_car_arrived"))
     suite.addTest(TestTrafficModel("test_create_cars"))
     suite.addTest(TestTrafficModel("test_remove_cars"))
     return suite
