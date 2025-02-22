@@ -316,7 +316,7 @@ class App:
             )
 
         # Update the paths for each agent or delete agents if they are not on the grid
-        for agent in self.model.agents[:]:
+        for agent in self.model.get_agents_by_type("CarAgent")[:]:
             if (
                 agent.position not in self.model.grid.nodes
                 or agent.goal not in self.model.grid.nodes
