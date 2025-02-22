@@ -1,0 +1,32 @@
+import os
+import unittest
+import sys
+import logging
+import re
+import random
+from math import sqrt
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
+
+from graph import Graph
+
+log_dir = os.path.join("tests", "logs")
+os.makedirs(log_dir, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    filename=os.path.join(log_dir, "test_graph.log"),
+    filemode="w",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+class TestLightAgent(unittest.TestCase):
+    # TODO: Setup the test environment
+    # TODO: testen, ob jede Ampel genau eine open_lane hat und ob diese in den neighbor_lights enthalten ist
+    # TODO: testen, ob cooldown beim ändern von open_lane beachtet wird
+
+    # TODO später: update_waiting_cars testen, ob waiting_cars richtig aktualisiert wird
+    
+    pass
