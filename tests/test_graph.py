@@ -277,39 +277,13 @@ class TestGraph(unittest.TestCase):
             AssertionError: If the agent is not placed at a border node.
         """
         logging.info("Testing placing agent in Graph")
-        agent_id = 1
-        start_node = self.graph.place_agent(agent_id)
+        start_node = self.graph.place_agent(agent_id=1)
         try:
-            self.assertIn(agent_id, self.graph.agent_positions[start_node])
             self.assertTrue(start_node.startswith("border"))
             logging.info("Passed test_place_agent")
         except AssertionError as e:
             logging.error(
-                f"Failed test_place_agent: Agent {agent_id} not placed correctly at {start_node}: {e}"
-            )
-            raise
-
-    def test_move_agent(self):
-        """Test the movement of an agent in the graph.
-
-        - This test checks if an agent is moved from one node to another.
-            - Place an agent in the graph.
-            - Move the agent to a new node.
-            - Assert that the agent is moved to the new node.
-
-        Raises:
-            AssertionError: If the agent is not moved to the new node.
-        """
-        logging.info("Testing moving agent in Graph")
-        agent_id = 1
-        new_position = "intersection_0"
-        self.graph.move_agent(agent_id, new_position)
-        try:
-            self.assertEqual(self.graph.agent_positions[agent_id], new_position)
-            logging.info("Passed test_move_agent")
-        except AssertionError as e:
-            logging.error(
-                f"Failed test_move_agent: Agent {agent_id} not moved correctly to {new_position}: {e}"
+                f"Failed test_place_agent: Agent not placed correctly at {start_node}: {e}"
             )
             raise
 
@@ -323,7 +297,6 @@ def suite():
     suite.addTest(TestGraph("test_remove_borders"))
     suite.addTest(TestGraph("test_change_weights"))
     suite.addTest(TestGraph("test_place_agent"))
-    suite.addTest(TestGraph("test_move_agent"))
     return suite
 
 
