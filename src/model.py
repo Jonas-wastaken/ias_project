@@ -157,7 +157,7 @@ class TrafficModel(mesa.Model):
             pass
 
         return previous_position
-
+    
 
     
 
