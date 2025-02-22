@@ -205,12 +205,17 @@ class Graph(nx.Graph):
         free_borders = [
             border[0]
             for border in dict(self.degree(self.get_nodes("border"))).items()
-            if border[1] == 0
+            if border[1] < 2
         ]
 
         while free_borders:
             border = free_borders.pop()
-            intersection_1 = random.choice(intersections)
+            if self.degree(border) == 0:
+                intersection_1 = random.choice(intersections)
+            elif self.degree(border) == 1:
+                intersection_1 = self.neighbors(border)[0]
+            else:
+                continue
             intersection_2 = random.choice(
                 list(self.get_connections(filter_by=intersection_1).values())[0]
             )
@@ -218,7 +223,7 @@ class Graph(nx.Graph):
                 "weight"
             ]
             weight_1 = (
-                random.randint(self.min_distance, total_weight)
+                random.randint(self.min_distance, total_weight - 1)
                 if self.min_distance != total_weight
                 else total_weight - 1
             )
@@ -252,8 +257,31 @@ class Graph(nx.Graph):
                     }
                 },
             )
-            for edge in self.edges(data="weight")
+            for edge in list(self.edges)
+            if edge[0].startswith("intersection") and edge[1].startswith("intersection")
         ]
+
+        border_connections = self.get_connections(filter_by="border")
+        for key in border_connections.keys():
+            intersection_1 = border_connections[key][0]
+            intersection_2 = border_connections[key][1]
+            total_weight = self.get_edge_data(intersection_1, intersection_2)["weight"]
+            weight_1 = (
+                random.randint(self.min_distance, total_weight - 1)
+                if self.min_distance != total_weight
+                else total_weight - 1
+            )
+            weight_2 = total_weight - weight_1
+
+            nx.set_edge_attributes(
+                self,
+                {(key, intersection_1): {"weight": weight_1}},
+            )
+
+            nx.set_edge_attributes(
+                self,
+                {(key, intersection_2): {"weight": weight_2}},
+            )
 
     def place_agent(self, agent_id: int) -> str:
         """Places an agent on a random border node and stores position internally.
