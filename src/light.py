@@ -71,7 +71,6 @@ class LightAgent(mesa.Agent):
         # Add all new cars that are now waiting at the intersection 
             for car in self.model.get_agents_by_type("CarAgent"):
                 if car.position == self.position and car not in self.waiting_cars.keys() and car.waiting:
-                    self.waiting_cars.append(car)
                     self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0}
 
         # Update car attributes in the waiting_cars list
@@ -79,6 +78,7 @@ class LightAgent(mesa.Agent):
                 self.waiting_cars[car]["local_waiting_time"] += 1
         
         else:
+            self.waiting_cars = {}
             for car in self.model.get_agents_by_type("CarAgent"):
                 if car.position == self.position and car.waiting:
                     self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 1}

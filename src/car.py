@@ -112,7 +112,12 @@ class CarAgent(mesa.Agent):
         # Check if the car is standing at a light
         current_intersection = list(self.model.get_agents_by_id([self.unique_id])[0].path)[0]
         current_distance = list(self.model.get_agents_by_id([self.unique_id])[0].path.values())[0]
-        at_light = self.agent_paths[self.unique_id][current_intersection] == current_distance
+
+        if self.position.startswith("intersection"):
+            at_light = self.model.agent_paths[self.unique_id][current_intersection] == current_distance
+        else:
+            at_light = False
+
 
         if at_light:
             current_light = [light for light in self.model.get_agents_by_type("LightAgent") if light.position == current_intersection][0]

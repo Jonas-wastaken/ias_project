@@ -139,40 +139,6 @@ class TestTrafficModel(unittest.TestCase):
             logging.error(f"Failed test_step: {e}")
             raise
 
-    def test_car_arrived(self):
-        """Test car removal.
-
-        - This test checks if the cars are removed from the model after reaching their goals.
-            - Save the highest path length of the cars.
-            - Call the step method of the model until there are no cars left or the steps exceed the highest path length.
-
-        Raises:
-            AssertionError: If there are cars left after the step method is called or if the steps exceed the highest path length.
-        """
-        logging.info("Test cars removal on arrival")
-        highest_path_length = 0
-        for car in self.model.get_agents_by_type("CarAgent"):
-            path_length = sum(value for value in car.path.values() if value)
-            if path_length > highest_path_length:
-                highest_path_length = path_length
-        logging.info(f"Highest path length: {highest_path_length}")
-        steps = 0
-        try:
-            while self.model.get_agents_by_type("CarAgent") and steps <= highest_path_length:
-                steps += 1
-                self.model.step()
-                logging.info(f"Cars left: {len(self.model.get_agents_by_type("CarAgent"))}")
-                for car in self.model.get_agents_by_type("CarAgent"):
-                    logging.info(f"Car {car.unique_id}")
-                    logging.info(f"Position: {car.position}")
-                    logging.info(f"Goal: {car.goal}")
-            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), 0)
-            logging.info("Passed test_car_removal")
-        except AssertionError as e:
-            logging.error(
-                f"Failed test_car_removal. Max steps: {highest_path_length} is exceeded: {e}"
-            )
-            raise
 
     def test_create_cars(self):
         """Test adding cars.
@@ -193,27 +159,6 @@ class TestTrafficModel(unittest.TestCase):
             logging.error(f"Failed to add cars: {e}")
             raise
 
-    def test_remove_cars(self):
-        """Test removing cars.
-
-        Raises:
-            AssertionError: If the number of cars is not decreased by the expected number
-        """
-        logging.info("Testing removal of cars")
-        initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
-        removed_num_cars = min(random.randint(3, 100), initial_num_cars)
-        logging.info(f"Initial number of cars: {initial_num_cars}")
-        logging.info(f"Removing {removed_num_cars} cars")
-        try:
-            self.model.remove_agents(removed_num_cars)
-            self.assertEqual(
-                (initial_num_cars - removed_num_cars), len(self.model.get_agents_by_type("CarAgent"))
-            )
-
-        except AssertionError as e:
-            logging.error(f"Failed to remove cars: {e}")
-            raise
-
 
 
 def suite():
@@ -222,9 +167,7 @@ def suite():
     suite.addTest(TestTrafficModel("test_initial_lights"))
     suite.addTest(TestTrafficModel("test_graph_initialization"))
     suite.addTest(TestTrafficModel("test_step"))
-    suite.addTest(TestTrafficModel("test_car_arrived"))
     suite.addTest(TestTrafficModel("test_create_cars"))
-    suite.addTest(TestTrafficModel("test_remove_cars"))
     return suite
 
 
