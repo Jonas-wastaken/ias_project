@@ -29,7 +29,7 @@ class Graph(nx.Graph):
         **remove_borders(self, num_borders: int) -> None**:
             Remove the last n border nodes from the graph.
         **connect_borders(self) -> None**:
-            Add edges between new borders and a random intersection node with random weights.
+            Connects each border between two connected intersections.
         **change_weights(self, min_distance: int, max_distance: int) -> None**:
             Change the weights of the edges in the graph.
         **place_agent(self, agent_id: int) -> str**:
@@ -42,7 +42,7 @@ class Graph(nx.Graph):
             Load a class instance from a pickle file.
         **get_nodes(self, type: str = None) -> list**:
             Get all nodes of a specific type.
-        **get_connections(self, type: str = None, weights: bool = False) -> dict**:
+        **get_connections(self, \*\*kwargs) -> dict**:
             Get all connections between nodes.
     """
 
@@ -195,7 +195,11 @@ class Graph(nx.Graph):
         super().remove_nodes_from(self.get_nodes("border")[-num_borders:])
 
     def connect_borders(self) -> None:
-        """Add edges between free borders and a random intersection node with random weights."""
+        """Connects each border between two connected intersections.
+
+        - Gets a random intersection
+        - Gets the second intersection randomly from first intersection's connections
+        """
         intersections = self.get_nodes("intersection")
 
         free_borders = [
@@ -318,7 +322,7 @@ class Graph(nx.Graph):
         """Get all connections between nodes.
 
         Args:
-            **kwargs
+            \*\*kwargs
                 filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
                                         If only type is provided, all nodes of that type are considered. Defaults to None.
                 weights (bool, optional): Specifies whether weights should be returned.
