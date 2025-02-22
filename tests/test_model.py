@@ -116,14 +116,13 @@ class TestTrafficModel(unittest.TestCase):
             logging.error(f"Failed test_graph_initialization: {e}")
             raise
 
-    def test_step(self):
+    def test_car_step(self):
         """Test step.
 
         - This test checks if the cars move to their next positions after a step.
             - Save the initial positions of the cars.
             - Call the step method of the model.
             - Assert that the initial positions are not the same as the current positions.
-        - TODO: This test checks if the lights step functions work
 
         Raises:
             AssertionError: If the initial positions are the same as the current positions.
@@ -134,6 +133,7 @@ class TestTrafficModel(unittest.TestCase):
         try:
             self.model.step()
             self.assertIsNot(initial_positions, self.model.agent_paths)                 # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
+
             logging.info("Passed test_step")
         except AssertionError as e:
             logging.error(f"Failed test_step: {e}")
@@ -166,7 +166,7 @@ def suite():
     suite.addTest(TestTrafficModel("test_initial_cars"))
     suite.addTest(TestTrafficModel("test_initial_lights"))
     suite.addTest(TestTrafficModel("test_graph_initialization"))
-    suite.addTest(TestTrafficModel("test_step"))
+    suite.addTest(TestTrafficModel("test_car_step"))
     suite.addTest(TestTrafficModel("test_create_cars"))
     return suite
 
