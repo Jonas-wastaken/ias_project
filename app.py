@@ -188,7 +188,7 @@ class App:
         """Renders the agent paths in the right column."""
         agent_paths_container = st.container()
         with agent_paths_container:
-            for agent in self.model.agents:
+            for agent in self.model.get_agents_by_type("CarAgent"):
                 left_col, right_col = st.columns(2)
                 with left_col:
                     st.subheader(f"Agent {agent.unique_id}")
