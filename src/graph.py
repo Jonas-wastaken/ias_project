@@ -4,7 +4,6 @@
 import networkx as nx
 import random
 import pickle
-import re
 
 
 class Graph(nx.Graph):
