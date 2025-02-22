@@ -145,7 +145,8 @@ class App:
                 help="Reset the Environment",
                 use_container_width=True,
             ):
-                self.reset_environment()
+                # self.reset_environment() TODO: Fix
+                pass
 
     def render_options_popover(self):
         """Renders the options popover for changing environment settings."""
