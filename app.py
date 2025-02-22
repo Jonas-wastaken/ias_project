@@ -69,7 +69,7 @@ class App:
             "max_distance": max(
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
-            "num_agents": len(self.model.agents),
+            "num_agents": len(self.model.get_agents_by_type("CarAgent")),
             "auto_run_steps": 20,
         }
 
@@ -315,7 +315,7 @@ class App:
             )
 
         # Update the paths for each agent or delete agents if they are not on the grid
-        for agent in self.model.agents[:]:
+        for agent in self.model.get_agents_by_type("CarAgent")[:]:
             if (
                 agent.position not in self.model.grid.nodes
                 or agent.goal not in self.model.grid.nodes
@@ -373,6 +373,8 @@ class App:
             current_position = list(agent.path.keys())[0]
             next_position = "None"
         distance = list(agent.path.values())[0]
+        is_waiting = str(agent.waiting)
+        global_waiting_time = agent.global_waiting_time
 
         current_path_df = pd.DataFrame(
             [
@@ -380,9 +382,11 @@ class App:
                     current_position.title().replace("_", " "),
                     next_position.title().replace("_", " "),
                     distance,
+                    is_waiting,
+                    global_waiting_time
                 )
             ],
-            columns=["Current Position", "Next Position", "Distance"],
+            columns=["Current Position", "Next Position", "Distance", "Is Waiting", "Global Waiting Time"],
         )
 
         return current_path_df
