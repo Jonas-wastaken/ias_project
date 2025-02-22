@@ -69,7 +69,7 @@ class App:
             "max_distance": max(
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
-            "num_agents": len(self.model.agents),
+            "num_cars": len(self.model.get_agents_by_type("CarAgent")),
             "auto_run_steps": 20,
         }
 
@@ -77,7 +77,7 @@ class App:
         left_col, right_col = st.columns([0.75, 0.25])
 
         # Render UI elements
-        self.render_left_column(left_col)
+        # self.render_left_column(left_col)
         self.render_right_column(right_col)
 
         # Check for auto run loop
@@ -158,10 +158,10 @@ class App:
 
         with options_popover:
             st.markdown("### Options")
-            self.num_agents = st.number_input(
+            self.num_cars = st.number_input(
                 label="Number of Agents",
                 min_value=0,
-                value=self.env_config["num_agents"],
+                value=self.env_config["num_cars"],
             )
             self.num_intersections = st.number_input(
                 label="Number of Intersections",
@@ -280,10 +280,10 @@ class App:
     def update_env_config(self) -> None:
         """Applies changes to the environment from user options."""
         # Update the model with new settings for number of agents
-        if self.num_agents > self.env_config["num_agents"]:
-            self.model.create_agents(self.num_agents - self.env_config["num_agents"])
-        elif self.num_agents < self.env_config["num_agents"]:
-            self.model.remove_agents(self.env_config["num_agents"] - self.num_agents)
+        if self.num_cars > self.env_config["num_cars"]:
+            self.model.create_agents(self.num_cars - self.env_config["num_cars"])
+        elif self.num_cars < self.env_config["num_cars"]:
+            self.model.remove_agents(self.env_config["num_cars"] - self.num_cars)
 
         # Update the model with new settings for number of intersections
         if self.num_intersections > self.env_config["num_intersections"]:
@@ -331,7 +331,7 @@ class App:
     def reset_environment(self) -> None:
         """Resets the environment with user specified config options."""
         st.session_state.model = TrafficModel(
-            num_agents=self.num_agents,
+            num_agents=self.num_cars,
             num_intersections=self.num_intersections,
             num_borders=self.num_borders,
             min_distance=self.distance_range[0],
