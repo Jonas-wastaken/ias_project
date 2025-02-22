@@ -27,7 +27,7 @@ class CarAgent(mesa.Agent):
         **compute_path(self) -> dict**:
             Computes the path the car takes to reach it's goal using Dijkstra's algorithm.
         **move(self) -> None**:
-            Moves the car to it's next step on the path and sends updated position to the grid.
+            Moves the car to it's next step on the path.
         **set_wait_status(self, status: bool) -> None**:
             Sets the waiting status of the car.
     """

@@ -15,7 +15,6 @@ class Graph(nx.Graph):
     Attributes:
         min_distance (int): Minimum distance between two connected nodes.
         max_distance (int): Maximum distance between two connected nodes.
-        agent_positions (dict): A dictionary to keep track of the agents' positions.
 
     ## Methods:
         **add_intersections(self, num_intersections: int) -> None**:
@@ -33,9 +32,7 @@ class Graph(nx.Graph):
         **change_weights(self, min_distance: int, max_distance: int) -> None**:
             Change the weights of the edges in the graph.
         **place_agent(self, agent_id: int) -> str**:
-            Place an agent on a random border node and store position internally.
-        **move_agent(self, agent_id: int, new_position: str) -> None**:
-            Move an agent to its next position.
+            Place an agent on a random border node.
         **save(self, filename: str = "graph.pickle") -> None**:
             Save class instance to a pickle file.
         **load(cls, filename: str = "graph.pickle") -> Graph**:
@@ -63,7 +60,7 @@ class Graph(nx.Graph):
         """
 
         super().__init__()
-        self.min_distance = min_distance
+        self.min_distance = min_distance if min_distance >= 2 else 2
         self.max_distance = max_distance
         self.add_intersections(num_intersections)
         self.add_borders(num_borders)
