@@ -104,7 +104,6 @@ class CarAgent(mesa.Agent):
                     next_index = steps.index(self.position) + 1
                     self.path.pop(self.position)
                     self.position = steps[next_index]
-                    self.model.grid.move_agent(self, self.position)
                 else:
                     self.path[self.position] = self.path.get(self.position) - 1
         else:
