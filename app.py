@@ -70,7 +70,7 @@ class App:
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
             "num_cars": len(self.model.get_agents_by_type("CarAgent")),
-            "auto_run_steps": 100,
+            "auto_run_steps": 20,
         }
 
         # Create two columns for layout
@@ -388,9 +388,11 @@ class App:
                     current_position.title().replace("_", " "),
                     str(next_position).title().replace("_", " "),
                     distance,
+                    is_waiting,
+                    global_waiting_time
                 )
             ],
-            columns=["Current Position", "Next Position", "Distance"],
+            columns=["Current Position", "Next Position", "Distance", "Is Waiting", "Global Waiting Time"],
         )
 
         return current_path_df

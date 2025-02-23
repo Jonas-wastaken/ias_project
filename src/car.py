@@ -30,6 +30,8 @@ class CarAgent(mesa.Agent):
             Moves the car to it's next step on the path.
         **set_wait_status(self, status: bool) -> None**:
             Sets the waiting status of the car.
+        **check_lights(self) -> None**:
+            Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly.
     """
 
     def __init__(self, model: mesa.Model):
@@ -82,31 +84,50 @@ class CarAgent(mesa.Agent):
         return path
 
     def move(self) -> None:
-        """Moves the car to it's next step on the path and sends updated position to the grid.
+        """Tries to move the car to it's next step on the path and sends updated position to the grid.
 
+        The car can only move if it is not waiting at a light (using check_lights function).
         The car can only move if the distance to the next step in it's path is 0. Otherwise, the distance is decremented by 1.
 
         Raises:
             AgentArrived: If the car has reached it's goal, this exception is raised.
         """
-        if self.position == self.goal:
-            raise AgentArrived(message=f"Agent {self.unique_id} arrived at it's goal")
-        else:
-            if self.path.get(self.position) == 1:
-                steps = list(self.path.keys())
-                next_index = steps.index(self.position) + 1
-                self.path.pop(self.position)
-                self.position = steps[next_index]
+        self.check_lights()
+        if not self.waiting:
+            if self.position == self.goal:
             else:
-                self.path[self.position] = self.path.get(self.position) - 1
+                if self.path.get(self.position) == 1:
+                    steps = list(self.path.keys())
+                    next_index = steps.index(self.position) + 1
+                    self.path.pop(self.position)
+                    self.position = steps[next_index]
+                    self.model.grid.move_agent(self, self.position)
+                else:
+                    self.path[self.position] = self.path.get(self.position) - 1
+        else:
+            self.global_waiting_time += 1
 
-    def set_wait_status(self, status: bool) -> None:
-        """Sets the waiting status of the car.
 
-        Args:
-            status (bool): The waiting status of the car.
-        """
-        self.waiting = status
+    def check_lights(self) -> None:
+        """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
+
+        # Check if the car is standing at a light
+        current_intersection = list(self.model.get_agents_by_id([self.unique_id])[0].path)[0]
+        current_distance = list(self.model.get_agents_by_id([self.unique_id])[0].path.values())[0]
+
+        if self.position.startswith("intersection"):
+            at_light = self.model.agent_paths[self.unique_id][current_intersection] == current_distance
+        else:
+            at_light = False
+
+
+        if at_light:
+            current_light = [light for light in self.model.get_agents_by_type("LightAgent") if light.position == current_intersection][0]
+
+            if self.position != current_light.open_lane:
+                self.waiting = True
+            else:
+                self.waiting = False
 
 
 class AgentArrived(Exception):
