@@ -3,7 +3,8 @@
 
 import networkx as nx
 import plotly.graph_objects as go
-from src.model import TrafficModel
+from model import TrafficModel
+import numpy as np
 
 
 class TrafficGraph(go.Figure):
@@ -39,7 +40,7 @@ class TrafficGraph(go.Figure):
         """
         super().__init__()
         self._model = model
-        pos = nx.spring_layout(self._model.grid, seed=42)
+        pos = nx.spring_layout(self._model.grid, iterations=10, seed=42)
         nx.set_node_attributes(
             self._model.grid, pos, "pos"
         )  # Assign positions to nodes
@@ -62,38 +63,40 @@ class TrafficGraph(go.Figure):
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         )
 
-    def get_coords_edges(self) -> tuple:
+    def get_coords_edges(self) -> tuple[np.array, np.array]:
         """Get the x and y coordinates of the edges.
 
         Returns:
-            tuple: Lists of x and y coordinates of the edges
+            tuple[np.array, np.array]: Arrays of x and y coordinates of the edges
         """
-        edge_x = []
-        edge_y = []
+        edge_x = np.empty(shape=(0,), dtype=np.float16)
+        edge_y = np.empty(shape=(0,), dtype=np.float16)
+
         for edge in self._model.grid.edges():
             x0, y0 = self._model.grid.nodes[edge[0]]["pos"]
             x1, y1 = self._model.grid.nodes[edge[1]]["pos"]
-            edge_x.append(x0)
-            edge_x.append(x1)
-            edge_x.append(None)
-            edge_y.append(y0)
-            edge_y.append(y1)
-            edge_y.append(None)
+            edge_x = np.append(arr=edge_x, values=x0)
+            edge_x = np.append(arr=edge_x, values=x1)
+            edge_x = np.append(arr=edge_x, values=None)
+            edge_y = np.append(arr=edge_y, values=y0)
+            edge_y = np.append(arr=edge_y, values=y1)
+            edge_y = np.append(arr=edge_y, values=None)
 
         return edge_x, edge_y
 
-    def get_coords_nodes(self) -> tuple:
+    def get_coords_nodes(self) -> tuple[np.array, np.array]:
         """Get the x and y coordinates of the nodes.
 
         Returns:
-            tuple: Lists of x and y coordinates of the nodes
+            tuple[np.array, np.array]: Arrays of x and y coordinates of the nodes
         """
-        node_x = []
-        node_y = []
-        for node in self._model.grid.nodes():
-            x, y = self._model.grid.nodes[node]["pos"]
-            node_x.append(x)
-            node_y.append(y)
+        node_x = np.empty(shape=(0,), dtype=np.float16)
+        node_y = np.empty(shape=(0,), dtype=np.float16)
+
+        for node in self._model.grid.nodes(data="pos"):
+            x, y = node[1]
+            node_x = np.append(arr=node_x, values=x)
+            node_y = np.append(arr=node_y, values=y)
 
         return node_x, node_y
 
@@ -175,20 +178,24 @@ class TrafficGraph(go.Figure):
 
         return node_text
 
-    def get_coords_cars(self) -> tuple:
+    def get_coords_cars(self) -> tuple[np.array, np.array]:
         """Get the x and y coordinates of the cars.
 
-        - Gets current position, next position, distance to next position and edge weight of each agent
-        - Computes path vectors
-            - Computes vector between current and next position
-            - Computes steps as vector length divided by edge weight
-            - Computes current position on path by getting total steps taken on current path
+        This method performs the following steps:
+        - Retrieves the current position, next position, distance to the next position, and edge weight for each car agent.
+        - Computes the path vectors:
+            - Calculates the vector between the current and next position.
+            - Determines the steps as the vector length divided by the edge weight.
+            - Computes the current position on the path by calculating the total steps taken on the current path.
+
+        If an IndexError occurs (e.g., the car has reached its goal), it retrieves the goal position coordinates.
 
         Returns:
-            tuple: Lists of x and y coordinates of the cars
+            tuple[np.array, np.array]: Two numpy arrays containing the x and y coordinates of the cars, respectively.
         """
-        car_x = []
-        car_y = []
+
+        car_x = np.empty(shape=(0,), dtype=np.float16)
+        car_y = np.empty(shape=(0,), dtype=np.float16)
 
         for car in self._model.get_agents_by_type("CarAgent"):
             try:
@@ -199,34 +206,21 @@ class TrafficGraph(go.Figure):
                     "weight"
                 ]
 
-                current_pos_coords = self._model.grid.nodes[current_pos]["pos"]
-                next_pos_coords = self._model.grid.nodes[next_pos]["pos"]
+                current_pos_coords = np.array(
+                    self._model.grid.nodes[current_pos]["pos"]
+                )
+                next_pos_coords = np.array(self._model.grid.nodes[next_pos]["pos"])
 
-                x_vector = [
-                    (
-                        current_pos_coords[0]
-                        + i
-                        * ((next_pos_coords[0] - current_pos_coords[0]) / edge_weight)
-                    )
-                    for i in range(edge_weight + 1)
-                ]
-                y_vector = [
-                    (
-                        current_pos_coords[1]
-                        + i
-                        * ((next_pos_coords[1] - current_pos_coords[1]) / edge_weight)
-                    )
-                    for i in range(edge_weight + 1)
-                ]
+                vector = next_pos_coords - current_pos_coords
+                steps = vector / edge_weight
+                current_position = current_pos_coords + steps * (edge_weight - distance)
 
-                x = x_vector[edge_weight - distance]
-                y = y_vector[edge_weight - distance]
-                car_x.append(x)
-                car_y.append(y)
+                car_x = np.append(arr=car_x, values=current_position[0])
+                car_y = np.append(arr=car_y, values=current_position[1])
             except IndexError:
                 x, y = self._model.grid.nodes[car.goal]["pos"]
-                car_x.append(x)
-                car_y.append(y)
+                car_x = np.append(arr=car_x, values=x)
+                car_y = np.append(arr=car_y, values=y)
 
         return car_x, car_y
 
