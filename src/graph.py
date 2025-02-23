@@ -302,6 +302,7 @@ class Graph(nx.Graph):
         """
         with open(filename, "wb") as file:
             pickle.dump(self, file)
+            file.close()
 
     @classmethod
     def load(cls, filename: str = "graph.pickle") -> "Graph":

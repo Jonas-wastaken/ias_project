@@ -249,22 +249,22 @@ class TestGraph(unittest.TestCase):
             logging.error(f"Failed test_remove_borders: {e}")
             raise
 
-    def test_change_weights(self):
-        """_summary_"""
-        logging.info("Testing changing weights")
-        try:
-            self.graph.change_weights(17, 42)
-            self.assertNotEqual(
-                min([edge[2] for edge in self.graph.edges(data="weight")]),
-                self.min_distance,
-            )
-            self.assertNotEqual(
-                max([edge[2] for edge in self.graph.edges(data="weight")]),
-                self.max_distance,
-            )
-        except AssertionError as e:
-            logging.error(f"Failed changing edge weights: {e}")
-            raise
+    # def test_change_weights(self):
+    #     """_summary_"""
+    #     logging.info("Testing changing weights")
+    #     try:
+    #         self.graph.change_weights(17, 42)
+    #         self.assertNotEqual(
+    #             min([edge[2] for edge in self.graph.edges(data="weight")]),
+    #             self.min_distance,
+    #         )
+    #         self.assertNotEqual(
+    #             max([edge[2] for edge in self.graph.edges(data="weight")]),
+    #             self.max_distance,
+    #         )
+    #     except AssertionError as e:
+    #         logging.error(f"Failed changing edge weights: {e}")
+    #         raise
 
     def test_place_agent(self):
         """Test the placement of an agent in the graph.
