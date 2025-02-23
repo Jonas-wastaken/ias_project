@@ -29,7 +29,7 @@ class TestTrafficModel(unittest.TestCase):
         self.num_cars = 5
         self.num_intersections = 10
         self.num_borders = 3
-        self.min_distance = 1
+        self.min_distance = 2
         self.max_distance = 10
         self.model = TrafficModel(
             num_agents=self.num_cars,
@@ -59,7 +59,9 @@ class TestTrafficModel(unittest.TestCase):
                 logging.info(f"{self.model.agent_paths[car.unique_id]}")
                 self.assertIsInstance(car, CarAgent)
                 self.assertIsInstance(self.model.agent_paths[car.unique_id], dict)
-            self.assertEqual(len(self.model.get_agents_by_type("CarAgent")), self.num_cars)
+            self.assertEqual(
+                len(self.model.get_agents_by_type("CarAgent")), self.num_cars
+            )
             self.assertEqual(len(self.model.agent_paths), self.num_cars)
             logging.info("Passed test_initial_cars")
         except AssertionError as e:
@@ -86,8 +88,12 @@ class TestTrafficModel(unittest.TestCase):
             self.assertEqual(
                 len(self.model.get_agents_by_type("LightAgent")), self.num_intersections
             )
-            lights_positions = [light.position for light in self.model.get_agents_by_type("LightAgent")]
-            self.assertEqual(lights_positions, self.model.grid.get_nodes("intersection"))
+            lights_positions = [
+                light.position for light in self.model.get_agents_by_type("LightAgent")
+            ]
+            self.assertEqual(
+                lights_positions, self.model.grid.get_nodes("intersection")
+            )
             logging.info("Passed test_initial_lights")
         except AssertionError as e:
             logging.error(f"Failed test_initial_lights: {e}")
@@ -132,14 +138,14 @@ class TestTrafficModel(unittest.TestCase):
         logging.info(f"{[path for path in self.model.agent_paths.values()]}")
         try:
             self.model.step()
-            self.assertIsNot(initial_positions, self.model.agent_paths)                 # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
-
+            self.assertIsNot(
+                initial_positions, self.model.agent_paths
+            )  # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
             logging.info("Passed test_step")
         except AssertionError as e:
             logging.error(f"Failed test_step: {e}")
             raise
-
-
+            
     def test_create_cars(self):
         """Test adding cars.
 
@@ -152,14 +158,35 @@ class TestTrafficModel(unittest.TestCase):
         try:
             self.model.create_agents(additional_num_cars)
             self.assertEqual(
-                (initial_num_cars + additional_num_cars), len(self.model.get_agents_by_type("CarAgent"))
+                (initial_num_cars + additional_num_cars),
+                len(self.model.get_agents_by_type("CarAgent")),
             )
             logging.info("Passed test_create_cars")
         except AssertionError as e:
             logging.error(f"Failed to add cars: {e}")
             raise
 
+    def test_remove_cars(self):
+        """Test removing cars.
 
+        Raises:
+            AssertionError: If the number of cars is not decreased by the expected number
+        """
+        logging.info("Testing removal of cars")
+        initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
+        removed_num_cars = min(random.randint(3, 100), initial_num_cars)
+        logging.info(f"Initial number of cars: {initial_num_cars}")
+        logging.info(f"Removing {removed_num_cars} cars")
+        try:
+            self.model.remove_agents(removed_num_cars)
+            self.assertEqual(
+                (initial_num_cars - removed_num_cars),
+                len(self.model.get_agents_by_type("CarAgent")),
+            )
+
+        except AssertionError as e:
+            logging.error(f"Failed to remove cars: {e}")
+            raise
 
 def suite():
     suite = unittest.TestSuite()

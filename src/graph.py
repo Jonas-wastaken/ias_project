@@ -15,7 +15,6 @@ class Graph(nx.Graph):
     Attributes:
         min_distance (int): Minimum distance between two connected nodes.
         max_distance (int): Maximum distance between two connected nodes.
-        agent_positions (dict): A dictionary to keep track of the agents' positions.
 
     ## Methods:
         **add_intersections(self, num_intersections: int) -> None**:
@@ -29,20 +28,18 @@ class Graph(nx.Graph):
         **remove_borders(self, num_borders: int) -> None**:
             Remove the last n border nodes from the graph.
         **connect_borders(self) -> None**:
-            Add edges between new borders and a random intersection node with random weights.
+            Connects each border between two connected intersections.
         **change_weights(self, min_distance: int, max_distance: int) -> None**:
             Change the weights of the edges in the graph.
         **place_agent(self, agent_id: int) -> str**:
-            Place an agent on a random border node and store position internally.
-        **move_agent(self, agent_id: int, new_position: str) -> None**:
-            Move an agent to its next position.
+            Place an agent on a random border node.
         **save(self, filename: str = "graph.pickle") -> None**:
             Save class instance to a pickle file.
         **load(cls, filename: str = "graph.pickle") -> Graph**:
             Load a class instance from a pickle file.
         **get_nodes(self, type: str = None) -> list**:
             Get all nodes of a specific type.
-        **get_connections(self, type: str = None, weights: bool = False) -> dict**:
+        **get_connections(self, \*\*kwargs) -> dict**:
             Get all connections between nodes.
     """
 
@@ -55,6 +52,8 @@ class Graph(nx.Graph):
     ):
         """Initializes a new Graph instance with intersection and border nodes and edges between them.
 
+        Forces min_distance of 2, to ensure correct insertion of border node between intersection nodes.
+
         Args:
             num_intersections (int): The number of intersection nodes to create.
             num_borders (int): The number of border nodes to create.
@@ -63,12 +62,10 @@ class Graph(nx.Graph):
         """
 
         super().__init__()
-        self.min_distance = min_distance
+        self.min_distance = min_distance if min_distance >= 2 else 2
         self.max_distance = max_distance
         self.add_intersections(num_intersections)
         self.add_borders(num_borders)
-
-        self.agent_positions = {}
 
     def add_intersections(self, num_intersections: int) -> None:
         """Add intersection nodes to the graph.
@@ -195,21 +192,50 @@ class Graph(nx.Graph):
         super().remove_nodes_from(self.get_nodes("border")[-num_borders:])
 
     def connect_borders(self) -> None:
-        """Add edges between free borders and a random intersection node with random weights."""
+        """Connects each border between two connected intersections.
+
+        - Gets a random intersection
+        - Gets the second intersection randomly from first intersection's connections
+        """
         intersections = self.get_nodes("intersection")
 
         free_borders = [
             border[0]
             for border in dict(self.degree(self.get_nodes("border"))).items()
-            if border[1] == 0
+            if border[1] < 2
         ]
 
         while free_borders:
             border = free_borders.pop()
+            if self.degree(border) == 0:
+                intersection_1 = random.choice(intersections)
+            elif self.degree(border) == 1:
+                intersection_1 = list(self.neighbors(border))[0]
+            else:
+                continue
+            intersection_2 = random.choice(
+                [
+                    node
+                    for node in list(self.neighbors(intersection_1))
+                    if node.startswith("intersection")
+                ]
+            )
+            total_weight = super().get_edge_data(intersection_1, intersection_2)[
+                "weight"
+            ]
+            weight_1 = random.randint(int(self.min_distance / 2), total_weight)
+            weight_2 = total_weight - weight_1
+
             super().add_edge(
-                border,
-                random.choice(intersections),
-                weight=random.randint(self.min_distance, self.max_distance),
+                u_of_edge=border,
+                v_of_edge=intersection_1,
+                weight=weight_1,
+            )
+
+            super().add_edge(
+                u_of_edge=border,
+                v_of_edge=intersection_2,
+                weight=weight_2,
             )
 
     def change_weights(self, min_distance: int, max_distance: int) -> None:
@@ -228,8 +254,31 @@ class Graph(nx.Graph):
                     }
                 },
             )
-            for edge in self.edges(data="weight")
+            for edge in list(self.edges)
+            if edge[0].startswith("intersection") and edge[1].startswith("intersection")
         ]
+
+        border_connections = self.get_connections(filter_by="border")
+        for key in border_connections.keys():
+            intersection_1 = border_connections[key][0]
+            intersection_2 = border_connections[key][1]
+            total_weight = self.get_edge_data(intersection_1, intersection_2)["weight"]
+            weight_1 = (
+                random.randint(min_distance, total_weight - 1)
+                if min_distance != total_weight
+                else total_weight - 1
+            )
+            weight_2 = total_weight - weight_1
+
+            nx.set_edge_attributes(
+                self,
+                {(key, intersection_1): {"weight": weight_1}},
+            )
+
+            nx.set_edge_attributes(
+                self,
+                {(key, intersection_2): {"weight": weight_2}},
+            )
 
     def place_agent(self, agent_id: int) -> str:
         """Places an agent on a random border node and stores position internally.
@@ -240,23 +289,10 @@ class Graph(nx.Graph):
         Returns:
             str: ID of assigned node the agent spawns on
         """
-        borders = [node for node in self.nodes if node.find("border") == 0]
+        borders = self.get_nodes(type="border")
         assigned_start = borders[random.randint(0, (len(borders) - 1))]
 
-        if assigned_start not in self.agent_positions:
-            self.agent_positions[assigned_start] = []
-        self.agent_positions[assigned_start].append(agent_id)
-
         return assigned_start
-
-    def move_agent(self, agent_id: int, new_position: str) -> None:
-        """Moves an agent to it's next position
-
-        Args:
-            agent_id (int): ID of agent being placed.
-            new_position (str): ID of the node the agent moves to.
-        """
-        self.agent_positions[agent_id] = new_position
 
     def save(self, filename: str = "graph.pickle") -> None:
         """Save class instance to a pickle file.
@@ -264,8 +300,9 @@ class Graph(nx.Graph):
         Args:
             filename (str, optional): The name of the file to save the class instance to.
         """
-
-        pickle.dump(self, open(filename, "wb"))
+        with open(filename, "wb") as file:
+            pickle.dump(self, file)
+            file.close()
 
     @classmethod
     def load(cls, filename: str = "graph.pickle") -> "Graph":
@@ -279,7 +316,8 @@ class Graph(nx.Graph):
             the specified pickle file.
         """
 
-        return pickle.load(open(filename, "rb"))
+        with open(filename, "rb") as file:
+            return pickle.load(file)
 
     def get_nodes(self, type: str = None) -> list:
         """Get all nodes of a specific type.
@@ -294,17 +332,33 @@ class Graph(nx.Graph):
             return [node for node in self.nodes if node.startswith(type)]
         return self.nodes
 
-    def get_connections(self, type: str = None, weights: bool = False) -> dict:
+    def get_connections(self, **kwargs) -> dict:
         """Get all connections between nodes.
 
         Args:
-            type (str, optional): The type of nodes to get connections for.
-            weights (bool, optional): Whether to include edge weights in the result. Defaults to False.
+            \*\*kwargs
+                filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
+                                        If only type is provided, all nodes of that type are considered. Defaults to None.
+                weights (bool, optional): Specifies whether weights should be returned.
 
         Returns:
-            dict: A dictionary with nodes as keys and a list of their connected nodes as values. If weights is True, the list will contain tuples with the connected node and the edge weight.
+            dict: A dictionary with nodes as keys and a list of their connected nodes as values.
+                  If weights is True, the list will contain tuples with the connected node and the edge weight.
         """
-        nodes = self.get_nodes(type)
+        filter_by = kwargs.get("filter_by", None)
+        weights = kwargs.get("weights", False)
+
+        if filter_by:
+            try:
+                type, id = filter_by.split("_")
+            except ValueError:
+                type, id = filter_by, None
+            if id:
+                nodes = [f"{type}_{id}"]
+            else:
+                nodes = self.get_nodes(type)
+        else:
+            nodes = self.nodes
 
         if weights:
             return {

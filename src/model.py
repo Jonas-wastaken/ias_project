@@ -48,12 +48,15 @@ class TrafficModel(mesa.Model):
         self.grid = Graph(
             num_intersections=self.kwargs.get("num_intersections", 10),
             num_borders=self.kwargs.get("num_borders", 3),
-            min_distance=self.kwargs.get("min_distance", 1),
+            min_distance=self.kwargs.get("min_distance", 2),
             max_distance=self.kwargs.get("max_distance", 10),
         )
         self.create_light_agents()
         CarAgent.create_agents(model=self, n=num_agents)
-        self.agent_paths = {agent.unique_id: agent.path.copy() for agent in self.get_agents_by_type("CarAgent")}
+        self.agent_paths = {
+            agent.unique_id: agent.path.copy()
+            for agent in self.get_agents_by_type("CarAgent")
+        }
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -69,15 +72,13 @@ class TrafficModel(mesa.Model):
 
         for light in self.get_agents_by_type("LightAgent"):
             light.update_waiting_cars()
-            
+
             # Decide if the light should change the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
-            
-
             light.current_switching_cooldown -= 1
 
-    def create_agents(self, num_agents: int) -> None:       # TODO: rename function
+    def create_agents(self, num_agents: int) -> None:  # TODO: rename function
         """Function to add agents to the model.
 
         Args:
@@ -85,7 +86,7 @@ class TrafficModel(mesa.Model):
         """
         CarAgent.create_agents(model=self, n=num_agents)
 
-    def remove_agents(self, num_agents: int) -> None:           # TODO: rename function
+    def remove_agents(self, num_agents: int) -> None:  # TODO: rename function
         """Function to randomly remove n agents from the model.
 
         Args:
@@ -104,7 +105,6 @@ class TrafficModel(mesa.Model):
         for intersection in self.grid.get_nodes("intersection"):
             LightAgent.create_agents(model=self, n=1, position=intersection)
 
-
     def get_agents_by_type(self, agent_type: str) -> list:
         """Function to get all agents of a certain type.
 
@@ -120,7 +120,7 @@ class TrafficModel(mesa.Model):
             return [agent for agent in self.agents if isinstance(agent, LightAgent)]
         else:
             raise ValueError(f"Agent type {agent_type} not found")
-        
+
     def get_agents_by_id(self, agent_id: list) -> list:
         """Function to get all agents by their unique ID.
 
@@ -131,7 +131,7 @@ class TrafficModel(mesa.Model):
             list: A list of agents with the given unique IDs.
         """
         return [agent for agent in self.agents if agent.unique_id in agent_id]
-        
+
     def get_last_intersection_of_car(self, agent_unique_id: int) -> str:
         """Function to get the last position of a car.
 
@@ -157,7 +157,3 @@ class TrafficModel(mesa.Model):
             pass
 
         return previous_position
-        
-
-    
-

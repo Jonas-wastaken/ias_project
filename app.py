@@ -69,7 +69,7 @@ class App:
             "max_distance": max(
                 [edge[2] for edge in self.model.grid.edges(data="weight")]
             ),
-            "num_agents": len(self.model.get_agents_by_type("CarAgent")),
+            "num_cars": len(self.model.get_agents_by_type("CarAgent")),
             "auto_run_steps": 20,
         }
 
@@ -85,6 +85,8 @@ class App:
             if int(st.query_params["run_steps"]) > 0:
                 time.sleep(0.1)
                 st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+                if len(self.model.get_agents_by_type("CarAgent")) == 0:
+                    st.query_params["run_steps"] = 0
                 self.step()
         except KeyError:
             pass
@@ -145,7 +147,8 @@ class App:
                 help="Reset the Environment",
                 use_container_width=True,
             ):
-                self.reset_environment()
+                # self.reset_environment() TODO: Fix
+                pass
 
     def render_options_popover(self):
         """Renders the options popover for changing environment settings."""
@@ -157,10 +160,10 @@ class App:
 
         with options_popover:
             st.markdown("### Options")
-            self.num_agents = st.number_input(
+            self.num_cars = st.number_input(
                 label="Number of Agents",
                 min_value=0,
-                value=self.env_config["num_agents"],
+                value=self.env_config["num_cars"],
             )
             self.num_intersections = st.number_input(
                 label="Number of Intersections",
@@ -174,7 +177,7 @@ class App:
             )
             self.distance_range = st.slider(
                 label="Distance",
-                min_value=1,
+                min_value=2,
                 max_value=100,
                 value=(
                     self.model.grid.min_distance,
@@ -279,10 +282,10 @@ class App:
     def update_env_config(self) -> None:
         """Applies changes to the environment from user options."""
         # Update the model with new settings for number of agents
-        if self.num_agents > self.env_config["num_agents"]:
-            self.model.create_agents(self.num_agents - self.env_config["num_agents"])
-        elif self.num_agents < self.env_config["num_agents"]:
-            self.model.remove_agents(self.env_config["num_agents"] - self.num_agents)
+        if self.num_cars > self.env_config["num_cars"]:
+            self.model.create_agents(self.num_cars - self.env_config["num_cars"])
+        elif self.num_cars < self.env_config["num_cars"]:
+            self.model.remove_agents(self.env_config["num_cars"] - self.num_cars)
 
         # Update the model with new settings for number of intersections
         if self.num_intersections > self.env_config["num_intersections"]:
@@ -330,7 +333,7 @@ class App:
     def reset_environment(self) -> None:
         """Resets the environment with user specified config options."""
         st.session_state.model = TrafficModel(
-            num_agents=self.num_agents,
+            num_agents=self.num_cars,
             num_intersections=self.num_intersections,
             num_borders=self.num_borders,
             min_distance=self.distance_range[0],
@@ -368,19 +371,22 @@ class App:
             pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
         """
         try:
-            current_position, next_position = list(agent.path.keys())[:2]
-        except ValueError:
-            current_position = list(agent.path.keys())[0]
-            next_position = "None"
-        distance = list(agent.path.values())[0]
-        is_waiting = str(agent.waiting)
-        global_waiting_time = agent.global_waiting_time
+            current_position = agent.position
+            next_position = list(agent.path.keys())[1]
+        except IndexError:
+            current_position = agent.position
+            next_position = None
+        distance = (
+            self.model.grid.get_edge_data(current_position, next_position)["weight"]
+            if next_position
+            else None
+        )
 
         current_path_df = pd.DataFrame(
             [
                 (
                     current_position.title().replace("_", " "),
-                    next_position.title().replace("_", " "),
+                    str(next_position).title().replace("_", " "),
                     distance,
                     is_waiting,
                     global_waiting_time
