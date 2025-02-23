@@ -105,6 +105,9 @@ class CarAgent(mesa.Agent):
                     self.model.grid.move_agent(self, self.position)
                 else:
                     self.path[self.position] = self.path.get(self.position) - 1
+        else:
+            self.global_waiting_time += 1
+
 
     def check_lights(self) -> None:
         """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
