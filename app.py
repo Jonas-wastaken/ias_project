@@ -28,18 +28,20 @@ class AgentPathListContainer:
     def __init__(self):
         cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
 
-        with cols[0]:
-            if st.button("<-"):
-                self.scroll_left()
-        with cols[-1]:
-            if st.button("->"):
-                self.scroll_right()
+        if st.session_state["env_config"]["num_cars"] > 3:
+            with cols[0]:
+                if st.button("<-"):
+                    self.scroll_left()
+            with cols[-1]:
+                if st.button("->"):
+                    self.scroll_right()
 
         visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
             int(st.query_params["scroll_index"]) : (
                 int(st.query_params["scroll_index"]) + 3
             )
         ]
+
         for agent, i in zip(
             visible_agents,
             range(3),
@@ -226,7 +228,8 @@ class App:
         # Render UI elements
         self.render_left_column(left_col)
         self.render_right_column(right_col)
-        AgentPathListContainer()
+        if st.session_state["env_config"]["num_cars"] > 0:
+            AgentPathListContainer()
 
         # Check for auto run loop
         try:
