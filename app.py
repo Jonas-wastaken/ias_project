@@ -16,6 +16,167 @@ from model import TrafficModel
 from graph_viz import TrafficGraph
 
 
+class GraphContainer:
+    """Class to hold the visualization of the graph."""
+
+    def __init__(self, model: TrafficModel):
+        fig = TrafficGraph(model)
+        st.plotly_chart(fig, use_container_width=True)
+
+
+class AgentPathListContainer:
+    def __init__(self):
+        st.session_state["first_visible_index"] = 0
+        st.session_state["last_visible_index"] = 3
+        cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
+
+        with cols[0]:
+            if st.button("<-"):
+                self.scroll_left()
+        with cols[-1]:
+            if st.button("->"):
+                self.scroll_right()
+
+        visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
+            st.session_state["first_visible_index"] : st.session_state[
+                "last_visible_index"
+            ]
+        ]
+        for agent, i in zip(
+            visible_agents,
+            range(3),
+        ):
+            with cols[i + 1]:
+                self.render_agent_paths(agent)
+
+        st.write(st.session_state["first_visible_index"])
+        st.write(st.session_state["last_visible_index"])
+        st.write(st.session_state["env_config"]["num_cars"])
+
+    def scroll_left(self):
+        if st.session_state["first_visible_index"] > 0:
+            st.session_state["first_visible_index"] = (
+                st.session_state["first_visible_index"] - 1
+            )
+            st.session_state["last_visible_index"] = (
+                st.session_state["last_visible_index"] - 1
+            )
+
+    def scroll_right(self):
+        if (
+            st.session_state["last_visible_index"]
+            < st.session_state["env_config"]["num_cars"]
+        ):
+            st.session_state["last_visible_index"] = (
+                st.session_state["last_visible_index"] + 1
+            )
+            st.session_state["first_visible_index"] = (
+                st.session_state["first_visible_index"] + 1
+            )
+
+    def render_agent_paths(self, agent):
+        """Renders the agent paths in the right column."""
+        left_col, right_col = st.columns(2)
+        with left_col:
+            st.subheader(f"Agent {agent.unique_id}")
+        with right_col:
+            self.render_agent_details(agent)
+        st.dataframe(
+            self.create_current_path_df(agent),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    def render_agent_details(self, agent):
+        """Renders the details of an agent."""
+        with stylable_container(
+            key=f"agent_{agent.unique_id}",
+            css_styles="""
+                button {
+                    background-color: none;
+                    color: black;
+                    border: none;
+                    white-space: nowrap;
+                    margin-top: 0.25rem;
+                }
+                """,
+        ):
+            with st.popover("Show Details"):
+                st.markdown("""##### Full Path""")
+                st.dataframe(
+                    self.create_full_path_df(agent_id=agent.unique_id),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+    def create_full_path_df(self, agent_id: int) -> pd.DataFrame:
+        """Creates a DataFrame with the full path a car agent takes.
+
+        Args:
+            agent_id (int): ID of agent
+
+        Returns:
+            pd.DataFrame: DataFrame with the full path a car agent takes.
+        """
+        full_path_df = pd.DataFrame(
+            [
+                (node.title().replace("_", " "), distance)
+                for node, distance in st.session_state["model"]
+                .agent_paths[agent_id]
+                .items()
+            ],
+            columns=["Node", "Distance"],
+        )
+
+        return full_path_df
+
+    def create_current_path_df(self, agent) -> pd.DataFrame:
+        """Creates a DataFrame with the current (last) position, next position and distance to next position of an agent.
+
+        Args:
+            agent (car.CarAgent): CarAgent instance
+
+        Returns:
+            pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
+        """
+        try:
+            current_position = agent.position
+            next_position = list(agent.path.keys())[1]
+        except IndexError:
+            current_position = agent.position
+            next_position = None
+        distance = (
+            st.session_state["model"].grid.get_edge_data(
+                current_position, next_position
+            )["weight"]
+            if next_position
+            else None
+        )
+        is_waiting = agent.waiting
+        global_waiting_time = agent.global_waiting_time
+
+        current_path_df = pd.DataFrame(
+            [
+                (
+                    current_position.title().replace("_", " "),
+                    str(next_position).title().replace("_", " "),
+                    distance,
+                    is_waiting,
+                    global_waiting_time,
+                )
+            ],
+            columns=[
+                "Current Position",
+                "Next Position",
+                "Distance",
+                "Is Waiting",
+                "Global Waiting Time",
+            ],
+        )
+
+        return current_path_df
+
+
 class App:
     """A class to represent the Streamlit application for visualizing a traffic grid.
 
@@ -47,7 +208,7 @@ class App:
     def __init__(self):
         """Initializes the Streamlit app and sets up the environment configuration."""
         st.set_page_config(
-            page_title=None,
+            page_title="Test",
             page_icon=None,
             layout="wide",
             initial_sidebar_state="auto",
@@ -73,12 +234,15 @@ class App:
             "auto_run_steps": 20,
         }
 
+        st.session_state["env_config"] = self.env_config
+
         # Create two columns for layout
         left_col, right_col = st.columns([0.75, 0.25])
 
         # Render UI elements
         self.render_left_column(left_col)
         self.render_right_column(right_col)
+        AgentPathListContainer()
 
         # Check for auto run loop
         try:
@@ -100,7 +264,7 @@ class App:
                 vertical_alignment="center",
             )
             self.render_header_cols(header_cols)
-            st.plotly_chart(self.create_graph_fig(), use_container_width=True)
+            GraphContainer(self.model)
 
     def render_header_cols(self, header_cols):
         """Renders the header columns with popovers."""
@@ -125,7 +289,6 @@ class App:
         with right_col:
             ui_cols = st.columns(spec=[0.3, 0.4, 0.3], vertical_alignment="center")
             self.render_ui_controls(ui_cols)
-            self.render_agent_paths()
 
     def render_ui_controls(self, ui_cols):
         """Renders the UI controls in the right column."""
@@ -187,22 +350,6 @@ class App:
             if st.button(label="Apply", help="Apply the changes"):
                 self.update_env_config()
 
-    def render_agent_paths(self):
-        """Renders the agent paths in the right column."""
-        agent_paths_container = st.container()
-        with agent_paths_container:
-            for agent in self.model.get_agents_by_type("CarAgent"):
-                left_col, right_col = st.columns(2)
-                with left_col:
-                    st.subheader(f"Agent {agent.unique_id}")
-                with right_col:
-                    self.render_agent_details(agent)
-                st.dataframe(
-                    self.create_current_path_df(agent),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
     def render_agent_details(self, agent):
         """Renders the details of an agent."""
         with stylable_container(
@@ -224,16 +371,6 @@ class App:
                     use_container_width=True,
                     hide_index=True,
                 )
-
-    def create_graph_fig(self) -> TrafficGraph:
-        """Creates figure of Graph object used as a grid in TrafficModel.
-
-        Returns:
-            TrafficGraph: go.Figure object of TrafficModel Graph
-        """
-        graph_fig = TrafficGraph(self.model)
-
-        return graph_fig
 
     def create_env_conf_df(self) -> pd.DataFrame:
         """Creates a pandas dataframe of the environment config.
@@ -342,25 +479,6 @@ class App:
         self.model = st.session_state.model
         st.rerun()
 
-    def create_full_path_df(self, agent_id: int) -> pd.DataFrame:
-        """Creates a DataFrame with the full path a car agent takes.
-
-        Args:
-            agent_id (int): ID of agent
-
-        Returns:
-            pd.DataFrame: DataFrame with the full path a car agent takes.
-        """
-        full_path_df = pd.DataFrame(
-            [
-                (node.title().replace("_", " "), distance)
-                for node, distance in self.model.agent_paths[agent_id].items()
-            ],
-            columns=["Node", "Distance"],
-        )
-
-        return full_path_df
-
     def create_current_path_df(self, agent) -> pd.DataFrame:
         """Creates a DataFrame with the current (last) position, next position and distance to next position of an agent.
 
@@ -381,6 +499,8 @@ class App:
             if next_position
             else None
         )
+        is_waiting = agent.waiting
+        global_waiting_time = agent.global_waiting_time
 
         current_path_df = pd.DataFrame(
             [
@@ -389,10 +509,16 @@ class App:
                     str(next_position).title().replace("_", " "),
                     distance,
                     is_waiting,
-                    global_waiting_time
+                    global_waiting_time,
                 )
             ],
-            columns=["Current Position", "Next Position", "Distance", "Is Waiting", "Global Waiting Time"],
+            columns=[
+                "Current Position",
+                "Next Position",
+                "Distance",
+                "Is Waiting",
+                "Global Waiting Time",
+            ],
         )
 
         return current_path_df
