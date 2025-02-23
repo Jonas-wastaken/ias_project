@@ -372,28 +372,6 @@ class App:
             if st.button(label="Apply", help="Apply the changes"):
                 self.update_env_config()
 
-    def render_agent_details(self, agent):
-        """Renders the details of an agent."""
-        with stylable_container(
-            key=f"agent_{agent.unique_id}",
-            css_styles="""
-                button {
-                    background-color: white;
-                    color: black;
-                    border: none;
-                    white-space: nowrap;
-                    margin-top: 0.25rem;
-                }
-                """,
-        ):
-            with st.popover("Show Details"):
-                st.markdown("""##### Full Path""")
-                st.dataframe(
-                    self.create_full_path_df(agent_id=agent.unique_id),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
     def create_env_conf_df(self) -> pd.DataFrame:
         """Creates a pandas dataframe of the environment config.
 
@@ -500,50 +478,6 @@ class App:
         )
         self.model = st.session_state.model
         st.rerun()
-
-    def create_current_path_df(self, agent) -> pd.DataFrame:
-        """Creates a DataFrame with the current (last) position, next position and distance to next position of an agent.
-
-        Args:
-            agent (car.CarAgent): CarAgent instance
-
-        Returns:
-            pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
-        """
-        try:
-            current_position = agent.position
-            next_position = list(agent.path.keys())[1]
-        except IndexError:
-            current_position = agent.position
-            next_position = None
-        distance = (
-            self.model.grid.get_edge_data(current_position, next_position)["weight"]
-            if next_position
-            else None
-        )
-        is_waiting = agent.waiting
-        global_waiting_time = agent.global_waiting_time
-
-        current_path_df = pd.DataFrame(
-            [
-                (
-                    current_position.title().replace("_", " "),
-                    str(next_position).title().replace("_", " "),
-                    distance,
-                    is_waiting,
-                    global_waiting_time,
-                )
-            ],
-            columns=[
-                "Current Position",
-                "Next Position",
-                "Distance",
-                "Is Waiting",
-                "Global Waiting Time",
-            ],
-        )
-
-        return current_path_df
 
 
 if __name__ == "__main__":
