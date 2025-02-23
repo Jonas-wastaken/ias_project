@@ -7,6 +7,7 @@ import sys
 import os
 import time
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
 
@@ -24,7 +25,7 @@ class GraphContainer:
         st.plotly_chart(fig, use_container_width=True)
 
 
-class AgentPathListContainer:
+class CarPathListContainer:
     def __init__(self):
         cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
 
@@ -68,9 +69,10 @@ class AgentPathListContainer:
         with right_col:
             self.render_agent_details(agent)
         st.dataframe(
-            self.create_current_path_df(agent),
+            self.get_current_path(agent),
             use_container_width=True,
-            hide_index=True,
+            hide_index=False,
+            column_config={"value": ""},
         )
 
     def render_agent_details(self, agent):
@@ -116,7 +118,7 @@ class AgentPathListContainer:
 
         return full_path_df
 
-    def create_current_path_df(self, agent) -> pd.DataFrame:
+    def get_current_path(self, agent) -> pd.DataFrame:
         """Creates a DataFrame with the current (last) position, next position and distance to next position of an agent.
 
         Args:
@@ -125,11 +127,10 @@ class AgentPathListContainer:
         Returns:
             pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
         """
+        current_position = agent.position
         try:
-            current_position = agent.position
             next_position = list(agent.path.keys())[1]
         except IndexError:
-            current_position = agent.position
             next_position = None
         distance = (
             st.session_state["model"].grid.get_edge_data(
@@ -141,26 +142,15 @@ class AgentPathListContainer:
         is_waiting = agent.waiting
         global_waiting_time = agent.global_waiting_time
 
-        current_path_df = pd.DataFrame(
-            [
-                (
-                    current_position.title().replace("_", " "),
-                    str(next_position).title().replace("_", " "),
-                    distance,
-                    is_waiting,
-                    global_waiting_time,
-                )
-            ],
-            columns=[
-                "Current Position",
-                "Next Position",
-                "Distance",
-                "Is Waiting",
-                "Global Waiting Time",
-            ],
-        )
+        path_dict = {
+            "Current Position": current_position.title().replace("_", " "),
+            "Next Position": next_position.title().replace("_", " "),
+            "Distance": distance,
+            "Waiting": is_waiting,
+            "Waiting Time": global_waiting_time,
+        }
 
-        return current_path_df
+        return path_dict
 
 
 class App:
@@ -229,7 +219,7 @@ class App:
         self.render_left_column(left_col)
         self.render_right_column(right_col)
         if st.session_state["env_config"]["num_cars"] > 0:
-            AgentPathListContainer()
+            CarPathListContainer()
 
         # Check for auto run loop
         try:
