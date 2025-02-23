@@ -21,6 +21,11 @@ class GraphContainer:
     """Class to hold the visualization of the graph."""
 
     def __init__(self, model: TrafficModel):
+        """Create plot of the model's graph.
+
+        Args:
+            model (TrafficModel): Model to plot
+        """
         fig = TrafficGraph(model)
         st.plotly_chart(fig, use_container_width=True)
 
