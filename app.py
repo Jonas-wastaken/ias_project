@@ -267,15 +267,12 @@ class App:
             CarPathListContainer()
 
         # Check for auto run loop
-        try:
-            if int(st.query_params["run_steps"]) > 0:
-                time.sleep(0.1)
-                st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-                if len(self.model.get_agents_by_type("CarAgent")) == 0:
-                    st.query_params["run_steps"] = 0
-                self.step()
-        except KeyError:
-            pass
+        if int(st.query_params["run_steps"]) > 0:
+            time.sleep(0.1)
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+            if len(self.model.get_agents_by_type("CarAgent")) == 0:
+                st.query_params["run_steps"] = 0
+            self.step()
 
     def render_left_column(self, left_col):
         """Renders the left column with the traffic graph visualization."""
@@ -483,4 +480,6 @@ class App:
 if __name__ == "__main__":
     if "scroll_index" not in st.query_params:
         st.query_params["scroll_index"] = 0
+    if "run_steps" not in st.query_params:
+        st.query_params["run_steps"] = 0
     App()
