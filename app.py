@@ -35,19 +35,11 @@ class AgentPathListContainer:
             if st.button("->"):
                 self.scroll_right()
 
-        try:
-            visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
-                int(st.query_params["scroll_index"]) : (
-                    int(st.query_params["scroll_index"]) + 3
-                )
-            ]
-        except KeyError:
-            st.query_params["scroll_index"] = 0
-            visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
-                int(st.query_params["scroll_index"]) : (
-                    int(st.query_params["scroll_index"]) + 3
-                )
-            ]
+        visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
+            int(st.query_params["scroll_index"]) : (
+                int(st.query_params["scroll_index"]) + 3
+            )
+        ]
         for agent, i in zip(
             visible_agents,
             range(3),
@@ -517,6 +509,8 @@ class App:
 
 
 if __name__ == "__main__":
+    if "scroll_index" not in st.query_params:
+        st.query_params["scroll_index"] = 0
     st.session_state["first_visible_index"] = 0
     st.session_state["last_visible_index"] = 3
     st.session_state["clicks"] = 0
