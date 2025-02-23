@@ -26,8 +26,6 @@ class GraphContainer:
 
 class AgentPathListContainer:
     def __init__(self):
-        st.session_state["first_visible_index"] = 0
-        st.session_state["last_visible_index"] = 3
         cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
 
         with cols[0]:
@@ -37,11 +35,19 @@ class AgentPathListContainer:
             if st.button("->"):
                 self.scroll_right()
 
-        visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
-            st.session_state["first_visible_index"] : st.session_state[
-                "last_visible_index"
+        try:
+            visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
+                int(st.query_params["scroll_index"]) : (
+                    int(st.query_params["scroll_index"]) + 3
+                )
             ]
-        ]
+        except KeyError:
+            st.query_params["scroll_index"] = 0
+            visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
+                int(st.query_params["scroll_index"]) : (
+                    int(st.query_params["scroll_index"]) + 3
+                )
+            ]
         for agent, i in zip(
             visible_agents,
             range(3),
@@ -49,30 +55,16 @@ class AgentPathListContainer:
             with cols[i + 1]:
                 self.render_agent_paths(agent)
 
-        st.write(st.session_state["first_visible_index"])
-        st.write(st.session_state["last_visible_index"])
-        st.write(st.session_state["env_config"]["num_cars"])
-
     def scroll_left(self):
-        if st.session_state["first_visible_index"] > 0:
-            st.session_state["first_visible_index"] = (
-                st.session_state["first_visible_index"] - 1
-            )
-            st.session_state["last_visible_index"] = (
-                st.session_state["last_visible_index"] - 1
-            )
+        if int(st.query_params["scroll_index"]) > 0:
+            st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) - 1
 
     def scroll_right(self):
         if (
-            st.session_state["last_visible_index"]
-            < st.session_state["env_config"]["num_cars"]
+            int(st.query_params["scroll_index"])
+            < st.session_state["env_config"]["num_cars"] - 3
         ):
-            st.session_state["last_visible_index"] = (
-                st.session_state["last_visible_index"] + 1
-            )
-            st.session_state["first_visible_index"] = (
-                st.session_state["first_visible_index"] + 1
-            )
+            st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) + 1
 
     def render_agent_paths(self, agent):
         """Renders the agent paths in the right column."""
@@ -525,4 +517,7 @@ class App:
 
 
 if __name__ == "__main__":
+    st.session_state["first_visible_index"] = 0
+    st.session_state["last_visible_index"] = 3
+    st.session_state["clicks"] = 0
     App()
