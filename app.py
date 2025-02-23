@@ -14,6 +14,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from model import TrafficModel
 from graph_viz import TrafficGraph
+from car import CarAgent
 
 
 class GraphContainer:
@@ -30,7 +31,34 @@ class GraphContainer:
 
 
 class CarPathListContainer:
+    """Container for a horizontally scrollable list of car agent information cards.
+
+    This class provides functionality to display a list of car agents in a horizontally scrollable manner. It includes methods to scroll the list left and right, render the current path of each car, and display detailed information about each car's path.
+
+    ## Methods:
+        **scroll_left(self) -> None**:
+            Scrolls the car path list to the left.
+        **scroll_right(self) -> None**:
+            Scrolls the car path list to the right.
+        **render_current_path(self, car: CarAgent) -> None**:
+            Renders the current path of a given car agent.
+        **render_full_path(self, car: CarAgent) -> None:**
+            Renders the full path of a given car agent.
+        **get_full_path(self, car_id: int) -> list[tuple[str, int]]**:
+            Returns the full path of a car agent as a list of tuples containing node id and distance to the next step.
+        **get_current_path(self, car: CarAgent) -> dict**:
+            Returns the current path information of a car agent as a dictionary.
+    """
+
     def __init__(self):
+        """Creates a horizontally scrollable list of car agent information cards.
+
+        - Creates layout with 5 columns
+        - Renders navigation buttons in the left- and rightmost column
+            - If there are items to the left or right of the list
+        - Gets currently visible cars
+        - Renders information of visible cars
+        """
         cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
 
         if st.session_state["env_config"]["num_cars"] > 3:
@@ -41,51 +69,68 @@ class CarPathListContainer:
                 if st.button("->"):
                     self.scroll_right()
 
-        visible_agents = st.session_state["model"].get_agents_by_type("CarAgent")[
+        visible_cars = st.session_state["model"].get_agents_by_type("CarAgent")[
             int(st.query_params["scroll_index"]) : (
                 int(st.query_params["scroll_index"]) + 3
             )
         ]
 
-        for agent, i in zip(
-            visible_agents,
+        for car, i in zip(
+            visible_cars,
             range(3),
         ):
             with cols[i + 1]:
-                self.render_agent_paths(agent)
+                self.render_current_path(car)
 
-    def scroll_left(self):
+    def scroll_left(self) -> None:
+        """Scrolls the car path list to the left.
+
+        - Checks first if there are more items in the list to render
+        - Decreases the scroll_index by 1
+        """
         if int(st.query_params["scroll_index"]) > 0:
             st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) - 1
 
-    def scroll_right(self):
+    def scroll_right(self) -> None:
+        """Scrolls the car path list to the right.
+
+        - Checks first if there are more items in the list to render
+        - Increases the scroll_index by 1
+        """
         if (
             int(st.query_params["scroll_index"])
             < st.session_state["env_config"]["num_cars"] - 3
         ):
             st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) + 1
 
-    def render_agent_paths(self, agent):
-        """Renders the agent paths in the right column."""
-        left_col, right_col = st.columns(2)
-        with left_col:
-            st.subheader(f"Agent {agent.unique_id}")
-        with right_col:
-            self.render_agent_details(agent)
+    def render_current_path(self, car: CarAgent) -> None:
+        """Renders a car's path.
+
+        Args:
+            car (CarAgent): CarAgent instance
+        """
+        cols = st.columns(2)
+        with cols[0]:
+            st.subheader(f"Agent {car.unique_id}")
+        with cols[1]:
+            self.render_full_path(car)
         st.dataframe(
-            self.get_current_path(agent),
+            self.get_current_path(car),
             use_container_width=True,
-            hide_index=False,
             column_config={"value": ""},
         )
 
-    def render_agent_details(self, agent):
-        """Renders the details of an agent."""
+    def render_full_path(self, car: CarAgent) -> None:
+        """Renders the full path of a car agent.
+
+        Args:
+            car (CarAgent): CarAgent instance
+        """
         with stylable_container(
-            key=f"agent_{agent.unique_id}",
-            css_styles="""
+            key=f"agent_{car.unique_id}",
+            css_styles="""/*css*/
                 button {
-                    background-color: none;
+                    background-color: white;
                     color: black;
                     border: none;
                     white-space: nowrap;
@@ -96,44 +141,40 @@ class CarPathListContainer:
             with st.popover("Show Details"):
                 st.markdown("""##### Full Path""")
                 st.dataframe(
-                    self.create_full_path_df(agent_id=agent.unique_id),
+                    self.get_full_path(car_id=car.unique_id),
                     use_container_width=True,
                     hide_index=True,
+                    column_config={"0": "", "1": ""},
                 )
 
-    def create_full_path_df(self, agent_id: int) -> pd.DataFrame:
-        """Creates a DataFrame with the full path a car agent takes.
+    def get_full_path(self, car_id: int) -> list[tuple[str, int]]:
+        """Creates a List with the full path a car agent takes.
 
         Args:
-            agent_id (int): ID of agent
+            car_id (int): ID of CarAgent instance
 
         Returns:
-            pd.DataFrame: DataFrame with the full path a car agent takes.
+            list[tuple[str, int]]: List of tuples with node id and distance to next step.
         """
-        full_path_df = pd.DataFrame(
-            [
-                (node.title().replace("_", " "), distance)
-                for node, distance in st.session_state["model"]
-                .agent_paths[agent_id]
-                .items()
-            ],
-            columns=["Node", "Distance"],
-        )
+        path = [
+            (node.title().replace("_", " "), distance)
+            for node, distance in st.session_state["model"].agent_paths[car_id].items()
+        ]
 
-        return full_path_df
+        return path
 
-    def get_current_path(self, agent) -> pd.DataFrame:
-        """Creates a DataFrame with the current (last) position, next position and distance to next position of an agent.
+    def get_current_path(self, car: CarAgent) -> dict:
+        """Creates a dict with the current (last) position, next position, distance to next position, waiting status and waiting time of a car agent.
 
         Args:
-            agent (car.CarAgent): CarAgent instance
+            car (CarAgent): CarAgent instance
 
         Returns:
-            pd.DataFrame: DataFrame with the current (last) position, next position and distance to next position of an agent.
+            dict: Dict holding the path information
         """
-        current_position = agent.position
+        current_position = car.position
         try:
-            next_position = list(agent.path.keys())[1]
+            next_position = list(car.path.keys())[1]
         except IndexError:
             next_position = None
         distance = (
@@ -143,12 +184,12 @@ class CarPathListContainer:
             if next_position
             else None
         )
-        is_waiting = agent.waiting
-        global_waiting_time = agent.global_waiting_time
+        is_waiting = car.waiting
+        global_waiting_time = car.global_waiting_time
 
         path_dict = {
             "Current Position": current_position.title().replace("_", " "),
-            "Next Position": next_position.title().replace("_", " "),
+            "Next Position": str(next_position).title().replace("_", " "),
             "Distance": distance,
             "Waiting": is_waiting,
             "Waiting Time": global_waiting_time,
@@ -197,8 +238,8 @@ class App:
 
         # Initialize the model in session state if it doesn't exist
         if "model" not in st.session_state:
-            st.session_state.model = TrafficModel(num_agents=3)
-        self.model = st.session_state.model
+            st.session_state["model"] = TrafficModel(num_agents=3)
+        self.model: TrafficModel = st.session_state["model"]
 
         # Environment config
         self.env_config = {
@@ -508,7 +549,4 @@ class App:
 if __name__ == "__main__":
     if "scroll_index" not in st.query_params:
         st.query_params["scroll_index"] = 0
-    st.session_state["first_visible_index"] = 0
-    st.session_state["last_visible_index"] = 3
-    st.session_state["clicks"] = 0
     App()
