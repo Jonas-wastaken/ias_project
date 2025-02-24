@@ -1,6 +1,12 @@
 """
 This Streamlit app visualizes a traffic grid using NetworkX and Plotly.
 It allows users to step through the simulation of traffic agents and view their paths.
+This module contains:
+- App class: Represents the Streamlit application for visualizing a traffic grid.
+- GraphContainer class: Holds the visualization of the graph.
+- CarPathListContainer class: Container for a horizontally scrollable list of car agent information cards.
+- SettingsContainer class: Container for the settings form and reset button.
+- EdgesContainer class: Container for displaying the edges of the graph.
 """
 
 import sys
