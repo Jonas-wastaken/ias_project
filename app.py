@@ -400,8 +400,6 @@ class App:
         )
 
         # Initialize the model in session state if it doesn't exist
-        if "model" not in st.session_state:
-            st.session_state["model"] = TrafficModel(num_agents=3)
         self.model: TrafficModel = st.session_state["model"]
 
         # Environment config
@@ -517,4 +515,6 @@ if __name__ == "__main__":
         st.query_params["scroll_index"] = 0
     if "run_steps" not in st.query_params:
         st.query_params["run_steps"] = 0
+    if "model" not in st.session_state:
+        st.session_state["model"] = TrafficModel(num_agents=3)
     App()
