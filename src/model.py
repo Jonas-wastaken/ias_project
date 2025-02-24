@@ -16,8 +16,6 @@ class TrafficModel(mesa.Model):
         seed (int, optional): Seed used in model generation. Defaults to None.
         grid (Graph): Graph the environment uses.
         agents (AgentSet): Agents in the environment.
-        agent_paths (dict): A dictionary containing the paths of all agents.
-        cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
 
     ## Methods:
         **step(self) -> None**:
@@ -34,8 +32,6 @@ class TrafficModel(mesa.Model):
             Function to get all agents by their unique ID.
         **get_last_intersection_of_car(self, car_id: int) -> str**:
             Function to get the last position of a car.
-        **update_cars_waiting_times(self) -> None**:
-            Function to update the waiting times of all cars at each intersection.
     """
 
     def __init__(self, num_agents: int, seed: int = None, **kwargs):
@@ -61,9 +57,6 @@ class TrafficModel(mesa.Model):
             agent.unique_id: agent.path.copy()
             for agent in self.get_agents_by_type("CarAgent")
         }
-        self.cars_waiting_times = {}
-        for car in self.get_agents_by_type("CarAgent"):
-            self.cars_waiting_times[car.unique_id] = {intersection : 0 for intersection in list(car.model.agent_paths[car.unique_id].keys()) if intersection.startswith("intersection")}
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -77,10 +70,8 @@ class TrafficModel(mesa.Model):
             except AgentArrived:
                 car.remove()
 
-        self.update_cars_waiting_times()
-
         for light in self.get_agents_by_type("LightAgent"):
-            # light.update_waiting_cars()
+            light.update_waiting_cars()
 
             # Decide if the light should change the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
@@ -162,15 +153,7 @@ class TrafficModel(mesa.Model):
 
         # Get the corresponding intersection, if the cars last position was a border node (TODO)
         if previous_position.startswith("border"):
-            first_intersection = list(car.model.agent_paths[car.unique_id].keys())[1]
-            lane = list(self.grid.neighbors(previous_position))
-            lane.remove(first_intersection)
-            previous_position = lane[0]
+            # TODO: Logik einbauen, um die letzte Intersection zu finden (z.B.: list(model.grid.get_connections("border_0").values())[0][0])
+            pass
 
         return previous_position
-    
-    def update_cars_waiting_times(self) -> None:
-        """Function to update the waiting times of all cars at each intersection."""
-        for car in self.get_agents_by_type("CarAgent"):
-            if car.waiting:
-                self.cars_waiting_times[car.unique_id][car.position] += 1

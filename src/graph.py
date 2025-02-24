@@ -223,7 +223,7 @@ class Graph(nx.Graph):
             total_weight = super().get_edge_data(intersection_1, intersection_2)[
                 "weight"
             ]
-            weight_1 = random.randint(1, total_weight - 1)
+            weight_1 = random.randint(int(self.min_distance / 2), total_weight)
             weight_2 = total_weight - weight_1
 
             super().add_edge(
