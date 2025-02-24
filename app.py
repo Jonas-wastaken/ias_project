@@ -110,7 +110,7 @@ class CarPathListContainer:
         Args:
             car (CarAgent): CarAgent instance
         """
-        cols = st.columns(2)
+        cols = st.columns(2, vertical_alignment="center")
         with cols[0]:
             st.subheader(f"Agent {car.unique_id}")
         with cols[1]:
@@ -135,7 +135,7 @@ class CarPathListContainer:
                     color: black;
                     border: none;
                     white-space: nowrap;
-                    margin-top: 0.25rem;
+                    margin-top: 0.45rem;
                 }
                 """,
         ):
@@ -221,17 +221,14 @@ class SettingsContainer:
         - Adds a reset button to reset the environment
         - Renders the settings form
         """
-        cols = st.columns(2, gap="large", vertical_alignment="center")
-        with cols[0]:
-            st.subheader("Settings", anchor="left")
-        with cols[1]:
-            if st.button(
-                label="Reset",
-                help="Reset the Environment",
-                use_container_width=False,
-            ):
-                # self.reset_environment() TODO: Fix
-                pass
+        st.subheader("Settings", anchor="left")
+        if st.button(
+            label="Reset",
+            help="Reset the Environment",
+            use_container_width=False,
+        ):
+            # self.reset_environment() TODO: Fix
+            pass
 
         self.render_settings_form()
 
@@ -476,37 +473,37 @@ class App:
     The class initializes the Streamlit app, sets up the environment configuration, and provides methods to interact with the traffic model.
 
     ## Methods:
-        **__init__(self)**:
-            Initializes the Streamlit app and sets up the environment configuration.
-        **create_graph_fig(self) -> TrafficGraph**:
-            Creates a figure of the Graph object used as a grid in TrafficModel.
-        **create_env_conf_df(self) -> pd.DataFrame**:
-            Creates a pandas DataFrame of the environment configuration.
-        **create_connections_df(self) -> pd.DataFrame**:
-            Creates a DataFrame containing connections for each node in the Graph.
         **create_edges_df(self) -> pd.DataFrame**:
             Creates a DataFrame with information about each edge in the graph.
         **step(self) -> None**:
             Advances the environment by one step.
-        **update_env_config(self) -> None**:
-            Applies changes to the environment from user options.
-        **reset_environment(self) -> None**:
-            Resets the environment with user-specified config options.
-        **create_full_path_df(self, agent_id: int) -> pd.DataFrame**:
-            Creates a DataFrame with the full path a car agent takes.
-        **create_current_path_df(self, agent) -> pd.DataFrame**:
-            Creates a DataFrame with the current (last) position, next position, and distance to the next position of an agent.
     """
 
     def __init__(self, model: TrafficModel):
-        """Initializes the Streamlit app and sets up the environment configuration."""
-
-        # Create two columns for layout
-        left_col, right_col = st.columns([0.75, 0.25])
-
-        # Render UI elements
-        self.render_left_column(left_col)
-        self.render_right_column(right_col)
+        """_summary_"""
+        outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
+        with outer_cols[0]:
+            inner_cols = st.columns(3, vertical_alignment="center")
+            with inner_cols[0]:
+                if st.button(
+                    label="Step",
+                    help="Execute one step",
+                ):
+                    st.query_params["run_steps"] = (
+                        st.session_state["env_config"]["auto_run_steps"] - 1
+                    )
+                    self.step()
+            with inner_cols[1]:
+                with st.popover("Show Connections"):
+                    ConnectionsContainer()
+            with inner_cols[2]:
+                st.popover(label="Show Edges").dataframe(
+                    self.create_edges_df(),
+                    hide_index=True,
+                )
+            GraphContainer(model)
+        with outer_cols[1]:
+            SettingsContainer()
         if st.session_state["env_config"]["num_cars"] > 0:
             CarPathListContainer()
 
@@ -517,50 +514,6 @@ class App:
             if len(model.get_agents_by_type("CarAgent")) == 0:
                 st.query_params["run_steps"] = 0
             self.step()
-
-    def render_left_column(self, left_col):
-        """Renders the left column with the traffic graph visualization."""
-        with left_col:
-            header_cols = st.columns(
-                [0.125, 0.2, 0.15, 0.525],
-                gap="small",
-                vertical_alignment="center",
-            )
-            self.render_header_cols(header_cols)
-            GraphContainer(model)
-
-    def render_header_cols(self, header_cols):
-        """Renders the header columns with popovers."""
-        with header_cols[0]:
-            if st.button(
-                label="Step",
-                help="Execute one step",
-                use_container_width=True,
-            ):
-                st.query_params["run_steps"] = (
-                    st.session_state["env_config"]["auto_run_steps"] - 1
-                )
-                self.step()
-        with header_cols[1]:
-            with st.popover("Show Connections"):
-                ConnectionsContainer()
-        with header_cols[2]:
-            st.popover(label="Show Edges").dataframe(
-                self.create_edges_df(),
-                hide_index=True,
-            )
-
-    def render_right_column(self, right_col):
-        """Renders the right column with UI controls."""
-        with right_col:
-            ui_cols = st.columns(spec=[0.3, 0.4, 0.3], vertical_alignment="center")
-            self.render_ui_controls(ui_cols)
-            SettingsContainer()
-
-    def render_ui_controls(self, ui_cols):
-        """Renders the UI controls in the right column."""
-        with ui_cols[0]:
-            pass
 
     def create_edges_df(self) -> pd.DataFrame:
         """Creates Dataframe with information about each edge in the graph.
