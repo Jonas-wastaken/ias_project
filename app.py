@@ -498,27 +498,8 @@ class App:
             Creates a DataFrame with the current (last) position, next position, and distance to the next position of an agent.
     """
 
-    def __init__(self):
+    def __init__(self, model: TrafficModel):
         """Initializes the Streamlit app and sets up the environment configuration."""
-
-        # Initialize the model in session state if it doesn't exist
-        self.model: TrafficModel = st.session_state["model"]
-
-        # Environment config
-        self.env_config = {
-            "num_intersections": len(self.model.grid.get_nodes("intersection")),
-            "num_borders": len(self.model.grid.get_nodes("border")),
-            "min_distance": min(
-                [edge[2] for edge in self.model.grid.edges(data="weight")]
-            ),
-            "max_distance": max(
-                [edge[2] for edge in self.model.grid.edges(data="weight")]
-            ),
-            "num_cars": len(self.model.get_agents_by_type("CarAgent")),
-            "auto_run_steps": 20,
-        }
-
-        st.session_state["env_config"] = self.env_config
 
         # Create two columns for layout
         left_col, right_col = st.columns([0.75, 0.25])
@@ -533,7 +514,7 @@ class App:
         if int(st.query_params["run_steps"]) > 0:
             time.sleep(0.1)
             st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            if len(self.model.get_agents_by_type("CarAgent")) == 0:
+            if len(model.get_agents_by_type("CarAgent")) == 0:
                 st.query_params["run_steps"] = 0
             self.step()
 
@@ -546,7 +527,7 @@ class App:
                 vertical_alignment="center",
             )
             self.render_header_cols(header_cols)
-            GraphContainer(self.model)
+            GraphContainer(model)
 
     def render_header_cols(self, header_cols):
         """Renders the header columns with popovers."""
@@ -556,7 +537,9 @@ class App:
                 help="Execute one step",
                 use_container_width=True,
             ):
-                st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
+                st.query_params["run_steps"] = (
+                    st.session_state["env_config"]["auto_run_steps"] - 1
+                )
                 self.step()
         with header_cols[1]:
             with st.popover("Show Connections"):
@@ -586,7 +569,7 @@ class App:
             pd.DataFrame: Dataframe with information about each edge in the graph.
         """
         edge_df = pd.DataFrame(
-            [(u, v, w) for u, v, w in self.model.grid.edges(data="weight")],
+            [(u, v, w) for u, v, w in model.grid.edges(data="weight")],
             columns=["U", "V", "Weight"],
         )
 
@@ -594,7 +577,7 @@ class App:
 
     def step(self) -> None:
         """Advances the environment by one step."""
-        self.model.step()
+        model.step()
         st.rerun()
 
 
@@ -606,10 +589,24 @@ if __name__ == "__main__":
         initial_sidebar_state="auto",
         menu_items=None,
     )
+
     if "scroll_index" not in st.query_params:
         st.query_params["scroll_index"] = 0
     if "run_steps" not in st.query_params:
         st.query_params["run_steps"] = 0
+
     if "model" not in st.session_state:
         st.session_state["model"] = TrafficModel(num_agents=3)
-    App()
+    model: TrafficModel = st.session_state["model"]
+
+    if "env_config" not in st.session_state:
+        st.session_state["env_config"] = {
+            "num_intersections": len(model.grid.get_nodes("intersection")),
+            "num_borders": len(model.grid.get_nodes("border")),
+            "min_distance": min([edge[2] for edge in model.grid.edges(data="weight")]),
+            "max_distance": max([edge[2] for edge in model.grid.edges(data="weight")]),
+            "num_cars": len(model.get_agents_by_type("CarAgent")),
+            "auto_run_steps": 20,
+        }
+
+    App(model)
