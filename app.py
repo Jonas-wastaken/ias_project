@@ -391,13 +391,6 @@ class App:
 
     def __init__(self):
         """Initializes the Streamlit app and sets up the environment configuration."""
-        st.set_page_config(
-            page_title="Test",
-            page_icon=None,
-            layout="wide",
-            initial_sidebar_state="auto",
-            menu_items=None,
-        )
 
         # Initialize the model in session state if it doesn't exist
         self.model: TrafficModel = st.session_state["model"]
@@ -513,6 +506,13 @@ class App:
 
 
 if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Test",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="auto",
+        menu_items=None,
+    )
     if "scroll_index" not in st.query_params:
         st.query_params["scroll_index"] = 0
     if "run_steps" not in st.query_params:
