@@ -290,7 +290,7 @@ class SettingsContainer:
 
     def update_env_config(
         self, num_cars, num_intersections, num_borders, distance_range, run_steps
-    ) -> None:
+    ) -> None:  # TODO: Make Class
         """Applies changes to the environment from user options."""
         # Update the model with new settings for number of agents
         if num_cars > st.session_state["env_config"]["num_cars"]:
@@ -450,11 +450,6 @@ class App:
 
     def render_header_cols(self, header_cols):
         """Renders the header columns with popovers."""
-        with header_cols[0]:
-            st.popover(label="Settings").dataframe(
-                self.create_env_conf_df(),
-                hide_index=True,
-            )
         with header_cols[1]:
             st.popover(label="Show Connections").dataframe(
                 self.create_connections_df(),
@@ -483,18 +478,6 @@ class App:
             ):
                 st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
                 self.step()
-
-    def create_env_conf_df(self) -> pd.DataFrame:
-        """Creates a pandas dataframe of the environment config.
-
-        Returns:
-            pd.DataFrame: Dataframe with Settings and Values of environment settings
-        """
-        env_conf_df = pd.DataFrame(
-            self.env_config.items(), columns=["Setting", "Value"]
-        )
-
-        return env_conf_df
 
     def create_connections_df(self) -> pd.DataFrame:
         """Creates Dataframe containing connections for each node in the Graph
