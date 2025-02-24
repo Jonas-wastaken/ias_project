@@ -200,8 +200,27 @@ class CarPathListContainer:
 
 
 class SettingsContainer:
+    """Container for the settings form and reset button.
+
+    This class provides functionality to display a settings form where users can configure the environment parameters.
+
+    ## Methods:
+        **render_settings_form(self)-> None**:
+            Renders the settings form with input fields for various environment parameters.
+        **update_env_config(self, num_cars, num_intersections, num_borders, distance_range, run_steps) -> None**:
+            Applies changes to the environment based on user input from the settings form.
+        **reset_environment(self) -> None**:
+            Resets the environment with user-specified config options.
+    """
+
     def __init__(self):
-        """_summary_"""
+        """Initializes the settings container with a reset button and renders the settings form.
+
+        - Creates two columns for layout
+        - Adds a subheader for settings
+        - Adds a reset button to reset the environment
+        - Renders the settings form
+        """
         cols = st.columns(2, gap="large", vertical_alignment="center")
         with cols[0]:
             st.subheader("Settings", anchor="left")
@@ -216,7 +235,15 @@ class SettingsContainer:
 
         self.render_settings_form()
 
-    def render_settings_form(self):
+    def render_settings_form(self) -> None:
+        """Renders the settings form with input fields for environment parameters.
+
+        - Number of Cars
+        - Number of Intersections
+        - Number of Borders
+        - Distance Range
+        - Run Steps
+        """
         with st.form("Settings"):
             num_cars = self.NumCarsInput().num_cars
             num_intersections = self.NumIntersectionsInput().num_intersections
@@ -230,9 +257,16 @@ class SettingsContainer:
 
     @dataclass
     class NumCarsInput:
+        """Dataclass for the number of cars input field.
+
+        ## Attributes:
+            **num_cars (int)**: Number of cars input by the user.
+        """
+
         num_cars: int
 
         def __init__(self):
+            """Initializes the number of cars input field with a default value from session state."""
             self.num_cars = st.number_input(
                 label="Number of Cars",
                 min_value=0,
@@ -242,9 +276,16 @@ class SettingsContainer:
 
     @dataclass
     class NumIntersectionsInput:
+        """Dataclass for the number of intersections input field.
+
+        ## Attributes:
+            **num_intersections (int)**: Number of intersections input by the user.
+        """
+
         num_intersections: int
 
         def __init__(self):
+            """Initializes the number of intersections input field with a default value from session state."""
             self.num_intersections = st.number_input(
                 label="Number of Intersections",
                 min_value=1,
@@ -253,9 +294,16 @@ class SettingsContainer:
 
     @dataclass
     class NumBordersInput:
+        """Dataclass for the number of borders input field.
+
+        ## Attributes:
+            **num_borders (int)**: Number of borders input by the user.
+        """
+
         num_borders: int
 
         def __init__(self):
+            """Initializes the number of borders input field with a default value from session state."""
             self.num_borders = st.number_input(
                 label="Number of Borders",
                 min_value=2,
@@ -264,9 +312,16 @@ class SettingsContainer:
 
     @dataclass
     class DistanceRangeSlider:
+        """Dataclass for the distance range slider.
+
+        ## Attributes:
+            **distance_range (tuple[int, int])**: Distance range input by the user.
+        """
+
         distance_range: tuple[int, int]
 
         def __init__(self):
+            """Initializes the distance range slider with default values from session state."""
             self.distance_range = st.slider(
                 label="Distance",
                 min_value=2,
@@ -279,9 +334,16 @@ class SettingsContainer:
 
     @dataclass
     class RunStepsInput:
-        run_steps = int
+        """Dataclass for the run steps input field.
+
+        ## Attributes:
+            **run_steps (int)**: Number of run steps input by the user.
+        """
+
+        run_steps: int
 
         def __init__(self):
+            """Initializes the run steps input field with a default value from session state."""
             self.run_steps = st.number_input(
                 label="Run Steps",
                 min_value=1,
@@ -290,8 +352,16 @@ class SettingsContainer:
 
     def update_env_config(
         self, num_cars, num_intersections, num_borders, distance_range, run_steps
-    ) -> None:  # TODO: Make Class
-        """Applies changes to the environment from user options."""
+    ) -> None:  # TODO: make class
+        """Applies changes to the environment based on user input from the settings form.
+
+        Args:
+            num_cars (int): Number of cars
+            num_intersections (int): Number of intersections
+            num_borders (int): Number of borders
+            distance_range (tuple[int, int]): Distance range
+            run_steps (int): Number of run steps
+        """
         # Update the model with new settings for number of agents
         if num_cars > st.session_state["env_config"]["num_cars"]:
             st.session_state["model"].create_agents(
@@ -349,8 +419,8 @@ class SettingsContainer:
 
         st.rerun()
 
-    def reset_environment(self) -> None:  # TODO: Fix
-        """Resets the environment with user specified config options."""
+    def reset_environment(self) -> None:
+        """Resets the environment with user-specified config options."""
         st.session_state["model"] = TrafficModel(
             num_agents=self.num_cars,
             num_intersections=self.num_intersections,
@@ -362,17 +432,27 @@ class SettingsContainer:
 
 
 class ConnectionsContainer:
+    """Container for displaying the connections of each node in the graph.
+
+    This class provides functionality to create and display a DataFrame containing the connections for each node in the graph.
+
+    ## Methods:
+        **create_connections_df(self) -> pd.DataFrame**:
+            Creates a DataFrame containing connections for each node in the graph.
+    """
+
     def __init__(self):
+        """Initializes the ConnectionsContainer and displays the connections DataFrame."""
         st.dataframe(
             self.create_connections_df(),
             hide_index=True,
         )
 
     def create_connections_df(self) -> pd.DataFrame:
-        """Creates Dataframe containing connections for each node in the Graph
+        """Creates a DataFrame containing connections for each node in the graph.
 
         Returns:
-            pd.DataFrame: Dataframe containing connections for each node in the Graph
+            pd.DataFrame: DataFrame containing connections for each node in the graph.
         """
         connections_df = pd.DataFrame(
             [
