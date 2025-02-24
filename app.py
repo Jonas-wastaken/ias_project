@@ -361,6 +361,35 @@ class SettingsContainer:
         st.rerun()
 
 
+class ConnectionsContainer:
+    def __init__(self):
+        st.dataframe(
+            self.create_connections_df(),
+            hide_index=True,
+        )
+
+    def create_connections_df(self) -> pd.DataFrame:
+        """Creates Dataframe containing connections for each node in the Graph
+
+        Returns:
+            pd.DataFrame: Dataframe containing connections for each node in the Graph
+        """
+        connections_df = pd.DataFrame(
+            [
+                (
+                    node,
+                    st.session_state["model"]
+                    .grid.get_connections(filter_by=node)
+                    .values(),
+                )
+                for node in st.session_state["model"].grid.get_nodes()
+            ],
+            columns=["Node", "Connected Nodes"],
+        )
+
+        return connections_df
+
+
 class App:
     """A class to represent the Streamlit application for visualizing a traffic grid.
 
@@ -450,10 +479,8 @@ class App:
                 st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
                 self.step()
         with header_cols[1]:
-            st.popover(label="Show Connections").dataframe(
-                self.create_connections_df(),
-                hide_index=True,
-            )
+            with st.popover("Show Connections"):
+                ConnectionsContainer()
         with header_cols[2]:
             st.popover(label="Show Edges").dataframe(
                 self.create_edges_df(),
@@ -471,20 +498,6 @@ class App:
         """Renders the UI controls in the right column."""
         with ui_cols[0]:
             pass
-
-    def create_connections_df(self) -> pd.DataFrame:
-        """Creates Dataframe containing connections for each node in the Graph
-
-        Returns:
-            pd.DataFrame: Dataframe containing connections for each node in the Graph
-        """
-        connections = self.model.grid.get_connections()
-        connections_df = pd.DataFrame(
-            [(node, connections[node]) for node in connections],
-            columns=["Node", "Connected Nodes"],
-        )
-
-        return connections_df
 
     def create_edges_df(self) -> pd.DataFrame:
         """Creates Dataframe with information about each edge in the graph.
