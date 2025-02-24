@@ -428,43 +428,39 @@ class SettingsContainer:
         st.rerun()
 
 
-class ConnectionsContainer:
-    """Container for displaying the connections of each node in the graph.
+class EdgesContainer:
+    """Container for displaying the edges of the graph.
 
-    This class provides functionality to create and display a DataFrame containing the connections for each node in the graph.
+    This class provides functionality to create and display a DataFrame containing information about each edge in the graph.
 
     ## Methods:
-        **create_connections_df(self) -> pd.DataFrame**:
-            Creates a DataFrame containing connections for each node in the graph.
+        **create_edges_df(self, model) -> pd.DataFrame**:
+            Creates a DataFrame containing information about each edge in the graph.
     """
 
-    def __init__(self):
-        """Initializes the ConnectionsContainer and displays the connections DataFrame."""
-        st.dataframe(
-            self.create_connections_df(),
-            hide_index=True,
-        )
+    def __init__(self, model):
+        """Initializes the EdgesContainer and displays the edges DataFrame.
 
-    def create_connections_df(self) -> pd.DataFrame:
-        """Creates a DataFrame containing connections for each node in the graph.
+        Args:
+            model (TrafficModel): The traffic model containing the graph.
+        """
+        st.dataframe(self.create_edges_df(model), hide_index=True)
+
+    def create_edges_df(self, model) -> pd.DataFrame:
+        """Creates a DataFrame containing information about each edge in the graph.
+
+        Args:
+            model (TrafficModel): The traffic model containing the graph.
 
         Returns:
-            pd.DataFrame: DataFrame containing connections for each node in the graph.
+            pd.DataFrame: DataFrame containing information about each edge in the graph.
         """
-        connections_df = pd.DataFrame(
-            [
-                (
-                    node,
-                    st.session_state["model"]
-                    .grid.get_connections(filter_by=node)
-                    .values(),
-                )
-                for node in st.session_state["model"].grid.get_nodes()
-            ],
-            columns=["Node", "Connected Nodes"],
+        edge_df = pd.DataFrame(
+            [(u, v, w) for u, v, w in model.grid.edges(data="weight")],
+            columns=["U", "V", "Distance"],
         )
 
-        return connections_df
+        return edge_df
 
 
 class App:
@@ -483,7 +479,9 @@ class App:
         """_summary_"""
         outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
         with outer_cols[0]:
-            inner_cols = st.columns(3, vertical_alignment="center")
+            inner_cols = st.columns(
+                spec=[0.1, 0.2, 0.1, 0.6], vertical_alignment="center"
+            )
             with inner_cols[0]:
                 if st.button(
                     label="Step",
@@ -494,13 +492,8 @@ class App:
                     )
                     self.step()
             with inner_cols[1]:
-                with st.popover("Show Connections"):
-                    ConnectionsContainer()
-            with inner_cols[2]:
-                st.popover(label="Show Edges").dataframe(
-                    self.create_edges_df(),
-                    hide_index=True,
-                )
+                with st.popover(label="Show Edges"):
+                    EdgesContainer(model)
             GraphContainer(model)
         with outer_cols[1]:
             SettingsContainer()
@@ -514,19 +507,6 @@ class App:
             if len(model.get_agents_by_type("CarAgent")) == 0:
                 st.query_params["run_steps"] = 0
             self.step()
-
-    def create_edges_df(self) -> pd.DataFrame:
-        """Creates Dataframe with information about each edge in the graph.
-
-        Returns:
-            pd.DataFrame: Dataframe with information about each edge in the graph.
-        """
-        edge_df = pd.DataFrame(
-            [(u, v, w) for u, v, w in model.grid.edges(data="weight")],
-            columns=["U", "V", "Weight"],
-        )
-
-        return edge_df
 
     def step(self) -> None:
         """Advances the environment by one step."""
