@@ -381,6 +381,8 @@ class App:
             if next_position
             else None
         )
+        is_waiting = agent.waiting
+        global_waiting_time = agent.global_waiting_time
 
         current_path_df = pd.DataFrame(
             [
