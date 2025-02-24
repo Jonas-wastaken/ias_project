@@ -466,17 +466,16 @@ class EdgesContainer:
 class App:
     """A class to represent the Streamlit application for visualizing a traffic grid.
 
-    The class initializes the Streamlit app, sets up the environment configuration, and provides methods to interact with the traffic model.
-
     ## Methods:
-        **create_edges_df(self) -> pd.DataFrame**:
-            Creates a DataFrame with information about each edge in the graph.
         **step(self) -> None**:
             Advances the environment by one step.
     """
 
     def __init__(self, model: TrafficModel):
-        """_summary_"""
+        """Loads UI elements into the app
+
+        - Checks if there is an active auto run loop
+        """
         outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
         with outer_cols[0]:
             inner_cols = st.columns(
