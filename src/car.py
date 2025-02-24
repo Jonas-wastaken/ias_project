@@ -135,7 +135,7 @@ class CarAgent(mesa.Agent):
                 if light.position == current_intersection
             ][0]
 
-            if self.position != current_light.open_lane:
+            if self.model.get_last_intersection_of_car(self.unique_id) != current_light.open_lane:
                 self.waiting = True
             else:
                 self.waiting = False

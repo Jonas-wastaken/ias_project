@@ -59,8 +59,8 @@ class LightAgent(mesa.Agent):
         self.position = position
 
 
-    def update_waiting_cars(self) -> None:
-        """Updates the details of the cars waiting at the intersection (waiting_cars)"""
+    def update_waiting_cars(self) -> None:      # TODO: Fix this method
+        """NOT WORKING: Updates the details of the cars waiting at the intersection (waiting_cars)"""
 
         if self.waiting_cars is not None:
         # Remove all cars that have moved from the waiting_cars list

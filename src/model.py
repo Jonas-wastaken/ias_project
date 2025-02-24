@@ -71,7 +71,7 @@ class TrafficModel(mesa.Model):
                 car.remove()
 
         for light in self.get_agents_by_type("LightAgent"):
-            light.update_waiting_cars()
+            # light.update_waiting_cars()
 
             # Decide if the light should change the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
@@ -153,7 +153,9 @@ class TrafficModel(mesa.Model):
 
         # Get the corresponding intersection, if the cars last position was a border node (TODO)
         if previous_position.startswith("border"):
-            # TODO: Logik einbauen, um die letzte Intersection zu finden (z.B.: list(model.grid.get_connections("border_0").values())[0][0])
-            pass
+            first_intersection = list(car.model.agent_paths[car.unique_id].keys())[1]
+            lane = list(self.grid.neighbors(previous_position))
+            lane.remove(first_intersection)
+            previous_position = lane[0]
 
         return previous_position
