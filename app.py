@@ -18,6 +18,55 @@ from graph_viz import TrafficGraph
 from car import CarAgent
 
 
+class App:
+    """A class to represent the Streamlit application for visualizing a traffic grid.
+
+    ## Methods:
+        **step(self) -> None**:
+            Advances the environment by one step.
+    """
+
+    def __init__(self, model: TrafficModel):
+        """Loads UI elements into the app
+
+        - Checks if there is an active auto run loop
+        """
+        outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
+        with outer_cols[0]:
+            inner_cols = st.columns(
+                spec=[0.1, 0.2, 0.1, 0.6], vertical_alignment="center"
+            )
+            with inner_cols[0]:
+                if st.button(
+                    label="Step",
+                    help="Execute one step",
+                ):
+                    st.query_params["run_steps"] = (
+                        st.session_state["env_config"]["auto_run_steps"] - 1
+                    )
+                    self.step()
+            with inner_cols[1]:
+                with st.popover(label="Show Edges"):
+                    EdgesContainer(model)
+            GraphContainer(model)
+        with outer_cols[1]:
+            SettingsContainer()
+        if st.session_state["env_config"]["num_cars"] > 0:
+            CarPathListContainer()
+
+        if int(st.query_params["run_steps"]) > 0:
+            time.sleep(0.1)
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+            if len(model.get_agents_by_type("CarAgent")) == 0:
+                st.query_params["run_steps"] = 0
+            self.step()
+
+    def step(self) -> None:
+        """Advances the environment by one step."""
+        model.step()
+        st.rerun()
+
+
 class GraphContainer:
     """Class to hold the visualization of the graph."""
 
@@ -461,56 +510,6 @@ class EdgesContainer:
         )
 
         return edge_df
-
-
-class App:
-    """A class to represent the Streamlit application for visualizing a traffic grid.
-
-    ## Methods:
-        **step(self) -> None**:
-            Advances the environment by one step.
-    """
-
-    def __init__(self, model: TrafficModel):
-        """Loads UI elements into the app
-
-        - Checks if there is an active auto run loop
-        """
-        outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
-        with outer_cols[0]:
-            inner_cols = st.columns(
-                spec=[0.1, 0.2, 0.1, 0.6], vertical_alignment="center"
-            )
-            with inner_cols[0]:
-                if st.button(
-                    label="Step",
-                    help="Execute one step",
-                ):
-                    st.query_params["run_steps"] = (
-                        st.session_state["env_config"]["auto_run_steps"] - 1
-                    )
-                    self.step()
-            with inner_cols[1]:
-                with st.popover(label="Show Edges"):
-                    EdgesContainer(model)
-            GraphContainer(model)
-        with outer_cols[1]:
-            SettingsContainer()
-        if st.session_state["env_config"]["num_cars"] > 0:
-            CarPathListContainer()
-
-        # Check for auto run loop
-        if int(st.query_params["run_steps"]) > 0:
-            time.sleep(0.1)
-            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            if len(model.get_agents_by_type("CarAgent")) == 0:
-                st.query_params["run_steps"] = 0
-            self.step()
-
-    def step(self) -> None:
-        """Advances the environment by one step."""
-        model.step()
-        st.rerun()
 
 
 if __name__ == "__main__":
