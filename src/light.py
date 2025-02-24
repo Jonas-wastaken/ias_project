@@ -45,8 +45,8 @@ class LightAgent(mesa.Agent):
         self.neighbor_lights = [node for node in list(self.model.grid.neighbors(self.position)) if node.startswith("intersection")]
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
-        self.waiting_cars = {}
-        self.waiting_cars = self.update_waiting_cars()
+        # self.waiting_cars = {}
+        # self.waiting_cars = self.update_waiting_cars()
         self.open_lane = self.neighbor_lights[random.randint(0, len(self.neighbor_lights) - 1)]         # Randomly select a neighbor light as the open lane
 
 
@@ -59,29 +59,29 @@ class LightAgent(mesa.Agent):
         self.position = position
 
 
-    def update_waiting_cars(self) -> None:      # TODO: Fix this method
-        """NOT WORKING: Updates the details of the cars waiting at the intersection (waiting_cars)"""
+    # def update_waiting_cars(self) -> None:      # TODO: Fix this method
+    #     """NOT WORKING: Updates the details of the cars waiting at the intersection (waiting_cars)"""
 
-        if self.waiting_cars is not None:
-        # Remove all cars that have moved from the waiting_cars list
-            for car in self.waiting_cars.keys():
-                if not car.waiting:
-                    self.waiting_cars.pop(car)
+    #     if self.waiting_cars is not None:
+    #     # Remove all cars that have moved from the waiting_cars list
+    #         for car in self.waiting_cars.keys():
+    #             if not car.waiting:
+    #                 self.waiting_cars.pop(car)
 
-        # Add all new cars that are now waiting at the intersection 
-            for car in self.model.get_agents_by_type("CarAgent"):
-                if car.position == self.position and car not in self.waiting_cars.keys() and car.waiting:
-                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0}
+    #     # Add all new cars that are now waiting at the intersection 
+    #         for car in self.model.get_agents_by_type("CarAgent"):
+    #             if car.position == self.position and car not in self.waiting_cars.keys() and car.waiting:
+    #                 self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 0}
 
-        # Update car attributes in the waiting_cars list
-            for car in self.waiting_cars.keys():
-                self.waiting_cars[car]["local_waiting_time"] += 1
+    #     # Update car attributes in the waiting_cars list
+    #         for car in self.waiting_cars.keys():
+    #             self.waiting_cars[car]["local_waiting_time"] += 1
         
-        else:
-            self.waiting_cars = {}
-            for car in self.model.get_agents_by_type("CarAgent"):
-                if car.position == self.position and car.waiting:
-                    self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 1}
+    #     else:
+    #         self.waiting_cars = {}
+    #         for car in self.model.get_agents_by_type("CarAgent"):
+    #             if car.position == self.position and car.waiting:
+    #                 self.waiting_cars[car] = {"last_intersection": car.model.get_last_intersection_of_car(car.unique_id), "local_waiting_time": 1}
 
 
     def change_open_lane(self, lane: str) -> None:
