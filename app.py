@@ -448,6 +448,14 @@ class App:
 
     def render_header_cols(self, header_cols):
         """Renders the header columns with popovers."""
+        with header_cols[0]:
+            if st.button(
+                label="Step",
+                help="Execute one step",
+                use_container_width=True,
+            ):
+                st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
+                self.step()
         with header_cols[1]:
             st.popover(label="Show Connections").dataframe(
                 self.create_connections_df(),
@@ -469,13 +477,7 @@ class App:
     def render_ui_controls(self, ui_cols):
         """Renders the UI controls in the right column."""
         with ui_cols[0]:
-            if st.button(
-                label="Step",
-                help="Execute one step",
-                use_container_width=True,
-            ):
-                st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
-                self.step()
+            pass
 
     def create_connections_df(self) -> pd.DataFrame:
         """Creates Dataframe containing connections for each node in the Graph
