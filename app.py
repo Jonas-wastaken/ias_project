@@ -438,7 +438,7 @@ class EdgesContainer:
             Creates a DataFrame containing information about each edge in the graph.
     """
 
-    def __init__(self, model):
+    def __init__(self, model: TrafficModel):
         """Initializes the EdgesContainer and displays the edges DataFrame.
 
         Args:
@@ -446,7 +446,7 @@ class EdgesContainer:
         """
         st.dataframe(self.create_edges_df(model), hide_index=True)
 
-    def create_edges_df(self, model) -> pd.DataFrame:
+    def create_edges_df(self, model: TrafficModel) -> pd.DataFrame:
         """Creates a DataFrame containing information about each edge in the graph.
 
         Args:
