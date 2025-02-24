@@ -109,6 +109,8 @@ class CarAgent(mesa.Agent):
         else:
             self.global_waiting_time += 1
 
+        self.travel_time += 1
+
     def check_lights(self) -> None:
         """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
 
@@ -135,7 +137,10 @@ class CarAgent(mesa.Agent):
                 if light.position == current_intersection
             ][0]
 
-            if self.position != current_light.open_lane:
+            if (
+                self.model.get_last_intersection_of_car(self.unique_id)
+                != current_light.open_lane
+            ):
                 self.waiting = True
             else:
                 self.waiting = False
