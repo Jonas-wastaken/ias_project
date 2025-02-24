@@ -6,6 +6,7 @@ It allows users to step through the simulation of traffic agents and view their 
 import sys
 import os
 import time
+from dataclasses import dataclass
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
@@ -198,6 +199,168 @@ class CarPathListContainer:
         return path_dict
 
 
+class SettingsContainer:
+    def __init__(self):
+        """_summary_"""
+        cols = st.columns(2, gap="large", vertical_alignment="center")
+        with cols[0]:
+            st.subheader("Settings", anchor="left")
+        with cols[1]:
+            if st.button(
+                label="Reset",
+                help="Reset the Environment",
+                use_container_width=False,
+            ):
+                # self.reset_environment() TODO: Fix
+                pass
+
+        self.render_settings_form()
+
+    def render_settings_form(self):
+        with st.form("Settings"):
+            num_cars = self.NumCarsInput().num_cars
+            num_intersections = self.NumIntersectionsInput().num_intersections
+            num_borders = self.NumBordersInput().num_borders
+            distance_range = self.DistanceRangeSlider().distance_range
+            run_steps = self.RunStepsInput().run_steps
+            if st.form_submit_button("Submit"):
+                self.update_env_config(
+                    num_cars, num_intersections, num_borders, distance_range, run_steps
+                )
+
+    @dataclass
+    class NumCarsInput:
+        num_cars: int
+
+        def __init__(self):
+            self.num_cars = st.number_input(
+                label="Number of Cars",
+                min_value=0,
+                value=st.session_state["env_config"]["num_cars"],
+                key="num_cars",
+            )
+
+    @dataclass
+    class NumIntersectionsInput:
+        num_intersections: int
+
+        def __init__(self):
+            self.num_intersections = st.number_input(
+                label="Number of Intersections",
+                min_value=1,
+                value=st.session_state["env_config"]["num_intersections"],
+            )
+
+    @dataclass
+    class NumBordersInput:
+        num_borders: int
+
+        def __init__(self):
+            self.num_borders = st.number_input(
+                label="Number of Borders",
+                min_value=2,
+                value=st.session_state["env_config"]["num_borders"],
+            )
+
+    @dataclass
+    class DistanceRangeSlider:
+        distance_range: tuple[int, int]
+
+        def __init__(self):
+            self.distance_range = st.slider(
+                label="Distance",
+                min_value=2,
+                max_value=100,
+                value=(
+                    st.session_state["env_config"]["min_distance"],
+                    st.session_state["env_config"]["max_distance"],
+                ),
+            )
+
+    @dataclass
+    class RunStepsInput:
+        run_steps = int
+
+        def __init__(self):
+            self.run_steps = st.number_input(
+                label="Run Steps",
+                min_value=1,
+                value=st.session_state["env_config"]["auto_run_steps"],
+            )
+
+    def update_env_config(
+        self, num_cars, num_intersections, num_borders, distance_range, run_steps
+    ) -> None:
+        """Applies changes to the environment from user options."""
+        # Update the model with new settings for number of agents
+        if num_cars > st.session_state["env_config"]["num_cars"]:
+            st.session_state["model"].create_agents(
+                num_cars - st.session_state["env_config"]["num_cars"]
+            )
+        elif num_cars < st.session_state["env_config"]["num_cars"]:
+            st.session_state["model"].remove_agents(
+                st.session_state["env_config"]["num_cars"] - num_cars
+            )
+
+        # Update the model with new settings for number of intersections
+        if num_intersections > st.session_state["env_config"]["num_intersections"]:
+            st.session_state["model"].grid.add_intersections(
+                num_intersections - st.session_state["env_config"]["num_intersections"]
+            )
+        elif num_intersections < st.session_state["env_config"]["num_intersections"]:
+            st.session_state["model"].grid.remove_intersections(
+                st.session_state["env_config"]["num_intersections"] - num_intersections
+            )
+
+        # Update the model with new settings for number of borders
+        if num_borders > st.session_state["env_config"]["num_borders"]:
+            st.session_state["model"].grid.add_borders(
+                num_borders - st.session_state["env_config"]["num_borders"]
+            )
+        elif num_borders < st.session_state["env_config"]["num_borders"]:
+            self.model.grid.remove_borders(
+                st.session_state["env_config"]["num_borders"] - num_borders
+            )
+
+        # Update the model with new settings for distance range
+        if distance_range != (
+            st.session_state["env_config"]["min_distance"],
+            st.session_state["env_config"]["max_distance"],
+        ):
+            st.session_state["model"].grid.change_weights(
+                min_distance=distance_range[0],
+                max_distance=distance_range[1],
+            )
+
+        # Update the model with new settings for auto_run_steps
+        if run_steps != st.session_state["env_config"]["auto_run_steps"]:
+            st.session_state["env_config"]["auto_run_steps"] = run_steps
+
+        # Update the paths for each agent or delete agents if they are not on the grid
+        for agent in st.session_state["model"].get_agents_by_type("CarAgent")[:]:
+            if (
+                agent.position not in st.session_state["model"].grid.nodes
+                or agent.goal not in st.session_state["model"].grid.nodes
+            ):
+                st.session_state["model"].agents.remove(agent)
+                continue
+            agent.path = agent.compute_path()
+            st.session_state["model"].agent_paths[agent.unique_id] = agent.path.copy()
+
+        st.rerun()
+
+    def reset_environment(self) -> None:  # TODO: Fix
+        """Resets the environment with user specified config options."""
+        st.session_state["model"] = TrafficModel(
+            num_agents=self.num_cars,
+            num_intersections=self.num_intersections,
+            num_borders=self.num_borders,
+            min_distance=self.distance_range[0],
+            max_distance=self.distance_range[1],
+        )
+        st.rerun()
+
+
 class App:
     """A class to represent the Streamlit application for visualizing a traffic grid.
 
@@ -308,6 +471,7 @@ class App:
         with right_col:
             ui_cols = st.columns(spec=[0.3, 0.4, 0.3], vertical_alignment="center")
             self.render_ui_controls(ui_cols)
+            SettingsContainer()
 
     def render_ui_controls(self, ui_cols):
         """Renders the UI controls in the right column."""
@@ -319,55 +483,6 @@ class App:
             ):
                 st.query_params["run_steps"] = self.env_config["auto_run_steps"] - 1
                 self.step()
-
-        with ui_cols[1]:
-            self.render_options_popover()
-
-        with ui_cols[2]:
-            if st.button(
-                label="Reset",
-                help="Reset the Environment",
-                use_container_width=True,
-            ):
-                # self.reset_environment() TODO: Fix
-                pass
-
-    def render_options_popover(self):
-        """Renders the options popover for changing environment settings."""
-        options_popover = st.popover(
-            label="Options",
-            help="Change the environment settings",
-            use_container_width=True,
-        )
-
-        with options_popover:
-            st.markdown("### Options")
-            self.num_cars = st.number_input(
-                label="Number of Agents",
-                min_value=0,
-                value=self.env_config["num_cars"],
-            )
-            self.num_intersections = st.number_input(
-                label="Number of Intersections",
-                min_value=1,
-                value=self.env_config["num_intersections"],
-            )
-            self.num_borders = st.number_input(
-                label="Number of Borders",
-                min_value=2,
-                value=self.env_config["num_borders"],
-            )
-            self.distance_range = st.slider(
-                label="Distance",
-                min_value=2,
-                max_value=100,
-                value=(
-                    self.model.grid.min_distance,
-                    self.model.grid.max_distance,
-                ),
-            )
-            if st.button(label="Apply", help="Apply the changes"):
-                self.update_env_config()
 
     def create_env_conf_df(self) -> pd.DataFrame:
         """Creates a pandas dataframe of the environment config.
@@ -411,69 +526,6 @@ class App:
     def step(self) -> None:
         """Advances the environment by one step."""
         self.model.step()
-        st.rerun()
-
-    def update_env_config(self) -> None:
-        """Applies changes to the environment from user options."""
-        # Update the model with new settings for number of agents
-        if self.num_cars > self.env_config["num_cars"]:
-            self.model.create_agents(self.num_cars - self.env_config["num_cars"])
-        elif self.num_cars < self.env_config["num_cars"]:
-            self.model.remove_agents(self.env_config["num_cars"] - self.num_cars)
-
-        # Update the model with new settings for number of intersections
-        if self.num_intersections > self.env_config["num_intersections"]:
-            self.model.grid.add_intersections(
-                self.num_intersections - self.env_config["num_intersections"]
-            )
-        elif self.num_intersections < self.env_config["num_intersections"]:
-            self.model.grid.remove_intersections(
-                self.env_config["num_intersections"] - self.num_intersections
-            )
-
-        # Update the model with new settings for number of borders
-        if self.num_borders > self.env_config["num_borders"]:
-            self.model.grid.add_borders(
-                self.num_borders - self.env_config["num_borders"]
-            )
-        elif self.num_borders < self.env_config["num_borders"]:
-            self.model.grid.remove_borders(
-                self.env_config["num_borders"] - self.num_borders
-            )
-
-        # Update the model with new settings for distance range
-        if self.distance_range != (
-            self.env_config["min_distance"],
-            self.env_config["max_distance"],
-        ):
-            self.model.grid.change_weights(
-                min_distance=self.distance_range[0],
-                max_distance=self.distance_range[1],
-            )
-
-        # Update the paths for each agent or delete agents if they are not on the grid
-        for agent in self.model.get_agents_by_type("CarAgent")[:]:
-            if (
-                agent.position not in self.model.grid.nodes
-                or agent.goal not in self.model.grid.nodes
-            ):
-                self.model.agents.remove(agent)
-                continue
-            agent.path = agent.compute_path()
-            self.model.agent_paths[agent.unique_id] = agent.path.copy()
-
-        st.rerun()
-
-    def reset_environment(self) -> None:
-        """Resets the environment with user specified config options."""
-        st.session_state.model = TrafficModel(
-            num_agents=self.num_cars,
-            num_intersections=self.num_intersections,
-            num_borders=self.num_borders,
-            min_distance=self.distance_range[0],
-            max_distance=self.distance_range[1],
-        )
-        self.model = st.session_state.model
         st.rerun()
 
 
