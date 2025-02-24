@@ -109,6 +109,8 @@ class CarAgent(mesa.Agent):
         else:
             self.global_waiting_time += 1
 
+        self.travel_time += 1
+
     def check_lights(self) -> None:
         """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
 
