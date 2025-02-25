@@ -277,14 +277,6 @@ class SettingsContainer:
         - Renders the settings form
         """
         st.subheader("Settings", anchor="left")
-        if st.button(
-            label="Reset",
-            help="Reset the Environment",
-            use_container_width=False,
-        ):
-            # self.reset_environment() TODO: Fix
-            pass
-
         self.render_settings_form()
 
     def render_settings_form(self) -> None:
@@ -490,17 +482,6 @@ class SettingsContainer:
     #         st.session_state["model"].agent_paths[agent.unique_id] = agent.path.copy()
 
     #     st.rerun()
-
-    def reset_environment(self) -> None:
-        """Resets the environment with user-specified config options."""
-        st.session_state["model"] = TrafficModel(
-            num_agents=self.num_cars,
-            num_intersections=self.num_intersections,
-            num_borders=self.num_borders,
-            min_distance=self.distance_range[0],
-            max_distance=self.distance_range[1],
-        )
-        st.rerun()
 
 
 class EdgesContainer:
