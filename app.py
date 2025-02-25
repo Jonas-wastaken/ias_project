@@ -277,14 +277,6 @@ class SettingsContainer:
         - Renders the settings form
         """
         st.subheader("Settings", anchor="left")
-        if st.button(
-            label="Reset",
-            help="Reset the Environment",
-            use_container_width=False,
-        ):
-            # self.reset_environment() TODO: Fix
-            pass
-
         self.render_settings_form()
 
     def render_settings_form(self) -> None:
@@ -403,84 +395,93 @@ class SettingsContainer:
             )
 
     def update_env_config(
-        self, num_cars, num_intersections, num_borders, distance_range, run_steps
-    ) -> None:  # TODO: make class
-        """Applies changes to the environment based on user input from the settings form.
-
-        Args:
-            num_cars (int): Number of cars
-            num_intersections (int): Number of intersections
-            num_borders (int): Number of borders
-            distance_range (tuple[int, int]): Distance range
-            run_steps (int): Number of run steps
-        """
-        # Update the model with new settings for number of agents
-        if num_cars > st.session_state["env_config"]["num_cars"]:
-            st.session_state["model"].create_agents(
-                num_cars - st.session_state["env_config"]["num_cars"]
-            )
-        elif num_cars < st.session_state["env_config"]["num_cars"]:
-            st.session_state["model"].remove_agents(
-                st.session_state["env_config"]["num_cars"] - num_cars
-            )
-
-        # Update the model with new settings for number of intersections
-        if num_intersections > st.session_state["env_config"]["num_intersections"]:
-            st.session_state["model"].grid.add_intersections(
-                num_intersections - st.session_state["env_config"]["num_intersections"]
-            )
-        elif num_intersections < st.session_state["env_config"]["num_intersections"]:
-            st.session_state["model"].grid.remove_intersections(
-                st.session_state["env_config"]["num_intersections"] - num_intersections
-            )
-
-        # Update the model with new settings for number of borders
-        if num_borders > st.session_state["env_config"]["num_borders"]:
-            st.session_state["model"].grid.add_borders(
-                num_borders - st.session_state["env_config"]["num_borders"]
-            )
-        elif num_borders < st.session_state["env_config"]["num_borders"]:
-            self.model.grid.remove_borders(
-                st.session_state["env_config"]["num_borders"] - num_borders
-            )
-
-        # Update the model with new settings for distance range
-        if distance_range != (
-            st.session_state["env_config"]["min_distance"],
-            st.session_state["env_config"]["max_distance"],
-        ):
-            st.session_state["model"].grid.change_weights(
-                min_distance=distance_range[0],
-                max_distance=distance_range[1],
-            )
-
-        # Update the model with new settings for auto_run_steps
-        if run_steps != st.session_state["env_config"]["auto_run_steps"]:
-            st.session_state["env_config"]["auto_run_steps"] = run_steps
-
-        # Update the paths for each agent or delete agents if they are not on the grid
-        for agent in st.session_state["model"].get_agents_by_type("CarAgent")[:]:
-            if (
-                agent.position not in st.session_state["model"].grid.nodes
-                or agent.goal not in st.session_state["model"].grid.nodes
-            ):
-                st.session_state["model"].agents.remove(agent)
-                continue
-            agent.path = agent.compute_path()
-            st.session_state["model"].agent_paths[agent.unique_id] = agent.path.copy()
-
-        st.rerun()
-
-    def reset_environment(self) -> None:
-        """Resets the environment with user-specified config options."""
+        self,
+        num_cars: int,
+        num_intersections: int,
+        num_borders: int,
+        distance_range: int,
+        run_steps: int,  # TODO add
+    ):
+        del st.session_state["model"]
         st.session_state["model"] = TrafficModel(
-            num_agents=self.num_cars,
-            num_intersections=self.num_intersections,
-            num_borders=self.num_borders,
-            min_distance=self.distance_range[0],
-            max_distance=self.distance_range[1],
+            num_agents=num_cars,
+            num_intersections=num_intersections,
+            num_borders=num_borders,
+            min_distance=distance_range[0],
+            max_distance=distance_range[1],
         )
+        st.query_params["run_steps"] = 0
+        st.query_params["scroll_index"] = 0
         st.rerun()
+
+    # def update_env_config(        TODO: Not functional
+    #     self, num_cars, num_intersections, num_borders, distance_range, run_steps
+    # ) -> None:  # TODO: make class
+    #     """Applies changes to the environment based on user input from the settings form.
+
+    #     Args:
+    #         num_cars (int): Number of cars
+    #         num_intersections (int): Number of intersections
+    #         num_borders (int): Number of borders
+    #         distance_range (tuple[int, int]): Distance range
+    #         run_steps (int): Number of run steps
+    #     """
+    #     # Update the model with new settings for number of agents
+    #     if num_cars > st.session_state["env_config"]["num_cars"]:
+    #         st.session_state["model"].create_agents(
+    #             num_cars - st.session_state["env_config"]["num_cars"]
+    #         )
+    #     elif num_cars < st.session_state["env_config"]["num_cars"]:
+    #         st.session_state["model"].remove_agents(
+    #             st.session_state["env_config"]["num_cars"] - num_cars
+    #         )
+
+    #     # Update the model with new settings for number of intersections
+    #     if num_intersections > st.session_state["env_config"]["num_intersections"]:
+    #         st.session_state["model"].grid.add_intersections(
+    #             num_intersections - st.session_state["env_config"]["num_intersections"]
+    #         )
+    #     elif num_intersections < st.session_state["env_config"]["num_intersections"]:
+    #         st.session_state["model"].grid.remove_intersections(
+    #             st.session_state["env_config"]["num_intersections"] - num_intersections
+    #         )
+
+    #     # Update the model with new settings for number of borders
+    #     if num_borders > st.session_state["env_config"]["num_borders"]:
+    #         st.session_state["model"].grid.add_borders(
+    #             num_borders - st.session_state["env_config"]["num_borders"]
+    #         )
+    #     elif num_borders < st.session_state["env_config"]["num_borders"]:
+    #         self.model.grid.remove_borders(
+    #             st.session_state["env_config"]["num_borders"] - num_borders
+    #         )
+
+    #     # Update the model with new settings for distance range
+    #     if distance_range != (
+    #         st.session_state["env_config"]["min_distance"],
+    #         st.session_state["env_config"]["max_distance"],
+    #     ):
+    #         st.session_state["model"].grid.change_weights(
+    #             min_distance=distance_range[0],
+    #             max_distance=distance_range[1],
+    #         )
+
+    #     # Update the model with new settings for auto_run_steps
+    #     if run_steps != st.session_state["env_config"]["auto_run_steps"]:
+    #         st.session_state["env_config"]["auto_run_steps"] = run_steps
+
+    #     # Update the paths for each agent or delete agents if they are not on the grid
+    #     for agent in st.session_state["model"].get_agents_by_type("CarAgent")[:]:
+    #         if (
+    #             agent.position not in st.session_state["model"].grid.nodes
+    #             or agent.goal not in st.session_state["model"].grid.nodes
+    #         ):
+    #             st.session_state["model"].agents.remove(agent)
+    #             continue
+    #         agent.path = agent.compute_path()
+    #         st.session_state["model"].agent_paths[agent.unique_id] = agent.path.copy()
+
+    #     st.rerun()
 
 
 class EdgesContainer:
@@ -536,14 +537,13 @@ if __name__ == "__main__":
         st.session_state["model"] = TrafficModel(num_agents=3)
     model: TrafficModel = st.session_state["model"]
 
-    if "env_config" not in st.session_state:
-        st.session_state["env_config"] = {
-            "num_intersections": len(model.grid.get_nodes("intersection")),
-            "num_borders": len(model.grid.get_nodes("border")),
-            "min_distance": min([edge[2] for edge in model.grid.edges(data="weight")]),
-            "max_distance": max([edge[2] for edge in model.grid.edges(data="weight")]),
-            "num_cars": len(model.get_agents_by_type("CarAgent")),
-            "auto_run_steps": 20,
-        }
+    st.session_state["env_config"] = {
+        "num_intersections": len(model.grid.get_nodes("intersection")),
+        "num_borders": len(model.grid.get_nodes("border")),
+        "min_distance": model.grid.min_distance,
+        "max_distance": model.grid.max_distance,
+        "num_cars": len(model.get_agents_by_type("CarAgent")),
+        "auto_run_steps": 20,
+    }
 
     App(model)
