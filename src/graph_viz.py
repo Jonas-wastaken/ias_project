@@ -18,18 +18,22 @@ class TrafficGraph(go.Figure):
         model (TrafficModel): The traffic model to visualize.
 
     ## Methods
-        **get_coords_edges(self) -> tuple**:
+        **get_coords_edges(self) -> tuple[np.array, np.array]**:
             Get the x and y coordinates of the edges.
-        **get_coords_nodes(self) -> tuple**:
+        **get_coords_nodes(self) -> tuple[np.array, np.array]**:
             Get the x and y coordinates of the nodes.
-        **create_trace_edges(self, edge_x: list, edge_y: list) -> go.Scatter**:
+        **create_trace_edges(self, edge_x: np.array, edge_y: np.array) -> go.Scatter**:
             Create a plotly trace for the edges.
-        **create_trace_nodes(self, node_x: list, node_y: list, node_color: list) -> go.Scatter**:
+        **create_trace_nodes(self, node_x: np.array, node_y: np.array, node_color: list) -> go.Scatter**:
             Create a plotly trace for the nodes.
         **create_node_color(self) -> list**:
             Create a list of colors for the nodes.
         **create_node_text(self) -> list**:
             Create a list of text for the nodes.
+        **get_coords_cars(self) -> tuple[np.array, np.array]**:
+            Get the x and y coordinates of the cars.
+        ***create_trace_cars(self, car_x: list, car_y: list) -> go.Scatter***:
+            Create a plotly trace for the nodes.
     """
 
     def __init__(self, model: TrafficModel):
@@ -100,12 +104,12 @@ class TrafficGraph(go.Figure):
 
         return node_x, node_y
 
-    def create_trace_edges(self, edge_x: list, edge_y: list) -> go.Scatter:
+    def create_trace_edges(self, edge_x: np.array, edge_y: np.array) -> go.Scatter:
         """Create a plotly trace for the edges.
 
         Args:
-            edge_x (list): X coordinates of the edges
-            edge_y (list): Y coordinates of the edges
+            edge_x (np.array): X coordinates of the edges
+            edge_y (np.array): Y coordinates of the edges
 
         Returns:
             go.Scatter: Plotly trace for the edges
@@ -120,13 +124,13 @@ class TrafficGraph(go.Figure):
         return edge_trace
 
     def create_trace_nodes(
-        self, node_x: list, node_y: list, node_color: list
+        self, node_x: np.array, node_y: np.array, node_color: list
     ) -> go.Scatter:
         """Create a plotly trace for the nodes.
 
         Args:
-            node_x (list): X coordinates of the nodes
-            node_y (list): Y coordinates of the nodes
+            node_x (np.array): X coordinates of the nodes
+            node_y (np.array): Y coordinates of the nodes
             node_color (list): Colors of the nodes
 
         Returns:
