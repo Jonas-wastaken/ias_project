@@ -536,14 +536,19 @@ if __name__ == "__main__":
         st.session_state["model"] = TrafficModel(num_agents=3)
     model: TrafficModel = st.session_state["model"]
 
-    if "env_config" not in st.session_state:
-        st.session_state["env_config"] = {
-            "num_intersections": len(model.grid.get_nodes("intersection")),
-            "num_borders": len(model.grid.get_nodes("border")),
-            "min_distance": min([edge[2] for edge in model.grid.edges(data="weight")]),
-            "max_distance": max([edge[2] for edge in model.grid.edges(data="weight")]),
-            "num_cars": len(model.get_agents_by_type("CarAgent")),
-            "auto_run_steps": 20,
-        }
+    st.session_state["env_config"] = {
+        "num_intersections": len(
+            st.session_state["model"].grid.get_nodes("intersection")
+        ),
+        "num_borders": len(st.session_state["model"].grid.get_nodes("border")),
+        "min_distance": min(
+            [edge[2] for edge in st.session_state["model"].grid.edges(data="weight")]
+        ),
+        "max_distance": max(
+            [edge[2] for edge in st.session_state["model"].grid.edges(data="weight")]
+        ),
+        "num_cars": len(st.session_state["model"].get_agents_by_type("CarAgent")),
+        "auto_run_steps": 20,
+    }
 
     App(model)
