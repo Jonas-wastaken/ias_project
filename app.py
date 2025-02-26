@@ -404,7 +404,7 @@ class SettingsContainer:
     ):
         del st.session_state["model"]
         st.session_state["model"] = TrafficModel(
-            num_agents=num_cars,
+            num_cars=num_cars,
             num_intersections=num_intersections,
             num_borders=num_borders,
             min_distance=distance_range[0],
@@ -534,7 +534,7 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_agents=3)
+        st.session_state["model"] = TrafficModel(num_cars=3)
     model: TrafficModel = st.session_state["model"]
 
     st.session_state["env_config"] = {
