@@ -32,7 +32,7 @@ class TestTrafficModel(unittest.TestCase):
         self.min_distance = 2
         self.max_distance = 10
         self.model = TrafficModel(
-            num_agents=self.num_cars,
+            num_cars=self.num_cars,
             num_intersections=self.num_intersections,
             num_borders=self.num_borders,
             min_distance=self.min_distance,
@@ -145,7 +145,7 @@ class TestTrafficModel(unittest.TestCase):
         except AssertionError as e:
             logging.error(f"Failed test_step: {e}")
             raise
-            
+
     def test_create_cars(self):
         """Test adding cars.
 
@@ -187,6 +187,7 @@ class TestTrafficModel(unittest.TestCase):
         except AssertionError as e:
             logging.error(f"Failed to remove cars: {e}")
             raise
+
 
 def suite():
     suite = unittest.TestSuite()

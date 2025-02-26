@@ -46,7 +46,7 @@ class TrafficModel(mesa.Model):
         """Initializes a new traffic environment.
 
         Args:
-            num_cars (int): Number of agents to spawn initially.
+            num_agents (int): Number of agents to spawn.
             seed (int, optional): Seed used in model generation. Defaults to None.
             **kwargs: Additional keyword arguments for configuring the graph object.
         """
@@ -69,7 +69,6 @@ class TrafficModel(mesa.Model):
         #     for agent in self.get_agents_by_type("CarAgent")
         # }
         # initialize waiting times for all cars at each intersection
-        self.num_cars_hist = []
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
         # for car in self.get_agents_by_type("CarAgent"):
@@ -101,7 +100,7 @@ class TrafficModel(mesa.Model):
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
 
-    def create_agents(self, num_cars: int) -> None:  # TODO: rename function
+    def create_cars(self, num_cars: int) -> None:
         """Function to add agents to the model.
 
         Args:
@@ -214,36 +213,3 @@ class TrafficModel(mesa.Model):
         for car in self.get_agents_by_type("CarAgent"):
             if car.unique_id not in list(self.agent_paths.keys()):
                 self.agent_paths[car.unique_id] = car.path.copy()
-
-    def agent_respawn(self):
-        """
-        Generates the next value in an oscillating list of numbers building up to n and dropping down to zero with some variance.
-        Normalizes the values to be between 0 and 1.
-        :param num_cars: The current list of numbers.
-        :param n: The middle number to oscillate around.
-        :return: The next normalized value in the oscillating list with variance.
-        """
-        direction = (
-            1
-            if self.num_cars_hist[-1] < self.num_cars
-            else -1
-            if self.num_cars_hist[-1] > self.num_cars
-            else random.choice([-1, 1])
-        )
-
-        current = (
-            self.num_cars_hist[-1] + direction + random.randint(-1, 1)
-        )  # Introduce variance
-
-        if current > self.num_cars * 2:
-            current = self.num_cars * 2
-        elif current < 0:
-            current = 0
-
-        # Normalize the value to be between 0 and 1
-        min_val = 0
-        max_val = self.num_cars * 2
-        normalized_value = (current - min_val) / (max_val - min_val)
-
-        if random.random() < normalized_value:
-            CarAgent.create_agents(model=self, n=1)
