@@ -54,29 +54,20 @@ class TrafficModel(mesa.Model):
         self.kwargs = kwargs
         self.num_cars = num_cars
         self.grid = Graph(
-            num_intersections=self.kwargs.get("num_intersections", 10),
-            num_borders=self.kwargs.get("num_borders", 3),
-            min_distance=self.kwargs.get("min_distance", 2),
-            max_distance=self.kwargs.get("max_distance", 10),
+            num_intersections=self.kwargs.get("num_intersections", 30),
+            num_borders=self.kwargs.get("num_borders", 10),
+            min_distance=self.kwargs.get("min_distance", 5),
+            max_distance=self.kwargs.get("max_distance", 15),
         )
         self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_cars)
+        self.num_cars_hist = [len(self.get_agents_by_type("CarAgent"))]
         # initialize paths for all agents
         self.agent_paths = {}
         self.update_agent_paths()
-        # self.agent_paths = {
-        #     agent.unique_id: agent.path.copy()
-        #     for agent in self.get_agents_by_type("CarAgent")
-        # }
         # initialize waiting times for all cars at each intersection
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
-        # for car in self.get_agents_by_type("CarAgent"):
-        # self.cars_waiting_times[car.unique_id] = {
-        #     intersection: 0
-        #     for intersection in list(car.model.agent_paths[car.unique_id].keys())
-        #     if intersection.startswith("intersection")
-        # }
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -90,11 +81,10 @@ class TrafficModel(mesa.Model):
             except AgentArrived:
                 car.remove()
 
-        self.update_cars_waiting_times()
+        self.num_cars_hist.append(len(self.get_agents_by_type("CarAgent")))
+        self.agent_respawn()
 
         for light in self.get_agents_by_type("LightAgent"):
-            # light.update_waiting_cars()
-
             # Decide if the light should change the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
@@ -116,7 +106,7 @@ class TrafficModel(mesa.Model):
         Args:
             num_agents (int): Number of agents to remove.
         """
-        for i in range(num_cars):
+        for _ in range(num_cars):
             agent = random.choice(self.get_agents_by_type("CarAgent"))
             self.agents.remove(agent)
 
@@ -213,3 +203,25 @@ class TrafficModel(mesa.Model):
         for car in self.get_agents_by_type("CarAgent"):
             if car.unique_id not in list(self.agent_paths.keys()):
                 self.agent_paths[car.unique_id] = car.path.copy()
+
+    def agent_respawn(self):
+        self.steps
+        if self.num_cars_hist[-1] < self.num_cars:
+            direction = 1
+        elif self.num_cars_hist[-1] > self.num_cars:
+            direction = -1
+        else:
+            direction = random.choice([-1, 1])
+        current = (
+            self.num_cars_hist[-1] + direction + random.randint(-1, 1)
+        )  # Introduce variance
+        if current > self.num_cars * 2:
+            current = self.num_cars * 2
+        elif current < 0:
+            current = 0
+        # Normalize the value to be between 0 and 1
+        min_val = 0
+        max_val = self.num_cars * 2
+        normalized_value = (current - min_val) / (max_val - min_val)
+        if random.random() < normalized_value:
+            self.create_cars(1)
