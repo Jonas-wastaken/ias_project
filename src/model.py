@@ -38,17 +38,17 @@ class TrafficModel(mesa.Model):
             Function to update the waiting times of all cars at each intersection.
     """
 
-    def __init__(self, num_agents: int, seed: int = None, **kwargs):
+    def __init__(self, num_cars: int, seed: int = None, **kwargs):
         """Initializes a new traffic environment.
 
         Args:
-            num_agents (int): Number of agents to spawn.
+            num_cars (int): Number of agents to spawn initially.
             seed (int, optional): Seed used in model generation. Defaults to None.
             **kwargs: Additional keyword arguments for configuring the graph object.
         """
         super().__init__(seed=seed)
         self.kwargs = kwargs
-        self.num_agents = num_agents
+        self.num_cars = num_cars
         self.grid = Graph(
             num_intersections=self.kwargs.get("num_intersections", 10),
             num_borders=self.kwargs.get("num_borders", 3),
@@ -56,11 +56,12 @@ class TrafficModel(mesa.Model):
             max_distance=self.kwargs.get("max_distance", 10),
         )
         self.create_light_agents()
-        CarAgent.create_agents(model=self, n=num_agents)
+        CarAgent.create_agents(model=self, n=num_cars)
         self.agent_paths = {
             agent.unique_id: agent.path.copy()
             for agent in self.get_agents_by_type("CarAgent")
         }
+        self.num_cars_hist = []
         self.cars_waiting_times = {}
         for car in self.get_agents_by_type("CarAgent"):
             self.cars_waiting_times[car.unique_id] = {
@@ -90,6 +91,9 @@ class TrafficModel(mesa.Model):
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
+
+        self.num_cars_hist.append(len(self.get_agents_by_type("CarAgent")))
+        self.agent_respawn()
 
     def create_agents(self, num_agents: int) -> None:  # TODO: rename function
         """Function to add agents to the model.
@@ -179,3 +183,36 @@ class TrafficModel(mesa.Model):
         for car in self.get_agents_by_type("CarAgent"):
             if car.waiting:
                 self.cars_waiting_times[car.unique_id][car.position] += 1
+
+    def agent_respawn(self):
+        """
+        Generates the next value in an oscillating list of numbers building up to n and dropping down to zero with some variance.
+        Normalizes the values to be between 0 and 1.
+        :param num_cars: The current list of numbers.
+        :param n: The middle number to oscillate around.
+        :return: The next normalized value in the oscillating list with variance.
+        """
+        direction = (
+            1
+            if self.num_cars_hist[-1] < self.num_cars
+            else -1
+            if self.num_cars_hist[-1] > self.num_cars
+            else random.choice([-1, 1])
+        )
+
+        current = (
+            self.num_cars_hist[-1] + direction + random.randint(-1, 1)
+        )  # Introduce variance
+
+        if current > self.num_cars * 2:
+            current = self.num_cars * 2
+        elif current < 0:
+            current = 0
+
+        # Normalize the value to be between 0 and 1
+        min_val = 0
+        max_val = self.num_cars * 2
+        normalized_value = (current - min_val) / (max_val - min_val)
+
+        if random.random() < normalized_value:
+            CarAgent.create_agents(model=self, n=1)
