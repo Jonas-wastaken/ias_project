@@ -428,11 +428,11 @@ class SettingsContainer:
     #     """
     #     # Update the model with new settings for number of agents
     #     if num_cars > st.session_state["env_config"]["num_cars"]:
-    #         st.session_state["model"].create_agents(
+    #         st.session_state["model"].create_cars(
     #             num_cars - st.session_state["env_config"]["num_cars"]
     #         )
     #     elif num_cars < st.session_state["env_config"]["num_cars"]:
-    #         st.session_state["model"].remove_agents(
+    #         st.session_state["model"].remove_random_cars(
     #             st.session_state["env_config"]["num_cars"] - num_cars
     #         )
 
