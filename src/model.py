@@ -61,22 +61,10 @@ class TrafficModel(mesa.Model):
         )
         self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_agents)
-        # initialize paths for all agents
         self.agent_paths = {}
         self.update_agent_paths()
-        # self.agent_paths = {
-        #     agent.unique_id: agent.path.copy()
-        #     for agent in self.get_agents_by_type("CarAgent")
-        # }
-        # initialize waiting times for all cars at each intersection
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
-        # for car in self.get_agents_by_type("CarAgent"):
-            # self.cars_waiting_times[car.unique_id] = {
-            #     intersection: 0
-            #     for intersection in list(car.model.agent_paths[car.unique_id].keys())
-            #     if intersection.startswith("intersection")
-            # }
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -212,4 +200,24 @@ class TrafficModel(mesa.Model):
         for car in self.get_agents_by_type("CarAgent"):
             if car.unique_id not in list(self.agent_paths.keys()):
                 self.agent_paths[car.unique_id] = car.path.copy()
+
+
+    def get_cars_per_lane_of_light(self, light_position: str) -> dict:
+        """Function to get the number of cars per lane of a light.
+
+        Args:
+            light_position (str): The position of the light.
+
+        Returns:
+            dict: A dictionary containing the number of cars per lane of the light.
+        """
+        cars_per_lane = {
+            lane: 0 for lane in self.grid.neighbors(light_position) if lane.startswith("intersection")
+        }
+
+        for car in self.get_agents_by_type("CarAgent"):
+            if car.position == light_position and car.waiting:
+                cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
+
+        return cars_per_lane
 
