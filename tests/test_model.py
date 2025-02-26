@@ -156,7 +156,7 @@ class TestTrafficModel(unittest.TestCase):
         initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
         additional_num_cars = random.randint(3, 100)
         try:
-            self.model.create_agents(additional_num_cars)
+            self.model.create_cars(additional_num_cars)
             self.assertEqual(
                 (initial_num_cars + additional_num_cars),
                 len(self.model.get_agents_by_type("CarAgent")),
@@ -178,7 +178,7 @@ class TestTrafficModel(unittest.TestCase):
         logging.info(f"Initial number of cars: {initial_num_cars}")
         logging.info(f"Removing {removed_num_cars} cars")
         try:
-            self.model.remove_agents(removed_num_cars)
+            self.model.remove_random_cars(removed_num_cars)
             self.assertEqual(
                 (initial_num_cars - removed_num_cars),
                 len(self.model.get_agents_by_type("CarAgent")),
