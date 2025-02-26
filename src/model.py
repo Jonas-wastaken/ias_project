@@ -38,6 +38,8 @@ class TrafficModel(mesa.Model):
             Function to get the last position of a car.
         **update_cars_waiting_times(self) -> None**:
             Function to update the waiting times of all cars at each intersection.
+        **update_agent_paths(self) -> None**:
+            Function to update the paths of all agents.
     """
 
     def __init__(self, num_agents: int, seed: int = None, **kwargs):
@@ -59,17 +61,22 @@ class TrafficModel(mesa.Model):
         )
         self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_agents)
-        self.agent_paths = {
-            agent.unique_id: agent.path.copy()
-            for agent in self.get_agents_by_type("CarAgent")
-        }
+        # initialize paths for all agents
+        self.agent_paths = {}
+        self.update_agent_paths()
+        # self.agent_paths = {
+        #     agent.unique_id: agent.path.copy()
+        #     for agent in self.get_agents_by_type("CarAgent")
+        # }
+        # initialize waiting times for all cars at each intersection
         self.cars_waiting_times = {}
-        for car in self.get_agents_by_type("CarAgent"):
-            self.cars_waiting_times[car.unique_id] = {
-                intersection: 0
-                for intersection in list(car.model.agent_paths[car.unique_id].keys())
-                if intersection.startswith("intersection")
-            }
+        self.update_cars_waiting_times()
+        # for car in self.get_agents_by_type("CarAgent"):
+            # self.cars_waiting_times[car.unique_id] = {
+            #     intersection: 0
+            #     for intersection in list(car.model.agent_paths[car.unique_id].keys())
+            #     if intersection.startswith("intersection")
+            # }
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -100,6 +107,8 @@ class TrafficModel(mesa.Model):
             num_agents (int): Number of agents to add.
         """
         CarAgent.create_agents(model=self, n=num_cars)
+        self.update_agent_paths()
+        self.update_cars_waiting_times()
 
     def remove_random_cars(self, num_cars: int) -> None:  
         """Function to randomly remove n agents from the model.
@@ -187,5 +196,20 @@ class TrafficModel(mesa.Model):
         """Function to update the waiting times of all cars at each intersection."""
 
         for car in self.get_agents_by_type("CarAgent"):
+            if car.unique_id not in list(self.cars_waiting_times.keys()):
+                self.cars_waiting_times[car.unique_id] = {
+                    intersection: 0
+                    for intersection in list(car.model.agent_paths[car.unique_id].keys())
+                    if intersection.startswith("intersection")
+                }
+
             if car.waiting:
                 self.cars_waiting_times[car.unique_id][car.position] += 1
+
+
+    def update_agent_paths(self) -> None:
+        """Function to update the paths of all agents."""
+        for car in self.get_agents_by_type("CarAgent"):
+            if car.unique_id not in list(self.agent_paths.keys()):
+                self.agent_paths[car.unique_id] = car.path.copy()
+
