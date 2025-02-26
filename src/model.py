@@ -22,12 +22,14 @@ class TrafficModel(mesa.Model):
     ## Methods:
         **step(self) -> None**:
             Advances the environment to next state.
-        **create_agents(self, num_agents: int) -> None**:
+        **create_cars(self, num_agents: int) -> None**:
             Function to add agents to the model.
-        **remove_agents(self, num_agents: int) -> None**:
+        **remove_random_cars(self, num_agents: int) -> None**:
             Function to randomly remove n agents from the model.
-        **create_light_agents(self) -> None**:
+        **create_lights(self, num_lights: int, position: str) -> None**:
             Function to add traffic lights to the model.
+        **create_lights_for_intersections(self) -> None**:
+            Function to add a traffic light to each intersection of the model.
         **get_agents_by_type(self, agent_type: str) -> list**:
             Function to get all agents of a certain type.
         **get_agents_by_id(self, agent_id: list) -> list**:
@@ -55,7 +57,7 @@ class TrafficModel(mesa.Model):
             min_distance=self.kwargs.get("min_distance", 2),
             max_distance=self.kwargs.get("max_distance", 10),
         )
-        self.create_light_agents()
+        self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_agents)
         self.agent_paths = {
             agent.unique_id: agent.path.copy()
@@ -91,25 +93,33 @@ class TrafficModel(mesa.Model):
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
 
-    def create_agents(self, num_agents: int) -> None:  # TODO: rename function
+    def create_cars(self, num_cars: int) -> None:  
         """Function to add agents to the model.
 
         Args:
             num_agents (int): Number of agents to add.
         """
-        CarAgent.create_agents(model=self, n=num_agents)
+        CarAgent.create_agents(model=self, n=num_cars)
 
-    def remove_agents(self, num_agents: int) -> None:  # TODO: rename function
+    def remove_random_cars(self, num_cars: int) -> None:  
         """Function to randomly remove n agents from the model.
 
         Args:
             num_agents (int): Number of agents to remove.
         """
-        for i in range(num_agents):
+        for i in range(num_cars):
             agent = random.choice(self.get_agents_by_type("CarAgent"))
             self.agents.remove(agent)
 
-    def create_light_agents(self) -> None:
+    def create_lights(self, num_lights: int, position: str) -> None:
+        """Function to add traffic lights to the model.
+
+        Args:
+            num_agents (int): Number of agents to add.
+        """
+        LightAgent.create_agents(model=self, n=num_lights, position=position)
+
+    def create_lights_for_intersections(self) -> None:
         """Function to add traffic lights to the model.
 
         Args:
