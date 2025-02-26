@@ -173,7 +173,7 @@ class CarPathListContainer:
         st.dataframe(
             self.get_current_path(car),
             use_container_width=True,
-            column_config={"value": ""},
+            column_config={"value": st.column_config.TextColumn("")},
         )
 
     def render_full_path(self, car: CarAgent) -> None:
@@ -230,7 +230,7 @@ class CarPathListContainer:
         """
         current_position = car.position
         try:
-            next_position = list(car.path.keys())[1]
+            next_position: str = list(car.path.keys())[1]
         except IndexError:
             next_position = None
         distance = (
@@ -244,11 +244,11 @@ class CarPathListContainer:
         global_waiting_time = car.global_waiting_time
 
         path_dict = {
-            "Current Position": current_position.title().replace("_", " "),
+            "Current Position": str(current_position).title().replace("_", " "),
             "Next Position": str(next_position).title().replace("_", " "),
-            "Distance": distance,
-            "Waiting": is_waiting,
-            "Waiting Time": global_waiting_time,
+            "Distance": str(distance),
+            "Waiting": str(is_waiting),
+            "Waiting Time": str(global_waiting_time),
         }
 
         return path_dict
