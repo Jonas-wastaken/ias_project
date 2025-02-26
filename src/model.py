@@ -40,6 +40,8 @@ class TrafficModel(mesa.Model):
             Function to update the waiting times of all cars at each intersection.
         **update_agent_paths(self) -> None**:
             Function to update the paths of all agents.
+        **get_cars_per_lane_of_light(self, light_position: str) -> dict**:
+            Function to get the number of cars per lane of a light.
     """
 
     def __init__(self, num_agents: int, seed: int = None, **kwargs):
