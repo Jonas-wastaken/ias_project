@@ -3,6 +3,7 @@
 
 import mesa
 import random
+import math
 from car import CarAgent, AgentArrived
 from graph import Graph
 from light import LightAgent
@@ -62,7 +63,6 @@ class TrafficModel(mesa.Model):
         self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_cars)
         self.num_cars_hist = [len(self.get_agents_by_type("CarAgent"))]
-        self.time = 0
         # initialize paths for all agents
         self.agent_paths = {}
         self.update_agent_paths()
@@ -82,19 +82,14 @@ class TrafficModel(mesa.Model):
             except AgentArrived:
                 car.remove()
 
-        self.num_cars_hist.append(len(self.get_agents_by_type("CarAgent")))
-        self.agent_respawn()
-
         for light in self.get_agents_by_type("LightAgent"):
             # Decide if the light should change the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
 
-        if self.time < 200:
-            self.time += 1
-        elif self.time == 200:
-            self.time = 0
+        self.num_cars_hist.append(len(self.get_agents_by_type("CarAgent")))
+        self.agent_respawn()
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add agents to the model.
@@ -211,23 +206,14 @@ class TrafficModel(mesa.Model):
                 self.agent_paths[car.unique_id] = car.path.copy()
 
     def agent_respawn(self):
-        self.steps
-        if self.num_cars_hist[-1] < self.num_cars:
-            direction = 1
-        elif self.num_cars_hist[-1] > self.num_cars:
-            direction = -1
-        else:
-            direction = random.choice([-1, 1])
-        current = (
-            self.num_cars_hist[-1] + direction + random.randint(-1, 1)
-        )  # Introduce variance
-        if current > self.num_cars * 2:
-            current = self.num_cars * 2
-        elif current < 0:
-            current = 0
-        # Normalize the value to be between 0 and 1
-        min_val = 0
-        max_val = self.num_cars * 2
-        normalized_value = (current - min_val) / (max_val - min_val)
-        if random.random() < normalized_value:
-            self.create_cars(1)
+        """_summary_"""
+        sine_value = math.sin(2 * math.pi * self.steps / 100)
+
+        desired_agents = (sine_value + 1) / 2 * 2 * self.num_cars_hist[0]
+
+        agents_to_add = desired_agents - self.num_cars_hist[-1]
+
+        agents_to_add = agents_to_add * random.uniform(0.8, 1.2)
+
+        if agents_to_add > 0:
+            self.create_cars(int(agents_to_add))
