@@ -62,6 +62,7 @@ class TrafficModel(mesa.Model):
         self.create_lights_for_intersections()
         CarAgent.create_agents(model=self, n=num_cars)
         self.num_cars_hist = [len(self.get_agents_by_type("CarAgent"))]
+        self.time = 0
         # initialize paths for all agents
         self.agent_paths = {}
         self.update_agent_paths()
@@ -89,6 +90,11 @@ class TrafficModel(mesa.Model):
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
+
+        if self.time < 200:
+            self.time += 1
+        elif self.time == 200:
+            self.time = 0
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add agents to the model.
