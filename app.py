@@ -58,9 +58,9 @@ class App:
                         st.session_state["auto_run_steps"] - 1
                     )
                     self.step()
-            with inner_cols[2]:
-                with st.popover(label="Show Edges"):
-                    EdgesContainer(model)
+            # with inner_cols[2]: TODO: move and make pretty
+            #     with st.popover(label="Show Edges"):
+            #         EdgesContainer(model)
             GraphContainer(model)
         with outer_cols[1]:
             SettingsContainer()
