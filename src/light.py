@@ -3,6 +3,8 @@
 
 import mesa
 import random
+import pyoptinterface as poi
+from pyoptinterface import highs
 
 
 class LightAgent(mesa.Agent):
@@ -28,9 +30,10 @@ class LightAgent(mesa.Agent):
             Changes from where cars are allowed to cross the intersection.
         **rotate_in_open_lane_cycle(self) -> None**:
             Rotates the open lane to the next neighbor light in the cycle.
+        **optimize_open_lane(self) -> str**:
+            Decides which lane should be open based on the number of waiting cars.
 
         **Coming soon**:
-        - decide_open_lane?
         - estimate_coming_cars?
     """
 
@@ -123,6 +126,35 @@ class LightAgent(mesa.Agent):
         current_index = self.neighbor_lights.index(self.open_lane)
         next_index = (current_index + 1) % len(self.neighbor_lights)
         self.change_open_lane(self.neighbor_lights[next_index])
+
+    def optimize_open_lane(self) -> str:
+        """Decides which lane should be open based on the number of waiting cars."""
+        opt_model = highs.Model()
+        
+        possible_lanes = self.neighbor_lights
+        cars_at_light = self.model.get_cars_per_lane_of_light(self.position)
+        lanes = opt_model.add_variables(possible_lanes, domain=poi.VariableDomain.Binary)
+
+        # Constraints
+        opt_model.add_linear_constraint(poi.quicksum(lanes), poi.Eq, 1)
+
+        # Objective
+        objective = poi.quicksum(lanes[lane] * cars_at_light[lane] for lane in lanes)
+        opt_model.set_objective(objective, poi.ObjectiveSense.Maximize)
+
+        opt_model.optimize()
+
+        # Decide which lane should be open
+        optimal_value = opt_model.get_obj_value()
+        optimal_lanes = [lane for lane in cars_at_light if optimal_value == cars_at_light[lane]]
+
+        if len(optimal_lanes) > 1:
+            optimal_lane = random.choice(optimal_lanes)             # Randomly select one of the optimal lanes, if there are multiple (TODO: chose the one where the cars have waited the longest)
+        else:
+            optimal_lane = optimal_lanes[0]
+
+        return optimal_lane
+
 
 
 class LightCooldown(Exception):

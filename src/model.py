@@ -85,10 +85,12 @@ class TrafficModel(mesa.Model):
         for light in self.get_agents_by_type("LightAgent"):
             # light.update_waiting_cars()
 
-            # Decide if the light should change the open lane (if the cooldown is over)
+            # Decide switch of the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
-                light.rotate_in_open_lane_cycle()
-            light.current_switching_cooldown -= 1
+                light.change_open_lane(self.optimize_open_lane())
+                # light.rotate_in_open_lane_cycle()
+            else:
+                light.current_switching_cooldown -= 1
 
     def create_cars(self, num_cars: int) -> None:  
         """Function to add agents to the model.
