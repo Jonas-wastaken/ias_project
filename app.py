@@ -48,7 +48,7 @@ class App:
                     help="Execute one step",
                 ):
                     st.query_params["run_steps"] = (
-                        st.session_state["env_config"]["auto_run_steps"] - 1
+                        st.session_state["auto_run_steps"] - 1
                     )
                     self.step()
             with inner_cols[1]:
@@ -389,7 +389,7 @@ class SettingsContainer:
             self.run_steps = st.number_input(
                 label="Run Steps",
                 min_value=1,
-                value=st.session_state["env_config"]["auto_run_steps"],
+                value=st.session_state["auto_run_steps"],
             )
 
     def update_env_config(
@@ -398,7 +398,6 @@ class SettingsContainer:
         num_intersections: int,
         num_borders: int,
         distance_range: tuple[int, int],
-        run_steps: int,  # TODO add
     ):
         del st.session_state["model"]
         st.session_state["model"] = TrafficModel(
@@ -466,13 +465,15 @@ if __name__ == "__main__":
         st.session_state["model"] = TrafficModel(num_cars=20)
     model: TrafficModel = st.session_state["model"]
 
+    if "auto_run_steps" not in st.session_state:
+        st.session_state["auto_run_steps"] = 200
+
     st.session_state["env_config"] = {
         "num_intersections": len(model.grid.get_nodes("intersection")),
         "num_borders": len(model.grid.get_nodes("border")),
         "min_distance": model.grid.min_distance,
         "max_distance": model.grid.max_distance,
         "num_cars": len(model.get_agents_by_type("CarAgent")),
-        "auto_run_steps": 20,
     }
 
     App(model)
