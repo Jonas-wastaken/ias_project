@@ -3,7 +3,7 @@
 
 import mesa
 import random
-import math
+import numpy as np
 from car import CarAgent, AgentArrived
 from graph import Graph
 from light import LightAgent
@@ -13,13 +13,11 @@ class TrafficModel(mesa.Model):
     """A Mesa model simulating traffic.
 
     Attributes:
-        num_agents (int): Number of agents to spawn.
-        seed (int, optional): Seed used in model generation. Defaults to None.
         grid (Graph): Graph the environment uses.
         agents (AgentSet): Agents in the environment.
         car_paths (dict): A dictionary containing the paths of all agents.
         cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
-        num_cars_hist (list): A list containing the history of the number of cars in the model.
+        num_cars_hist (np.array): An array containing the history of the number of cars in the model.
 
     ## Methods:
         **step(self) -> None**:
@@ -73,7 +71,7 @@ class TrafficModel(mesa.Model):
 
         self.car_paths = {}
         self.cars_waiting_times = {}
-        self.num_cars_hist = [num_cars]
+        self.num_cars_hist = np.array(num_cars)
         self.create_cars(num_cars)
 
     def step(self) -> None:
@@ -101,7 +99,9 @@ class TrafficModel(mesa.Model):
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
 
-        self.num_cars_hist.append(len(self.get_agents_by_type("CarAgent")))
+        self.num_cars_hist = np.append(
+            self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
+        )
         self.car_respawn()
 
     def create_cars(self, num_cars: int) -> None:
@@ -225,6 +225,7 @@ class TrafficModel(mesa.Model):
     def update_car_paths(self) -> None:
         """Function to update the paths of all cars."""
         for car in self.get_agents_by_type("CarAgent"):
+            car: CarAgent
             if car.unique_id not in list(self.car_paths.keys()):
                 self.car_paths[car.unique_id] = car.path.copy()
 
@@ -235,7 +236,7 @@ class TrafficModel(mesa.Model):
         - Calculates the next value on the function scaled to the number of cars
         - Calculates the number of cars to add with a variance of ~20%
         """
-        sine_value = math.sin(2 * math.pi * self.steps / 200)
+        sine_value = np.sin(2 * np.pi * self.steps / 200)
         next_sine_value = (sine_value + 1) / 2 * 2 * self.num_cars_hist[0]
         diff = next_sine_value - self.num_cars_hist[-1]
         diff_variance = diff * random.uniform(0.8, 1.2)
