@@ -63,8 +63,6 @@ class App:
         if int(st.query_params["run_steps"]) > 0:
             time.sleep(0.1)
             st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            if len(model.get_agents_by_type("CarAgent")) == 0:
-                st.query_params["run_steps"] = 0
             self.step()
 
     def step(self) -> None:
