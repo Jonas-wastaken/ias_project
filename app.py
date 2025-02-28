@@ -214,7 +214,7 @@ class CarPathListContainer:
         """
         path = [
             (node.title().replace("_", " "), distance)
-            for node, distance in st.session_state["model"].agent_paths[car_id].items()
+            for node, distance in st.session_state["model"].car_paths[car_id].items()
         ]
 
         return path
@@ -399,7 +399,7 @@ class SettingsContainer:
         num_cars: int,
         num_intersections: int,
         num_borders: int,
-        distance_range: int,
+        distance_range: tuple[int, int],
         run_steps: int,  # TODO add
     ):
         del st.session_state["model"]

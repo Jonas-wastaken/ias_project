@@ -56,13 +56,13 @@ class TestTrafficModel(unittest.TestCase):
         try:
             for car in self.model.get_agents_by_type("CarAgent"):
                 logging.info(f"Agent {car.unique_id}")
-                logging.info(f"{self.model.agent_paths[car.unique_id]}")
+                logging.info(f"{self.model.car_paths[car.unique_id]}")
                 self.assertIsInstance(car, CarAgent)
-                self.assertIsInstance(self.model.agent_paths[car.unique_id], dict)
+                self.assertIsInstance(self.model.car_paths[car.unique_id], dict)
             self.assertEqual(
                 len(self.model.get_agents_by_type("CarAgent")), self.num_cars
             )
-            self.assertEqual(len(self.model.agent_paths), self.num_cars)
+            self.assertEqual(len(self.model.car_paths), self.num_cars)
             logging.info("Passed test_initial_cars")
         except AssertionError as e:
             logging.error(f"Failed test_initial_cars: {e}")
@@ -134,12 +134,12 @@ class TestTrafficModel(unittest.TestCase):
             AssertionError: If the initial positions are the same as the current positions.
         """
         logging.info("Test step")
-        initial_positions = self.model.agent_paths.copy()
-        logging.info(f"{[path for path in self.model.agent_paths.values()]}")
+        initial_positions = self.model.car_paths.copy()
+        logging.info(f"{[path for path in self.model.car_paths.values()]}")
         try:
             self.model.step()
             self.assertIsNot(
-                initial_positions, self.model.agent_paths
+                initial_positions, self.model.car_paths
             )  # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
             logging.info("Passed test_step")
         except AssertionError as e:
