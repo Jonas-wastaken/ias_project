@@ -46,7 +46,7 @@ class TestCarAgent(unittest.TestCase):
         self.min_distance = 2
         self.max_distance = 10
         self.model = TrafficModel(
-            num_agents=self.num_agents,
+            num_cars=self.num_agents,
             num_intersections=self.num_intersections,
             num_borders=self.num_borders,
             min_distance=self.min_distance,

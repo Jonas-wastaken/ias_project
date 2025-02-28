@@ -63,8 +63,6 @@ class App:
         if int(st.query_params["run_steps"]) > 0:
             time.sleep(0.1)
             st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            if len(model.get_agents_by_type("CarAgent")) == 0:
-                st.query_params["run_steps"] = 0
             self.step()
 
     def step(self) -> None:
@@ -173,7 +171,7 @@ class CarPathListContainer:
         st.dataframe(
             self.get_current_path(car),
             use_container_width=True,
-            column_config={"value": ""},
+            column_config={"value": st.column_config.TextColumn("")},
         )
 
     def render_full_path(self, car: CarAgent) -> None:
@@ -214,7 +212,7 @@ class CarPathListContainer:
         """
         path = [
             (node.title().replace("_", " "), distance)
-            for node, distance in st.session_state["model"].agent_paths[car_id].items()
+            for node, distance in st.session_state["model"].car_paths[car_id].items()
         ]
 
         return path
@@ -230,7 +228,7 @@ class CarPathListContainer:
         """
         current_position = car.position
         try:
-            next_position = list(car.path.keys())[1]
+            next_position: str = list(car.path.keys())[1]
         except IndexError:
             next_position = None
         distance = (
@@ -244,11 +242,11 @@ class CarPathListContainer:
         global_waiting_time = car.global_waiting_time
 
         path_dict = {
-            "Current Position": current_position.title().replace("_", " "),
+            "Current Position": str(current_position).title().replace("_", " "),
             "Next Position": str(next_position).title().replace("_", " "),
-            "Distance": distance,
-            "Waiting": is_waiting,
-            "Waiting Time": global_waiting_time,
+            "Distance": str(distance),
+            "Waiting": str(is_waiting),
+            "Waiting Time": str(global_waiting_time),
         }
 
         return path_dict
@@ -399,12 +397,12 @@ class SettingsContainer:
         num_cars: int,
         num_intersections: int,
         num_borders: int,
-        distance_range: int,
+        distance_range: tuple[int, int],
         run_steps: int,  # TODO add
     ):
         del st.session_state["model"]
         st.session_state["model"] = TrafficModel(
-            num_agents=num_cars,
+            num_cars=num_cars,
             num_intersections=num_intersections,
             num_borders=num_borders,
             min_distance=distance_range[0],
@@ -534,7 +532,7 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_agents=3)
+        st.session_state["model"] = TrafficModel(num_cars=20)
     model: TrafficModel = st.session_state["model"]
 
     st.session_state["env_config"] = {
