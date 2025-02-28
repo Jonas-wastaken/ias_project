@@ -40,18 +40,25 @@ class App:
         outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
         with outer_cols[0]:
             inner_cols = st.columns(
-                spec=[0.1, 0.2, 0.1, 0.6], vertical_alignment="center"
+                spec=[0.2, 0.1, 0.2, 0.2, 0.1, 0.2], vertical_alignment="center"
             )
             with inner_cols[0]:
+                st.session_state["auto_run_steps"] = st.number_input(
+                    label="",
+                    min_value=1,
+                    value=st.session_state["auto_run_steps"],
+                    label_visibility="collapsed",
+                )
+            with inner_cols[1]:
                 if st.button(
-                    label="Step",
+                    label="Run",
                     help="Execute one step",
                 ):
                     st.query_params["run_steps"] = (
                         st.session_state["auto_run_steps"] - 1
                     )
                     self.step()
-            with inner_cols[1]:
+            with inner_cols[2]:
                 with st.popover(label="Show Edges"):
                     EdgesContainer(model)
             GraphContainer(model)
@@ -291,10 +298,9 @@ class SettingsContainer:
             num_intersections = self.NumIntersectionsInput().num_intersections
             num_borders = self.NumBordersInput().num_borders
             distance_range = self.DistanceRangeSlider().distance_range
-            run_steps = self.RunStepsInput().run_steps
             if st.form_submit_button("Submit"):
                 self.update_env_config(
-                    num_cars, num_intersections, num_borders, distance_range, run_steps
+                    num_cars, num_intersections, num_borders, distance_range
                 )
 
     @dataclass
@@ -372,24 +378,6 @@ class SettingsContainer:
                     st.session_state["env_config"]["min_distance"],
                     st.session_state["env_config"]["max_distance"],
                 ),
-            )
-
-    @dataclass
-    class RunStepsInput:
-        """Dataclass for the run steps input field.
-
-        ## Attributes:
-            **run_steps (int)**: Number of run steps input by the user.
-        """
-
-        run_steps: int
-
-        def __init__(self):
-            """Initializes the run steps input field with a default value from session state."""
-            self.run_steps = st.number_input(
-                label="Run Steps",
-                min_value=1,
-                value=st.session_state["auto_run_steps"],
             )
 
     def update_env_config(
