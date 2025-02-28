@@ -44,7 +44,7 @@ class App:
             )
             with inner_cols[0]:
                 st.session_state["auto_run_steps"] = st.number_input(
-                    label="",
+                    label="Auto Run Steps",
                     min_value=1,
                     value=st.session_state["auto_run_steps"],
                     label_visibility="collapsed",
