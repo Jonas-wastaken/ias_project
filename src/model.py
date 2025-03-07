@@ -286,6 +286,7 @@ class TrafficModel(mesa.Model):
         Saves:
             - sim_data
             - light_data
+            - num_cars_hist
 
         Returns:
             Path: Path object representing the folder the data is stored in.
@@ -301,5 +302,9 @@ class TrafficModel(mesa.Model):
         self.light_data.write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
         )
+
+        pl.DataFrame(
+            data=self.num_cars_hist, schema={"Num_Cars": pl.Int16}
+        ).write_parquet(file=Path.joinpath(data_path, folder, "num_cars.parquet"))
 
         return folder
