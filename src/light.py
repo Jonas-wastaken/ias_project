@@ -3,6 +3,7 @@
 
 import mesa
 import random
+from networkx import closeness_centrality
 
 
 class LightAgent(mesa.Agent):
@@ -17,6 +18,7 @@ class LightAgent(mesa.Agent):
         current_switching_cooldown (int): The current number of steps the agent has to wait before changing the open lane again.
         neighbor_lights (list): A list of the neighboring lights of the agent.
         open_lane (str): The ID of the edge from where cars are allowed to cross the intersection.
+        centrality (float): Closeness centrality measured as the reciprocal of the average shortest path distance to u over all n-1 reachable nodes using networkx.closeness_centrality().
 
 
     ## Methods:
@@ -42,6 +44,9 @@ class LightAgent(mesa.Agent):
         """
         super().__init__(model)
         self.position = kwargs.get("position", None)
+        self.centrality = closeness_centrality(
+            G=model.grid, u=self.position, distance="weight"
+        )
         self.neighbor_lights = [
             node
             for node in list(self.model.grid.neighbors(self.position))

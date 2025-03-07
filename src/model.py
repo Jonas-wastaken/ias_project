@@ -83,7 +83,8 @@ class TrafficModel(mesa.Model):
         self.create_cars(num_cars)
 
         self.sim_data = pl.DataFrame(
-            schema={"Light_ID": pl.Int16, "Time": pl.Int16}, strict=False
+            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Centrality": pl.Float64},
+            strict=False,
         )
 
     def step(self) -> None:
@@ -112,8 +113,13 @@ class TrafficModel(mesa.Model):
                     data={
                         "Light_ID": light.unique_id,
                         "Time": self.steps,
+                        "Centrality": light.centrality,
                     },
-                    schema={"Light_ID": pl.Int16, "Time": pl.Int16},
+                    schema={
+                        "Light_ID": pl.Int16,
+                        "Time": pl.Int16,
+                        "Centrality": pl.Float64,
+                    },
                 ),
                 in_place=True,
             )
