@@ -45,7 +45,7 @@ class TrafficModel(mesa.Model):
             Function to update the paths of all agents.
         **car_respawn(self) -> None**:
             Respawns cars at each step depending on current time and number of cars in the model.
-        **def save_sim_data(self) -> None**:
+        **def save_sim_data(self) -> Path**:
             Function to save the sim_data to a parquet file
     """
 
@@ -280,12 +280,15 @@ class TrafficModel(mesa.Model):
         if cars_to_add > 0:
             self.create_cars(cars_to_add)
 
-    def save_sim_data(self) -> None:
+    def save_sim_data(self) -> Path:
         """Function to save the model data to a parquet file
 
         Saves:
             - sim_data
             - light_data
+
+        Returns:
+            Path: Path object representing the folder the data is stored in.
         """
         data_path = Path.joinpath(Path.cwd(), "data")
         folder = Path(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
@@ -298,3 +301,5 @@ class TrafficModel(mesa.Model):
         self.light_data.write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
         )
+
+        return folder
