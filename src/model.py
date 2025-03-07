@@ -1,9 +1,12 @@
 """This module contains:
 - TrafficModel class: A Mesa model simulating traffic."""
 
-import mesa
+from pathlib import Path
 import random
+import datetime
+import mesa
 import numpy as np
+import polars as pl
 from car import CarAgent, AgentArrived
 from graph import Graph
 from light import LightAgent
@@ -18,6 +21,7 @@ class TrafficModel(mesa.Model):
         car_paths (dict): A dictionary containing the paths of all agents.
         cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
         num_cars_hist (np.array): An array containing the history of the number of cars in the model.
+        sim_data (pl.DataFrame): A Polars DataFrame containing information about a simulation run.
 
     ## Methods:
         **step(self) -> None**:
@@ -40,9 +44,13 @@ class TrafficModel(mesa.Model):
             Function to update the paths of all agents.
         **car_respawn(self) -> None**:
             Respawns cars at each step depending on current time and number of cars in the model.
+        **def save_sim_data(self) -> None**:
+            Function to save the sim_data to a parquet file
     """
 
-    def __init__(self, num_cars: int, seed: int = None, **kwargs):
+    def __init__(
+        self, num_cars: int, sim_mode: bool = False, seed: int = None, **kwargs
+    ):
         """Initializes a new traffic environment.
 
         - Spawns a graph representing the grid
@@ -53,10 +61,10 @@ class TrafficModel(mesa.Model):
             num_cars (int): Number of car agents to spawn.
             seed (int, optional): Seed used in model generation. Defaults to None.
             **kwargs: Additional keyword arguments for configuring the graph object.
-                - num_intersections (int): Number of intersections in the graph. Defaults to 30.
-                - num_borders (int): Number of border nodes in the graph. Defaults to 10.
-                - min_distance (int): Minimum distance between nodes. Defaults to 5.
-                - max_distance (int): Maximum distance between nodes. Defaults to 15.
+                - num_intersections (int): Number of intersections in the graph. Defaults to 50.
+                - num_borders (int): Number of border nodes in the graph. Defaults to 25.
+                - min_distance (int): Minimum distance between nodes. Defaults to 10.
+                - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
         super().__init__(seed=seed)
 
@@ -73,6 +81,10 @@ class TrafficModel(mesa.Model):
         self.cars_waiting_times = {}
         self.num_cars_hist = np.array(num_cars)
         self.create_cars(num_cars)
+
+        self.sim_data = pl.DataFrame(
+            schema={"Light_ID": pl.Int16, "Time": pl.Int16}, strict=False
+        )
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -95,6 +107,16 @@ class TrafficModel(mesa.Model):
 
         for light in self.get_agents_by_type("LightAgent"):
             light: LightAgent
+            self.sim_data.vstack(
+                pl.DataFrame(
+                    data={
+                        "Light_ID": light.unique_id,
+                        "Time": self.steps,
+                    },
+                    schema={"Light_ID": pl.Int16, "Time": pl.Int16},
+                ),
+                in_place=True,
+            )
             if light.current_switching_cooldown <= 0:
                 light.rotate_in_open_lane_cycle()
             light.current_switching_cooldown -= 1
@@ -244,3 +266,9 @@ class TrafficModel(mesa.Model):
 
         if cars_to_add > 0:
             self.create_cars(cars_to_add)
+
+    def save_sim_data(self) -> None:
+        """Function to save the sim_data to a parquet file"""
+        path = Path.joinpath(Path.cwd(), "data")
+        file_name = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}.parquet"
+        self.sim_data.write_parquet(file=Path.joinpath(path, file_name))
