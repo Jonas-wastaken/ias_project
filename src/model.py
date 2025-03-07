@@ -21,6 +21,7 @@ class TrafficModel(mesa.Model):
         car_paths (dict): A dictionary containing the paths of all agents.
         cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
         num_cars_hist (np.array): An array containing the history of the number of cars in the model.
+        light_data (pl.DataFrame): A Polars DataFrame containing information about the LightAgents
         sim_data (pl.DataFrame): A Polars DataFrame containing information about a simulation run.
 
     ## Methods:
@@ -82,9 +83,17 @@ class TrafficModel(mesa.Model):
         self.num_cars_hist = np.array(num_cars)
         self.create_cars(num_cars)
 
-        self.sim_data = pl.DataFrame(
-            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Centrality": pl.Float64},
+        self.light_data = pl.DataFrame(
+            data=[
+                (light.unique_id, light.centrality)
+                for light in self.get_agents_by_type("LightAgent")
+            ],
+            schema={"Light_ID": pl.Int16, "Centrality": pl.Float64},
             strict=False,
+            orient="row",
+        )
+        self.sim_data = pl.DataFrame(
+            schema={"Light_ID": pl.Int16, "Time": pl.Int16}, strict=False
         )
 
     def step(self) -> None:
@@ -113,12 +122,10 @@ class TrafficModel(mesa.Model):
                     data={
                         "Light_ID": light.unique_id,
                         "Time": self.steps,
-                        "Centrality": light.centrality,
                     },
                     schema={
                         "Light_ID": pl.Int16,
                         "Time": pl.Int16,
-                        "Centrality": pl.Float64,
                     },
                 ),
                 in_place=True,
@@ -274,7 +281,20 @@ class TrafficModel(mesa.Model):
             self.create_cars(cars_to_add)
 
     def save_sim_data(self) -> None:
-        """Function to save the sim_data to a parquet file"""
-        path = Path.joinpath(Path.cwd(), "data")
-        file_name = f"{datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}.parquet"
-        self.sim_data.write_parquet(file=Path.joinpath(path, file_name))
+        """Function to save the model data to a parquet file
+
+        Saves:
+            - sim_data
+            - light_data
+        """
+        data_path = Path.joinpath(Path.cwd(), "data")
+        folder = Path(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
+        Path.joinpath(data_path, folder).mkdir()
+
+        self.sim_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "sim_data.parquet")
+        )
+
+        self.light_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "light_data.parquet")
+        )
