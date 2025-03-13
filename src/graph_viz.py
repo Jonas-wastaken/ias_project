@@ -54,17 +54,20 @@ class TrafficGraph(go.Figure):
         node_color = self.create_node_color()
         node_trace = self.create_trace_nodes(node_x, node_y, node_color)
         node_trace.text = self.create_node_text()
+        light_x, light_y = self.get_coords_lights()
+        light_trace, arrows = self.create_trace_lights(light_x, light_y)
         car_x, car_y = self.get_coords_cars()
         car_trace = self.create_trace_cars(car_x, car_y)
 
         # Create the figure
-        self.add_traces([edge_trace, node_trace, car_trace])
+        self.add_traces([edge_trace, node_trace, light_trace, car_trace])
         self.update_layout(
             showlegend=False,
             hovermode="closest",
             margin=dict(b=20, l=5, r=5, t=40),
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            annotations=arrows,
         )
 
     def get_coords_edges(self) -> tuple[np.array, np.array]:
@@ -252,3 +255,82 @@ class TrafficGraph(go.Figure):
         )
 
         return car_trace
+
+    def get_coords_lights(self) -> tuple[np.array, np.array]:
+        """Get the x and y coordinates of the lights.
+
+        Returns:
+            tuple[np.array, np.array]: Arrays of x and y coordinates of the lights
+        """
+        light_x = np.empty(shape=(0,), dtype=np.float16)
+        light_y = np.empty(shape=(0,), dtype=np.float16)
+
+        for light in self._model.get_agents_by_type("LightAgent"):
+            lane_origin_coords = np.array(
+                self._model.grid.nodes[light.open_lane]["pos"]
+            )
+            pos_coords = np.array(self._model.grid.nodes[light.position]["pos"])
+            distance = self._model.grid.get_edge_data(light.open_lane, light.position)[
+                "weight"
+            ]
+            vector = lane_origin_coords - pos_coords
+            steps = vector / distance
+            x_0, y_0 = pos_coords + steps * 2
+            x_1, y_1 = pos_coords
+            light_x = np.append(arr=light_x, values=x_0)
+            light_x = np.append(arr=light_x, values=x_1)
+            light_x = np.append(arr=light_x, values=None)
+            light_y = np.append(arr=light_y, values=y_0)
+            light_y = np.append(arr=light_y, values=y_1)
+            light_y = np.append(arr=light_y, values=None)
+
+        return light_x, light_y
+
+    def create_trace_lights(self, light_x: np.array, light_y: np.array) -> go.Scatter:
+        """Create a plotly trace for the open lane of each light.
+
+        Args:
+            light_x (np.array): X coordinates of the lane
+            light_y (np.array): Y coordinates of the lane
+
+        Returns:
+            go.Scatter: Plotly trace for the lanes
+        """
+        light_trace = go.Scatter(
+            x=light_x,
+            y=light_y,
+            line=dict(width=1.5, color="green"),
+            hoverinfo="none",
+            mode="lines",  # Keep it as lines for the lane
+        )
+
+        # List to store annotations for arrows
+        arrows = []
+
+        light_x = np.array(light_x, dtype=np.float64)
+        light_y = np.array(light_y, dtype=np.float64)
+        light_x = light_x[~np.isnan(light_x)]
+        light_y = light_y[~np.isnan(light_y)]
+
+        # # Loop through the segments and add arrows to each one
+        for i in range(0, len(light_x) - 1, 2):  # Step by 2 for each pair (from, to)
+            # Create an arrow for this direction
+            arrows.append(
+                go.layout.Annotation(
+                    x=light_x[i + 1],  # Position the arrow at the "to" point
+                    y=light_y[i + 1],
+                    ax=light_x[i],  # Connect the arrow to the "from" point
+                    ay=light_y[i],
+                    xref="x",
+                    yref="y",
+                    axref="x",
+                    ayref="y",
+                    showarrow=True,
+                    arrowhead=3,  # Arrowhead style (change it as needed)
+                    arrowsize=1.5,  # Size of the arrowhead
+                    arrowwidth=1.5,  # Width of the arrow line
+                    arrowcolor="green",  # Color of the arrow
+                )
+            )
+
+        return light_trace, arrows
