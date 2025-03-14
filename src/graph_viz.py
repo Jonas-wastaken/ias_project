@@ -276,14 +276,11 @@ class TrafficGraph(go.Figure):
             pos_coords = np.array(self._model.grid.nodes[light.position]["pos"])
             vector = lane_origin_coords - pos_coords
 
-            # Normalize the vector and scale it to a fixed length (e.g., 0.1 units)
             vector_length = np.linalg.norm(vector)
 
-            # Apply the fixed-length vector to determine the start and end coordinates
             x_0, y_0 = pos_coords + (vector / vector_length) * 0.05
-            x_1, y_1 = pos_coords + (vector / vector_length) * 0.01
+            x_1, y_1 = pos_coords
 
-            # Append coordinates with None to separate them
             light_x = np.append(arr=light_x, values=x_0)
             light_x = np.append(arr=light_x, values=x_1)
             light_y = np.append(arr=light_y, values=y_0)
