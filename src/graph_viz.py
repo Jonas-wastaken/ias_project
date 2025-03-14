@@ -59,12 +59,12 @@ class TrafficGraph(go.Figure):
         node_trace = self.create_trace_nodes(node_x, node_y, node_color)
         node_trace.text = self.create_node_text()
         light_x, light_y = self.get_coords_lights()
-        light_trace, arrows = self.create_trace_lights(light_x, light_y)
+        arrows = self.create_trace_lights(light_x, light_y)
         car_x, car_y = self.get_coords_cars()
         car_trace = self.create_trace_cars(car_x, car_y)
 
         # Create the figure
-        self.add_traces([edge_trace, node_trace, light_trace, car_trace])
+        self.add_traces([edge_trace, node_trace, car_trace])
         self.update_layout(
             showlegend=False,
             hovermode="closest",
@@ -274,19 +274,20 @@ class TrafficGraph(go.Figure):
                 self._model.grid.nodes[light.open_lane]["pos"]
             )
             pos_coords = np.array(self._model.grid.nodes[light.position]["pos"])
-            distance = self._model.grid.get_edge_data(light.open_lane, light.position)[
-                "weight"
-            ]
             vector = lane_origin_coords - pos_coords
-            steps = vector / distance
-            x_0, y_0 = pos_coords + steps * 2
-            x_1, y_1 = pos_coords
+
+            # Normalize the vector and scale it to a fixed length (e.g., 0.1 units)
+            vector_length = np.linalg.norm(vector)
+
+            # Apply the fixed-length vector to determine the start and end coordinates
+            x_0, y_0 = pos_coords + (vector / vector_length) * 0.05
+            x_1, y_1 = pos_coords + (vector / vector_length) * 0.01
+
+            # Append coordinates with None to separate them
             light_x = np.append(arr=light_x, values=x_0)
             light_x = np.append(arr=light_x, values=x_1)
-            light_x = np.append(arr=light_x, values=None)
             light_y = np.append(arr=light_y, values=y_0)
             light_y = np.append(arr=light_y, values=y_1)
-            light_y = np.append(arr=light_y, values=None)
 
         return light_x, light_y
 
@@ -300,18 +301,6 @@ class TrafficGraph(go.Figure):
         Returns:
             go.Scatter: Plotly trace for the lanes
         """
-        light_trace = go.Scatter(
-            x=light_x,
-            y=light_y,
-            line=dict(width=1.5, color="green"),
-            hoverinfo="none",
-            mode="lines",
-        )
-
-        light_x = np.array(light_x, dtype=np.float64)
-        light_y = np.array(light_y, dtype=np.float64)
-        light_x = light_x[~np.isnan(light_x)]
-        light_y = light_y[~np.isnan(light_y)]
 
         arrows = [
             (
@@ -328,10 +317,10 @@ class TrafficGraph(go.Figure):
                     arrowhead=3,
                     arrowsize=1.5,
                     arrowwidth=1.5,
-                    arrowcolor="green",
+                    arrowcolor="#777",
                 )
             )
             for i in range(0, len(light_x) - 1, 2)
         ]
 
-        return light_trace, arrows
+        return arrows
