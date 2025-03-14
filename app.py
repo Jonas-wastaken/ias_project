@@ -37,6 +37,7 @@ class App:
 
         - Checks if there is an active auto run loop
         """
+        fig = TrafficGraph(model)
         outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
         with outer_cols[0]:
             inner_cols = st.columns(
@@ -54,41 +55,44 @@ class App:
                     label="Run",
                     help="Execute one step",
                 ):
-                    st.query_params["run_steps"] = (
-                        st.session_state["auto_run_steps"] - 1
-                    )
-                    self.step()
-            # with inner_cols[2]: TODO: move and make pretty
-            #     with st.popover(label="Show Edges"):
-            #         EdgesContainer(model)
-            GraphContainer(model)
+                    st.query_params["run_steps"] = st.session_state["auto_run_steps"]
+                    self.step(fig)
+
+            # Create a single placeholder for the plot
+            if "graph_container" not in st.session_state:
+                st.session_state["graph_container"] = st.empty()
+
+            st.session_state["graph_container"].plotly_chart(
+                fig, use_container_width=False, key=f"traffic_plot_{time.time()}"
+            )
+
         with outer_cols[1]:
             SettingsContainer()
         if st.session_state["env_config"]["num_cars"] > 0:
             CarPathListContainer()
 
-        if int(st.query_params["run_steps"]) > 0:
-            time.sleep(0.1)
-            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            self.step()
-
-    def step(self) -> None:
+    def step(self, fig: TrafficGraph) -> None:
         """Advances the environment by one step."""
-        model.step()
-        st.rerun()
+        # Use the existing plot placeholder from session state
+        graph_container = st.session_state["graph_container"]
 
+        # Generate a unique key each time the plot is updated
+        while int(st.query_params["run_steps"]) > 0:
+            time.sleep(0.1)  # Simulating the time taken for a step
 
-class GraphContainer:
-    """Class to hold the visualization of the graph."""
+            # Advance the model by one step
+            model.step()
 
-    def __init__(self, model: TrafficModel):
-        """Create plot of the model's graph.
+            # Refresh the figure to reflect the changes
+            fig.refresh()
 
-        Args:
-            model (TrafficModel): Model to plot
-        """
-        fig = TrafficGraph(model)
-        st.plotly_chart(fig, use_container_width=True)
+            # Update the remaining run steps in query params
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
+
+            # Update the plot inside the existing placeholder with a unique key
+            graph_container.plotly_chart(
+                fig, use_container_width=False, key=f"traffic_plot_{time.time()}"
+            )
 
 
 class CarPathListContainer:
