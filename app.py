@@ -73,26 +73,14 @@ class App:
 
     def step(self, fig: TrafficGraph) -> None:
         """Advances the environment by one step."""
-        # Use the existing plot placeholder from session state
-        graph_container = st.session_state["graph_container"]
-
-        # Generate a unique key each time the plot is updated
         while int(st.query_params["run_steps"]) > 0:
-            time.sleep(0.1)  # Simulating the time taken for a step
-
-            # Advance the model by one step
+            time.sleep(0.1)
             model.step()
-
-            # Refresh the figure to reflect the changes
             fig.refresh()
-
-            # Update the remaining run steps in query params
-            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-
-            # Update the plot inside the existing placeholder with a unique key
-            graph_container.plotly_chart(
+            st.session_state["graph_container"].plotly_chart(
                 fig, use_container_width=False, key=f"traffic_plot_{time.time()}"
             )
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
 
 
 class CarPathListContainer:
