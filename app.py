@@ -58,7 +58,6 @@ class App:
                     st.query_params["run_steps"] = st.session_state["auto_run_steps"]
                     self.step(fig)
 
-            # Create a single placeholder for the plot
             if "graph_container" not in st.session_state:
                 st.session_state["graph_container"] = st.empty()
 
