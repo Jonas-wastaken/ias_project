@@ -59,6 +59,8 @@ class TestTrafficModel(unittest.TestCase):
                 logging.info(f"{self.model.car_paths[car.unique_id]}")
                 self.assertIsInstance(car, CarAgent)
                 self.assertIsInstance(self.model.car_paths[car.unique_id], dict)
+            # logging.info(f"Should create: {self.num_cars}")
+            # logging.info(f"Did create: {self.model.get_agents_by_type("CarAgent")}")
             self.assertEqual(
                 len(self.model.get_agents_by_type("CarAgent")), self.num_cars
             )

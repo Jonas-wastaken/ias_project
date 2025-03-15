@@ -71,9 +71,9 @@ class TrafficModel(mesa.Model):
         )
 
         self.create_lights_for_intersections()
-        CarAgent.create_agents(model=self, n=num_agents)
-        self.agent_paths = {}
-        self.update_agent_paths()
+        # CarAgent.create_agents(model=self, n=num_cars)
+        self.car_paths = {}
+        self.update_car_paths()
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
         self.lights_decision_log = {}
