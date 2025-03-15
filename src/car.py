@@ -124,7 +124,7 @@ class CarAgent(mesa.Agent):
 
         if self.position.startswith("intersection"):
             at_light = (
-                self.model.agent_paths[self.unique_id][current_intersection]
+                self.model.car_paths[self.unique_id][current_intersection]
                 == current_distance
             )
         else:
