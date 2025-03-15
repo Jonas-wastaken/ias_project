@@ -18,6 +18,7 @@ class TrafficModel(mesa.Model):
         agents (AgentSet): Agents in the environment.
         agent_paths (dict): A dictionary containing the paths of all agents.
         cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
+        lights_decision_log (dict): A dictionary containing the decisions of all lights over time.
 
     ## Methods:
         **step(self) -> None**:
@@ -67,6 +68,7 @@ class TrafficModel(mesa.Model):
         self.update_agent_paths()
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
+        self.lights_decision_log = {}
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -87,7 +89,7 @@ class TrafficModel(mesa.Model):
 
             # Decide switch of the open lane (if the cooldown is over)
             if light.current_switching_cooldown <= 0:
-                light.change_open_lane(self.optimize_open_lane())
+                light.change_open_lane(light.optimize_open_lane())
                 # light.rotate_in_open_lane_cycle()
             else:
                 light.current_switching_cooldown -= 1
@@ -224,4 +226,23 @@ class TrafficModel(mesa.Model):
                 cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
 
         return cars_per_lane
+    
+    def update_lights_decision_log (self, light: LightAgent, cars_per_lane: dict, decision_lane: str, model_step: int) -> None:
+        """Function to update the decision log of all lights.
+        The dict looks like this: {light.unique_id: {step:{decision_lane:intersection_3, intersection_1:cars_at_lane_1, intersection_2:cars_at_lane_2, intersection_3:cars_at_lane_3}}}
+        
+        """
+        if light.unique_id not in list(self.lights_decision_log.keys()):
+            self.lights_decision_log[light.unique_id] = {}
+            self.lights_decision_log[light.unique_id][model_step] = {
+                "decision_lane": decision_lane
+            }
+            self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
+
+        else:
+            self.lights_decision_log[light.unique_id][model_step] = {
+                "decision_lane": decision_lane
+            }
+            self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
+
 

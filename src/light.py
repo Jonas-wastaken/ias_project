@@ -153,6 +153,10 @@ class LightAgent(mesa.Agent):
         else:
             optimal_lane = optimal_lanes[0]
 
+
+        # Log result
+        self.model.update_lights_decision_log(self, cars_at_light, optimal_lane, self.model.steps)
+
         return optimal_lane
 
 
