@@ -1,7 +1,7 @@
 import os
 import unittest
 import sys
-import logging
+from log_config import setup_logging
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -11,16 +11,7 @@ from car import CarAgent, AgentArrived
 from model import TrafficModel
 import re
 
-
-log_dir = os.path.join("tests", "logs")
-os.makedirs(log_dir, exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    filename=os.path.join(log_dir, "test_car.log"),
-    filemode="w",
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+logger = setup_logging("test_car")
 
 
 class TestCarAgent(unittest.TestCase):
@@ -54,12 +45,12 @@ class TestCarAgent(unittest.TestCase):
         )
         self.agent = self.model.get_agents_by_type("CarAgent")[0]
         self.assertIsInstance(self.agent, CarAgent)
-        logging.info(f"Agent {self.agent.unique_id} initialized")
-        logging.info(f"Agent start: {self.agent.start}")
-        logging.info(f"Agent position: {self.agent.position}")
-        logging.info(f"Agent goal: {self.agent.goal}")
-        logging.info(f"Agent path: {self.agent.path}")
-        logging.info("Setup complete: CarAgent initialized")
+        logger.info(f"Agent {self.agent.unique_id} initialized")
+        logger.info(f"Agent start: {self.agent.start}")
+        logger.info(f"Agent position: {self.agent.position}")
+        logger.info(f"Agent goal: {self.agent.goal}")
+        logger.info(f"Agent path: {self.agent.path}")
+        logger.info("Setup complete: CarAgent initialized")
 
     def test_compute_goal(self):
         """Test the compute_goal method of the CarAgent class.
@@ -70,13 +61,13 @@ class TestCarAgent(unittest.TestCase):
         Raises:
             AssertionError: If the goal is not a border node or if the goal is the same as the start node.
         """
-        logging.info("Test compute_goal")
+        logger.info("Test compute_goal")
         try:
             self.assertTrue(self.agent.goal.startswith("border"))
             self.assertNotEqual(self.agent.goal, self.agent.start)
-            logging.info("Passed test_compute_goal")
+            logger.info("Passed test_compute_goal")
         except AssertionError as e:
-            logging.error(f"Failed test_compute_goal: {e}")
+            logger.error(f"Failed test_compute_goal: {e}")
             raise
 
     def test_compute_path(self):
@@ -90,7 +81,7 @@ class TestCarAgent(unittest.TestCase):
         Raises:
             AssertionError: If the path is not a dictionary, if the start node is not the first node in the path, if the goal node is not the last node in the path, or if other nodes in the path are not intersection nodes.
         """
-        logging.info("Test compute_path")
+        logger.info("Test compute_path")
         try:
             self.assertIsInstance(self.agent.path, dict)
             self.assertEqual(self.agent.start, list(self.agent.path.keys())[0])
@@ -99,9 +90,9 @@ class TestCarAgent(unittest.TestCase):
             self.assertTrue(
                 all(pattern.match(node) for node in list(self.agent.path.keys())[1:-1])
             )
-            logging.info("Passed test_compute_path")
+            logger.info("Passed test_compute_path")
         except AssertionError as e:
-            logging.error(f"Failed test_compute_path: {e}")
+            logger.error(f"Failed test_compute_path: {e}")
             raise
 
     # def test_move(self):
@@ -132,14 +123,14 @@ class TestCarAgent(unittest.TestCase):
         Raises:
             AssertionError: If the exception is not raised when the agent reaches it's goal
         """
-        logging.info("Test agent_arrived_exception")
+        logger.info("Test agent_arrived_exception")
         try:
             self.agent.position = self.agent.goal
             with self.assertRaises(AgentArrived):
                 self.agent.move()
-            logging.info("Passed test_agent_arrived_exception")
+            logger.info("Passed test_agent_arrived_exception")
         except AssertionError as e:
-            logging.error(f"Failed test_agent_arrived_exception: {e}")
+            logger.error(f"Failed test_agent_arrived_exception: {e}")
             raise
 
 
