@@ -42,11 +42,13 @@ class TrafficGraph(go.Figure):
             Function to refresh the graph.
     """
 
-    def __init__(self, model: TrafficModel):
+    def __init__(self, model: TrafficModel, height: int, width: int):
         """Create a plotly figure of the traffic grid.
 
         Args:
             model (TrafficModel): The traffic model to visualize.
+            height (int): Height of the plot in pixels
+            width (int): Width of the plot in pixels
         """
         super().__init__()
         self._model = model
@@ -74,6 +76,8 @@ class TrafficGraph(go.Figure):
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             annotations=arrows,
+            height=height,
+            width=width,
         )
 
     def get_coords_edges(self) -> tuple[np.array, np.array]:
@@ -324,6 +328,11 @@ class TrafficGraph(go.Figure):
 
         return arrows
 
-    def refresh(self) -> None:
-        """Function to refresh the graph."""
-        self.__init__(self._model)
+    def refresh(self, height: int, width: int) -> None:
+        """Function to refresh the graph.
+
+        Args:
+            height (int): Height of the plot in pixels
+            width (int): Width of the plot in pixels
+        """
+        self.__init__(model=self._model, height=height, width=width)
