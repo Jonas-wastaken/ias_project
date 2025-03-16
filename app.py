@@ -14,7 +14,7 @@ import os
 import time
 from dataclasses import dataclass
 import streamlit as st
-from streamlit_extras.stylable_container import stylable_container
+from streamlit_js_eval import streamlit_js_eval
 import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
@@ -27,6 +27,10 @@ from car import CarAgent
 class App:
     """A class to represent the Streamlit application for visualizing a traffic grid.
 
+    Attributes:
+        screen_height (int): Height of the screen in pixels
+        screen_width (int): Width of the screen in pixels
+
     ## Methods:
         **step(self) -> None**:
             Advances the environment by one step.
@@ -37,61 +41,61 @@ class App:
 
         - Checks if there is an active auto run loop
         """
+
+        self.screen_height = streamlit_js_eval(
+            js_expressions="screen.height", key="SCRH"
+        )
+        self.screen_width = streamlit_js_eval(js_expressions="screen.width", key="SCRW")
+
+        fig = TrafficGraph(
+            model=model,
+            height=self.screen_height * 0.65,
+            width=self.screen_width * 0.75,
+        )
+
         outer_cols = st.columns([0.75, 0.25], vertical_alignment="top")
         with outer_cols[0]:
-            inner_cols = st.columns(
-                spec=[0.2, 0.1, 0.2, 0.2, 0.1, 0.2], vertical_alignment="center"
+            if "graph_container" not in st.session_state:
+                st.session_state["graph_container"] = st.empty()
+
+            st.session_state["graph_container"].plotly_chart(
+                fig, use_container_width=False, key=f"traffic_plot_{time.time()}"
             )
-            with inner_cols[0]:
+
+        with outer_cols[1]:
+            inner_cols = st.columns([0.55, 0.25, 0.2])
+            with inner_cols[1]:
                 st.session_state["auto_run_steps"] = st.number_input(
                     label="Auto Run Steps",
                     min_value=1,
                     value=st.session_state["auto_run_steps"],
                     label_visibility="collapsed",
                 )
-            with inner_cols[1]:
+            with inner_cols[2]:
                 if st.button(
-                    label="Run",
-                    help="Execute one step",
+                    label="Run", help="Execute one step", use_container_width=True
                 ):
-                    st.query_params["run_steps"] = (
-                        st.session_state["auto_run_steps"] - 1
-                    )
-                    self.step()
-            # with inner_cols[2]: TODO: move and make pretty
-            #     with st.popover(label="Show Edges"):
-            #         EdgesContainer(model)
-            GraphContainer(model)
-        with outer_cols[1]:
+                    st.query_params["run_steps"] = st.session_state["auto_run_steps"]
+                    self.step(fig)
             SettingsContainer()
-        if st.session_state["env_config"]["num_cars"] > 0:
-            CarPathListContainer()
+            if st.session_state["env_config"]["num_cars"] > 0:
+                CarPathContainer()
 
-        if int(st.query_params["run_steps"]) > 0:
-            time.sleep(0.1)
-            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
-            self.step()
-
-    def step(self) -> None:
+    def step(self, fig: TrafficGraph) -> None:
         """Advances the environment by one step."""
-        model.step()
-        st.rerun()
+        while int(st.query_params["run_steps"]) > 0:
+            time.sleep(0.1)
+            model.step()
+            fig.refresh(
+                height=self.screen_height * 0.65, width=self.screen_width * 0.75
+            )
+            st.session_state["graph_container"].plotly_chart(
+                fig, use_container_width=False, key=f"traffic_plot_{time.time()}"
+            )
+            st.query_params["run_steps"] = int(st.query_params["run_steps"]) - 1
 
 
-class GraphContainer:
-    """Class to hold the visualization of the graph."""
-
-    def __init__(self, model: TrafficModel):
-        """Create plot of the model's graph.
-
-        Args:
-            model (TrafficModel): Model to plot
-        """
-        fig = TrafficGraph(model)
-        st.plotly_chart(fig, use_container_width=True)
-
-
-class CarPathListContainer:
+class CarPathContainer:
     """Container for a horizontally scrollable list of car agent information cards.
 
     This class provides functionality to display a list of car agents in a horizontally scrollable manner. It includes methods to scroll the list left and right, render the current path of each car, and display detailed information about each car's path.
@@ -111,37 +115,15 @@ class CarPathListContainer:
             Returns the current path information of a car agent as a dictionary.
     """
 
+    @st.fragment
     def __init__(self):
-        """Creates a horizontally scrollable list of car agent information cards.
+        """Creates a horizontally scrollable list of car agent information cards."""
 
-        - Creates layout with 5 columns
-        - Renders navigation buttons in the left- and rightmost column
-            - If there are items to the left or right of the list
-        - Gets currently visible cars
-        - Renders information of visible cars
-        """
-        cols = st.columns(spec=[0.05, 0.3, 0.3, 0.3, 0.05], vertical_alignment="center")
-
-        if st.session_state["env_config"]["num_cars"] > 3:
-            with cols[0]:
-                if st.button("<-"):
-                    self.scroll_left()
-            with cols[-1]:
-                if st.button("->"):
-                    self.scroll_right()
-
-        visible_cars = st.session_state["model"].get_agents_by_type("CarAgent")[
-            int(st.query_params["scroll_index"]) : (
-                int(st.query_params["scroll_index"]) + 3
-            )
+        car: CarAgent = st.session_state["model"].get_agents_by_type("CarAgent")[
+            int(st.query_params["scroll_index"])
         ]
 
-        for car, i in zip(
-            visible_cars,
-            range(3),
-        ):
-            with cols[i + 1]:
-                self.render_current_path(car)
+        self.render_current_path(car)
 
     def scroll_left(self) -> None:
         """Scrolls the car path list to the left.
@@ -151,6 +133,7 @@ class CarPathListContainer:
         """
         if int(st.query_params["scroll_index"]) > 0:
             st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) - 1
+            st.rerun(scope="fragment")
 
     def scroll_right(self) -> None:
         """Scrolls the car path list to the right.
@@ -160,9 +143,10 @@ class CarPathListContainer:
         """
         if (
             int(st.query_params["scroll_index"])
-            < st.session_state["env_config"]["num_cars"] - 3
+            < st.session_state["env_config"]["num_cars"] - 1
         ):
             st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) + 1
+            st.rerun(scope="fragment")
 
     def render_current_path(self, car: CarAgent) -> None:
         """Renders a car's path.
@@ -170,11 +154,20 @@ class CarPathListContainer:
         Args:
             car (CarAgent): CarAgent instance
         """
-        cols = st.columns(2, vertical_alignment="center")
+        cols = st.columns([0.3, 0.1, 0.4, 0.1, 0.1], vertical_alignment="center")
         with cols[0]:
             st.subheader(f"Agent {car.unique_id}")
-        with cols[1]:
+        # with cols[1]:
+        #     num_cars = self.NumCars(st.session_state["model"]).num_cars
+        #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
+        with cols[2]:
             self.render_full_path(car)
+        with cols[3]:
+            if st.button("<-"):
+                self.scroll_left()
+        with cols[4]:
+            if st.button("->"):
+                self.scroll_right()
         st.dataframe(
             self.get_current_path(car),
             use_container_width=True,
@@ -187,26 +180,14 @@ class CarPathListContainer:
         Args:
             car (CarAgent): CarAgent instance
         """
-        with stylable_container(
-            key=f"agent_{car.unique_id}",
-            css_styles="""/*css*/
-                button {
-                    background-color: white;
-                    color: black;
-                    border: none;
-                    white-space: nowrap;
-                    margin-top: 0.45rem;
-                }
-                """,
-        ):
-            with st.popover("Show Details"):
-                st.markdown("""##### Full Path""")
-                st.dataframe(
-                    self.get_full_path(car_id=car.unique_id),
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={"0": "", "1": ""},
-                )
+        with st.popover("Show Full Path"):
+            st.markdown("""##### Full Path""")
+            st.dataframe(
+                self.get_full_path(car_id=car.unique_id),
+                use_container_width=True,
+                hide_index=True,
+                column_config={"0": "", "1": ""},
+            )
 
     def get_full_path(self, car_id: int) -> list[tuple[str, int]]:
         """Creates a List with the full path a car agent takes.
@@ -258,6 +239,20 @@ class CarPathListContainer:
 
         return path_dict
 
+    # @dataclass
+    # class NumCars:
+    #     """Class to hold the current number of cars in the grid"""
+
+    #     num_cars: int
+
+    #     def __init__(self, model: TrafficModel):
+    #         """Gets the current number of cars in the grid
+
+    #         Args:
+    #             model (TrafficModel): Model
+    #         """
+    #         self.num_cars = len(model.get_agents_by_type("CarAgent"))
+
 
 class SettingsContainer:
     """Container for the settings form and reset button.
@@ -274,17 +269,6 @@ class SettingsContainer:
     """
 
     def __init__(self):
-        """Initializes the settings container with a reset button and renders the settings form.
-
-        - Creates two columns for layout
-        - Adds a subheader for settings
-        - Adds a reset button to reset the environment
-        - Renders the settings form
-        """
-        st.subheader("Settings", anchor="left")
-        self.render_settings_form()
-
-    def render_settings_form(self) -> None:
         """Renders the settings form with input fields for environment parameters.
 
         - Number of Cars
@@ -293,7 +277,7 @@ class SettingsContainer:
         - Distance Range
         - Run Steps
         """
-        with st.form("Settings"):
+        with st.form(key="Settings"):
             num_cars = self.NumCarsInput().num_cars
             num_intersections = self.NumIntersectionsInput().num_intersections
             num_borders = self.NumBordersInput().num_borders

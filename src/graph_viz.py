@@ -38,17 +38,21 @@ class TrafficGraph(go.Figure):
             Get the x and y coordinates of the lights.
         ***create_trace_lights(self, light_x: np.array, light_y: np.array) -> go.Scatter***:
             Create a plotly trace for the open lane of each light.
+        ***refresh(self) -> None***:
+            Function to refresh the graph.
     """
 
-    def __init__(self, model: TrafficModel):
+    def __init__(self, model: TrafficModel, height: int, width: int):
         """Create a plotly figure of the traffic grid.
 
         Args:
             model (TrafficModel): The traffic model to visualize.
+            height (int): Height of the plot in pixels
+            width (int): Width of the plot in pixels
         """
         super().__init__()
         self._model = model
-        pos = nx.kamada_kawai_layout(self._model.grid)
+        pos = nx.spring_layout(self._model.grid, seed=42)
         nx.set_node_attributes(
             self._model.grid, pos, "pos"
         )  # Assign positions to nodes
@@ -72,6 +76,8 @@ class TrafficGraph(go.Figure):
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             annotations=arrows,
+            height=height,
+            width=width,
         )
 
     def get_coords_edges(self) -> tuple[np.array, np.array]:
@@ -312,8 +318,8 @@ class TrafficGraph(go.Figure):
                     ayref="y",
                     showarrow=True,
                     arrowhead=3,
-                    arrowsize=1.5,
-                    arrowwidth=1.5,
+                    arrowsize=1.25,
+                    arrowwidth=1.25,
                     arrowcolor="#777",
                 )
             )
@@ -321,3 +327,12 @@ class TrafficGraph(go.Figure):
         ]
 
         return arrows
+
+    def refresh(self, height: int, width: int) -> None:
+        """Function to refresh the graph.
+
+        Args:
+            height (int): Height of the plot in pixels
+            width (int): Width of the plot in pixels
+        """
+        self.__init__(model=self._model, height=height, width=width)
