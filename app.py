@@ -434,7 +434,7 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_cars=20)
+        st.session_state["model"] = TrafficModel(num_cars=30)
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:

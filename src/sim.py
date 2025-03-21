@@ -9,7 +9,9 @@ def parse_args() -> argparse.Namespace:
         argparse.Namespace: Parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Traffic Simulation Configuration")
-    parser.add_argument("-c", "--num_cars", type=int, default=50, help="Number of cars")
+    parser.add_argument(
+        "-c", "--num_cars", type=int, default=500, help="Number of cars"
+    )
     parser.add_argument(
         "-i",
         "--num_intersections",
