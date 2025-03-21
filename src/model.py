@@ -73,8 +73,8 @@ class TrafficModel(mesa.Model):
         super().__init__(seed=seed)
 
         self.grid = Graph(
-            num_intersections=kwargs.get("num_intersections", 50),
-            num_borders=kwargs.get("num_borders", 25),
+            num_intersections=kwargs.get("num_intersections", 30),
+            num_borders=kwargs.get("num_borders", 10),
             min_distance=kwargs.get("min_distance", 10),
             max_distance=kwargs.get("max_distance", 20),
         )
