@@ -47,6 +47,19 @@ class App:
         )
         self.screen_width = streamlit_js_eval(js_expressions="screen.width", key="SCRW")
 
+        timeout = 0
+        while self.screen_height is None or self.screen_width is None and timeout < 30:
+            time.sleep(0.1)
+            self.screen_height = st.session_state.get("SCRH")
+            self.screen_width = st.session_state.get("SCRW")
+            timeout += 1
+
+        if self.screen_height is None:
+            self.screen_height = 1080
+
+        if self.screen_width is None:
+            self.screen_width = 1920
+
         fig = TrafficGraph(
             model=model,
             height=self.screen_height * 0.65,
