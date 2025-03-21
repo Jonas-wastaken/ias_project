@@ -10,7 +10,7 @@ def parse_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Traffic Simulation Configuration")
     parser.add_argument(
-        "-c", "--num_cars", type=int, default=500, help="Number of cars"
+        "-c", "--num_cars", type=int, default=100, help="Number of cars"
     )
     parser.add_argument(
         "-i",
