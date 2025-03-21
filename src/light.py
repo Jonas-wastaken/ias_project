@@ -3,8 +3,13 @@
 
 import mesa
 import random
+import numpy as np
 import pyoptinterface as poi
 from pyoptinterface import highs
+from networkx import closeness_centrality
+
+from graph import Graph
+from car import CarAgent
 
 
 class LightAgent(mesa.Agent):
@@ -19,6 +24,7 @@ class LightAgent(mesa.Agent):
         current_switching_cooldown (int): The current number of steps the agent has to wait before changing the open lane again.
         neighbor_lights (list): A list of the neighboring lights of the agent.
         open_lane (str): The ID of the edge from where cars are allowed to cross the intersection.
+        centrality (float): Closeness centrality measured as the reciprocal of the average shortest path distance to u over all n-1 reachable nodes using networkx.closeness_centrality().
 
 
     ## Methods:
@@ -32,6 +38,12 @@ class LightAgent(mesa.Agent):
             Rotates the open lane to the next neighbor light in the cycle.
         **optimize_open_lane(self) -> str**:
             Decides which lane should be open based on the number of waiting cars.
+        **get_num_connections(self, grid: Graph) -> int**:
+            Gets the number of connected intersections.
+        **get_avg_distance(self, grid: Graph) -> float**:
+            Gets the average distance to connected intersections.
+        **get_is_entrypoint(self, grid: Graph) -> bool**:
+            Checks if intersection is connected to a border.
 
         **Coming soon**:
         - estimate_coming_cars?
@@ -45,9 +57,12 @@ class LightAgent(mesa.Agent):
         """
         super().__init__(model)
         self.position = kwargs.get("position", None)
+        self.centrality = closeness_centrality(
+            G=model.grid, u=self.position, distance="weight"
+        )
         self.neighbor_lights = [
             node
-            for node in list(self.model.grid.neighbors(self.position))
+            for node in self.model.grid.neighbors(self.position)
             if node.startswith("intersection")
         ]
         self.default_switching_cooldown = 5
@@ -130,10 +145,14 @@ class LightAgent(mesa.Agent):
     def optimize_open_lane(self) -> str:
         """Decides which lane should be open based on the number of waiting cars."""
         opt_model = highs.Model()
-        
+
+        opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
+
         possible_lanes = self.neighbor_lights
         cars_at_light = self.model.get_cars_per_lane_of_light(self.position)
-        lanes = opt_model.add_variables(possible_lanes, domain=poi.VariableDomain.Binary)
+        lanes = opt_model.add_variables(
+            possible_lanes, domain=poi.VariableDomain.Binary
+        )
 
         # Constraints
         opt_model.add_linear_constraint(poi.quicksum(lanes), poi.Eq, 1)
@@ -146,19 +165,97 @@ class LightAgent(mesa.Agent):
 
         # Decide which lane should be open
         optimal_value = opt_model.get_obj_value()
-        optimal_lanes = [lane for lane in cars_at_light if optimal_value == cars_at_light[lane]]
+        optimal_lanes = [
+            lane for lane in cars_at_light if optimal_value == cars_at_light[lane]
+        ]
 
         if len(optimal_lanes) > 1:
-            optimal_lane = random.choice(optimal_lanes)             # Randomly select one of the optimal lanes, if there are multiple (TODO: chose the one where the cars have waited the longest)
+            optimal_lane = random.choice(
+                optimal_lanes
+            )  # Randomly select one of the optimal lanes, if there are multiple (TODO: chose the one where the cars have waited the longest)
         else:
             optimal_lane = optimal_lanes[0]
 
-
         # Log result
-        self.model.update_lights_decision_log(self, cars_at_light, optimal_lane, self.model.steps)
+        self.model.update_lights_decision_log(
+            self, cars_at_light, optimal_lane, self.model.steps
+        )
 
         return optimal_lane
 
+    def get_num_connections(self, grid: Graph) -> int:
+        """Gets the number of connected intersections.
+
+        Args:
+            grid (Graph): Graph instance
+
+        Returns:
+            int: Number of connected intersections
+        """
+        num_connections = len(
+            [
+                node
+                for node in grid.neighbors(self.position)
+                if node.startswith("intersection")
+            ]
+        )
+
+        return num_connections
+
+    def get_avg_distance(self, grid: Graph) -> float:
+        """Gets the average distance to connected intersections.
+
+        Args:
+            grid (Graph): Graph instance
+
+        Returns:
+            float: Average distance to connected intersections
+        """
+        neighbors = [
+            node
+            for node in grid.neighbors(self.position)
+            if node.startswith("intersection")
+        ]
+
+        distances = np.array(
+            [
+                grid.get_edge_data(u=self.position, v=neighbor)["weight"]
+                for neighbor in neighbors
+            ]
+        )
+
+        avg_distance = np.mean(distances)
+
+        return avg_distance
+
+    def get_is_entrypoint(self, grid: Graph) -> bool:
+        """Checks if intersection is connected to a border.
+
+        Args:
+            grid (Graph): Graph instance
+
+        Returns:
+            bool: True if intersection is connected to a border
+        """
+        for node in grid.neighbors(self.position):
+            if node.startswith("border"):
+                return True
+
+        return False
+
+    def get_num_cars(self) -> int:
+        """Gets the number of cars currently at the light
+
+        Returns:
+            int: Number of cars currently at the light
+        """
+        num_cars = 0
+        for car in self.model.get_agents_by_type("CarAgent"):
+            car: CarAgent
+            if car.position == self.position and car.waiting:
+                num_cars += 1
+
+        return num_cars
 
 
 class LightCooldown(Exception):
