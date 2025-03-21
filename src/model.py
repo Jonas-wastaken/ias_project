@@ -23,6 +23,7 @@ class TrafficModel(mesa.Model):
         num_cars_hist (np.array): An array containing the history of the number of cars in the model.
         light_data (pl.DataFrame): A Polars DataFrame containing information about the LightAgents
         sim_data (pl.DataFrame): A Polars DataFrame containing information about a simulation run.
+        lights_decision_log (dict): A dictionary containing the decisions of all lights over time.
 
     ## Methods:
         **step(self) -> None**:
@@ -47,6 +48,8 @@ class TrafficModel(mesa.Model):
             Respawns cars at each step depending on current time and number of cars in the model.
         **def save_sim_data(self) -> Path**:
             Function to save the sim_data to a parquet file
+        **get_cars_per_lane_of_light(self, light_position: str) -> dict**:
+            Function to get the number of cars per lane of a light.
     """
 
     def __init__(
@@ -77,9 +80,12 @@ class TrafficModel(mesa.Model):
         )
 
         self.create_lights_for_intersections()
-
+        # CarAgent.create_agents(model=self, n=num_cars)
         self.car_paths = {}
+        self.update_car_paths()
         self.cars_waiting_times = {}
+        self.update_cars_waiting_times()
+        self.lights_decision_log = {}
         self.num_cars_hist = np.array(num_cars)
         self.create_cars(num_cars)
 
@@ -116,7 +122,10 @@ class TrafficModel(mesa.Model):
                 car.remove()
 
         for light in self.get_agents_by_type("LightAgent"):
-            light: LightAgent
+            # light: LightAgent
+            # light.update_waiting_cars()
+
+            # Decide if the light should change the open lane (if the cooldown is over)
             self.sim_data.vstack(
                 pl.DataFrame(
                     data={
@@ -131,8 +140,10 @@ class TrafficModel(mesa.Model):
                 in_place=True,
             )
             if light.current_switching_cooldown <= 0:
-                light.rotate_in_open_lane_cycle()
-            light.current_switching_cooldown -= 1
+                light.change_open_lane(light.optimize_open_lane())
+                # light.rotate_in_open_lane_cycle()
+            else:
+                light.current_switching_cooldown -= 1
 
         self.num_cars_hist = np.append(
             self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
@@ -279,6 +290,51 @@ class TrafficModel(mesa.Model):
 
         if cars_to_add > 0:
             self.create_cars(cars_to_add)
+
+    def get_cars_per_lane_of_light(self, light_position: str) -> dict:
+        """Function to get the number of cars per lane of a light.
+
+        Args:
+            light_position (str): The position of the light.
+
+        Returns:
+            dict: A dictionary containing the number of cars per lane of the light.
+        """
+        cars_per_lane = {
+            lane: 0
+            for lane in self.grid.neighbors(light_position)
+            if lane.startswith("intersection")
+        }
+
+        for car in self.get_agents_by_type("CarAgent"):
+            if car.position == light_position and car.waiting:
+                cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
+
+        return cars_per_lane
+
+    def update_lights_decision_log(
+        self,
+        light: LightAgent,
+        cars_per_lane: dict,
+        decision_lane: str,
+        model_step: int,
+    ) -> None:
+        """Function to update the decision log of all lights.
+        The dict looks like this: {light.unique_id: {step:{decision_lane:intersection_3, intersection_1:cars_at_lane_1, intersection_2:cars_at_lane_2, intersection_3:cars_at_lane_3}}}
+
+        """
+        if light.unique_id not in list(self.lights_decision_log.keys()):
+            self.lights_decision_log[light.unique_id] = {}
+            self.lights_decision_log[light.unique_id][model_step] = {
+                "decision_lane": decision_lane
+            }
+            self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
+
+        else:
+            self.lights_decision_log[light.unique_id][model_step] = {
+                "decision_lane": decision_lane
+            }
+            self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
 
     def save_sim_data(self) -> Path:
         """Function to save the model data to a parquet file
