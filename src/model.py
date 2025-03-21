@@ -91,15 +91,28 @@ class TrafficModel(mesa.Model):
 
         self.light_data = pl.DataFrame(
             data=[
-                (light.unique_id, light.centrality)
+                (
+                    light.unique_id,
+                    light.centrality,
+                    light.get_avg_distance(self.grid),
+                    light.get_num_connections(self.grid),
+                    light.get_is_entrypoint(self.grid),
+                )
                 for light in self.get_agents_by_type("LightAgent")
             ],
-            schema={"Light_ID": pl.Int16, "Centrality": pl.Float64},
+            schema={
+                "Light_ID": pl.Int16,
+                "Centrality": pl.Float64,
+                "Avg_Distance": pl.Float64,
+                "Num_Connections": pl.Int64,
+                "Is_Entrypoint": pl.Boolean,
+            },
             strict=False,
             orient="row",
         )
         self.sim_data = pl.DataFrame(
-            schema={"Light_ID": pl.Int16, "Time": pl.Int16}, strict=False
+            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Num_Cars": pl.Int16},
+            strict=False,
         )
 
     def step(self) -> None:
@@ -122,7 +135,7 @@ class TrafficModel(mesa.Model):
                 car.remove()
 
         for light in self.get_agents_by_type("LightAgent"):
-            # light: LightAgent
+            light: LightAgent
             # light.update_waiting_cars()
 
             # Decide if the light should change the open lane (if the cooldown is over)
@@ -130,11 +143,13 @@ class TrafficModel(mesa.Model):
                 pl.DataFrame(
                     data={
                         "Light_ID": light.unique_id,
-                        "Time": self.steps,
+                        "Time": self.steps % 200,
+                        "Num_Cars": light.get_num_cars(),
                     },
                     schema={
                         "Light_ID": pl.Int16,
                         "Time": pl.Int16,
+                        "Num_Cars": pl.Int16,
                     },
                 ),
                 in_place=True,
