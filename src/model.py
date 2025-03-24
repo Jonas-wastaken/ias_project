@@ -89,29 +89,8 @@ class TrafficModel(mesa.Model):
         self.num_cars_hist = np.array(num_cars)
         self.create_cars(num_cars)
 
-        self.light_data = pl.DataFrame(
-            data=[
-                (
-                    light.unique_id,
-                    light.centrality,
-                    light.get_avg_distance(self.grid),
-                    light.get_num_connections(self.grid),
-                    light.get_is_entrypoint(self.grid),
-                )
-                for light in self.get_agents_by_type("LightAgent")
-            ],
-            schema={
-                "Light_ID": pl.Int16,
-                "Centrality": pl.Float64,
-                "Avg_Distance": pl.Float64,
-                "Num_Connections": pl.Int64,
-                "Is_Entrypoint": pl.Boolean,
-            },
-            strict=False,
-            orient="row",
-        )
-        self.sim_data = pl.DataFrame(
-            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Num_Cars": pl.Int16},
+        self.arrivals_data = pl.DataFrame(
+            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Arrivals": pl.Int16},
             strict=False,
         )
 
@@ -139,20 +118,8 @@ class TrafficModel(mesa.Model):
             # light.update_waiting_cars()
 
             # Decide if the light should change the open lane (if the cooldown is over)
-            self.sim_data.vstack(
-                pl.DataFrame(
-                    data={
-                        "Light_ID": light.unique_id,
-                        "Time": self.steps % 200,
-                        "Num_Cars": light.get_num_cars(),
-                    },
-                    schema={
-                        "Light_ID": pl.Int16,
-                        "Time": pl.Int16,
-                        "Num_Cars": pl.Int16,
-                    },
-                ),
-                in_place=True,
+            self.arrivals_data = self.update_arrivals_data(
+                arrivals_data=self.arrivals_data, light=light
             )
             if light.current_switching_cooldown <= 0:
                 light.change_open_lane(light.optimize_open_lane())
@@ -366,12 +333,16 @@ class TrafficModel(mesa.Model):
         folder = Path(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
         Path.joinpath(data_path, folder).mkdir()
 
-        self.sim_data.write_parquet(
-            file=Path.joinpath(data_path, folder, "sim_data.parquet")
+        self.arrivals_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "arrivals_data.parquet")
         )
 
-        self.light_data.write_parquet(
+        self.get_light_data().write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
+        )
+
+        self.get_connections_data().write_parquet(
+            file=Path.joinpath(data_path, folder, "connections.parquet")
         )
 
         pl.DataFrame(
@@ -379,3 +350,113 @@ class TrafficModel(mesa.Model):
         ).write_parquet(file=Path.joinpath(data_path, folder, "num_cars.parquet"))
 
         return folder
+
+    def get_light_data(self) -> pl.DataFrame:
+        """Gets metadata of LightAgents in the model.
+
+        Returns:
+            pl.DataFrame: DataFrame containing metadata about LightAgents
+        """
+        light_data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Centrality": pl.Float32,
+                "Is_Entrypoint": pl.Boolean,
+            },
+            strict=False,
+            orient="row",
+        )
+
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
+            light_data.vstack(
+                other=pl.DataFrame(
+                    data=[
+                        light.unique_id,
+                        light.get_centrality(self.grid),
+                        light.check_is_entrypoint(self.grid),
+                    ],
+                    schema={
+                        "Light_ID": pl.Int16,
+                        "Centrality": pl.Float32,
+                        "Is_Entrypoint": pl.Boolean,
+                    },
+                    strict=False,
+                    orient="row",
+                ),
+                in_place=True,
+            )
+
+        return light_data
+
+    def update_arrivals_data(
+        self, arrivals_data: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """_summary_
+
+        Args:
+            arrivals_data (pl.DataFrame): _description_
+            light (LightAgent): _description_
+
+        Returns:
+            pl.DataFrame: _description_
+        """
+        arrivals_data.vstack(
+            pl.DataFrame(
+                data={
+                    "Light_ID": light.unique_id,
+                    "Time": self.steps,
+                    "Arrivals": light.get_num_arrivals(),
+                },
+                schema={
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Arrivals": pl.Int16,
+                },
+            ),
+            in_place=True,
+        )
+
+        return arrivals_data
+
+    def get_connections_data(self) -> pl.DataFrame:
+        """_summary_
+
+        Returns:
+            pl.DataFrame: _description_
+        """
+        connections_data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Connection_ID": pl.Int16,
+                "Distance": pl.Int16,
+            },
+            strict=False,
+        )
+        for light_u in self.get_agents_by_type("LightAgent"):
+            light_u: LightAgent
+
+            for light_v in self.get_agents_by_type("LightAgent"):
+                light_v: LightAgent
+
+                if light_v.position in light_u.get_connected_intersections(self.grid):
+                    connections_data.vstack(
+                        other=pl.DataFrame(
+                            data={
+                                "Light_ID": light_u.unique_id,
+                                "Connection_ID": light_v.unique_id,
+                                "Distance": self.grid.get_edge_data(
+                                    u=light_u, v=light_v
+                                )["weight"],
+                            },
+                            schema={
+                                "Light_ID": pl.Int16,
+                                "Connection_ID": pl.Int16,
+                                "Distance": pl.Int16,
+                            },
+                            strict=False,
+                        ),
+                        in_place=True,
+                    )
+
+        return connections_data

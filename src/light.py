@@ -57,14 +57,7 @@ class LightAgent(mesa.Agent):
         """
         super().__init__(model)
         self.position = kwargs.get("position", None)
-        self.centrality = closeness_centrality(
-            G=model.grid, u=self.position, distance="weight"
-        )
-        self.neighbor_lights = [
-            node
-            for node in self.model.grid.neighbors(self.position)
-            if node.startswith("intersection")
-        ]
+        self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
         # self.waiting_cars = {}
@@ -228,7 +221,7 @@ class LightAgent(mesa.Agent):
 
         return avg_distance
 
-    def get_is_entrypoint(self, grid: Graph) -> bool:
+    def check_is_entrypoint(self, grid: Graph) -> bool:
         """Checks if intersection is connected to a border.
 
         Args:
@@ -243,19 +236,49 @@ class LightAgent(mesa.Agent):
 
         return False
 
-    def get_num_cars(self) -> int:
-        """Gets the number of cars currently at the light
+    def get_num_arrivals(self) -> int:
+        """Gets the number of cars arriving at the light
 
         Returns:
-            int: Number of cars currently at the light
+            int: Number of cars arriving at the light
         """
-        num_cars = 0
+        num_arrivals = 0
         for car in self.model.get_agents_by_type("CarAgent"):
             car: CarAgent
-            if car.position == self.position and car.waiting:
-                num_cars += 1
+            if (
+                car.position == self.position
+                and self.model.cars_waiting_times[car.unique_id][self.position] == 1
+            ):
+                num_arrivals += 1
 
-        return num_cars
+        return num_arrivals
+
+    def get_centrality(self, grid: Graph) -> float:
+        """_summary_
+
+        Returns:
+            float: _description_
+        """
+        centrality = closeness_centrality(G=grid, u=self.position, distance="weight")
+
+        return centrality
+
+    def get_connected_intersections(self, grid: Graph) -> list[str]:
+        """Gets IDs of connected intersection nodes.
+
+        Args:
+            grid (Graph): Graph instance the light is placed on
+
+        Returns:
+            list[str]: List of connected node ids
+        """
+        connected_intersections = [
+            node
+            for node in grid.neighbors(self.position)
+            if node.startswith("intersection")
+        ]
+
+        return connected_intersections
 
 
 class LightCooldown(Exception):
