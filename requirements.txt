@@ -21,6 +21,7 @@ favicon==0.7.0
 fonttools==4.55.4
 gitdb==4.0.12
 GitPython==3.1.44
+gurobipy==12.0.1
 highsbox==1.9.0
 htbuilder==0.9.0
 idna==3.10
@@ -56,6 +57,7 @@ pexpect==4.9.0
 pillow==11.1.0
 platformdirs==4.3.6
 plotly==5.24.1
+polars==1.24.0
 prometheus_client==0.21.1
 prompt_toolkit==3.0.50
 protobuf==5.29.3
@@ -80,6 +82,7 @@ scipy==1.15.1
 six==1.17.0
 smmap==5.0.2
 soupsieve==2.6
+SQLAlchemy==2.0.38
 st-annotated-text==4.0.2
 st-theme==1.2.3
 stack-data==0.6.3
@@ -91,6 +94,7 @@ streamlit-embedcode==0.1.2
 streamlit-extras==0.5.0
 streamlit-faker==0.0.3
 streamlit-image-coordinates==0.1.9
+streamlit-js-eval==0.1.7
 streamlit-keyup==0.3.0
 streamlit-toggle-switch==1.0.2
 streamlit-vertical-slider==2.5.5

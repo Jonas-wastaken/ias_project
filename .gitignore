@@ -180,5 +180,8 @@ test.*
 .vscode/
 
 # Logs
-logs/
+logs/*
 *.log
+
+# Secrets
+.secrets/*
