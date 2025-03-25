@@ -247,7 +247,7 @@ class LightAgent(mesa.Agent):
             car: CarAgent
             if (
                 car.position == self.position
-                and self.model.cars_waiting_times[car.unique_id][self.position] == 1
+                and self.model.cars_waiting_times[car.unique_id][self.position] == 0
             ):
                 num_arrivals += 1
 
