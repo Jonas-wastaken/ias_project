@@ -86,7 +86,7 @@ class TrafficModel(mesa.Model):
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
         self.lights_decision_log = {}
-        self.num_cars_hist = np.array(num_cars)
+        self.num_cars_hist = np.array([])
         self.create_cars(num_cars)
 
         self.arrivals_data = pl.DataFrame(
