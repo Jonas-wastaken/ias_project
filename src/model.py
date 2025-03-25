@@ -144,7 +144,6 @@ class TrafficModel(mesa.Model):
             else:
                 light.current_switching_cooldown -= 1
 
-        light.update_waiting_cars()
         self.num_cars_hist = np.append(
             self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
         )
