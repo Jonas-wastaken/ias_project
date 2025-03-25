@@ -86,32 +86,26 @@ class TrafficModel(mesa.Model):
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
         self.lights_decision_log = {}
-        self.num_cars_hist = np.array(num_cars)
+        self.num_cars_hist = np.array([])
         self.create_cars(num_cars)
 
-        self.light_data = pl.DataFrame(
-            data=[
-                (
-                    light.unique_id,
-                    light.centrality,
-                    light.get_avg_distance(self.grid),
-                    light.get_num_connections(self.grid),
-                    light.get_is_entrypoint(self.grid),
-                )
-                for light in self.get_agents_by_type("LightAgent")
-            ],
+        self.arrivals_data = pl.DataFrame(
             schema={
+                "Index": pl.Int32,
                 "Light_ID": pl.Int16,
-                "Centrality": pl.Float64,
-                "Avg_Distance": pl.Float64,
-                "Num_Connections": pl.Int64,
-                "Is_Entrypoint": pl.Boolean,
+                "Time": pl.Int16,
+                "Arrivals": pl.Int16,
             },
             strict=False,
-            orient="row",
         )
-        self.sim_data = pl.DataFrame(
-            schema={"Light_ID": pl.Int16, "Time": pl.Int16, "Num_Cars": pl.Int16},
+
+        self.traffic_data = pl.DataFrame(
+            schema={
+                "Index": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Num_Cars": pl.Int16,
+            },
             strict=False,
         )
 
@@ -136,23 +130,13 @@ class TrafficModel(mesa.Model):
 
         for light in self.get_agents_by_type("LightAgent"):
             light: LightAgent
-            # light.update_waiting_cars()
 
             # Decide if the light should change the open lane (if the cooldown is over)
-            self.sim_data.vstack(
-                pl.DataFrame(
-                    data={
-                        "Light_ID": light.unique_id,
-                        "Time": self.steps % 200,
-                        "Num_Cars": light.get_num_cars(),
-                    },
-                    schema={
-                        "Light_ID": pl.Int16,
-                        "Time": pl.Int16,
-                        "Num_Cars": pl.Int16,
-                    },
-                ),
-                in_place=True,
+            self.arrivals_data = self.update_arrivals_data(
+                arrivals_data=self.arrivals_data, light=light
+            )
+            self.traffic_data = self.update_traffic_data(
+                traffic_data=self.traffic_data, light=light
             )
             if light.current_switching_cooldown <= 0:
                 light.change_open_lane(light.optimize_open_lane())
@@ -366,12 +350,20 @@ class TrafficModel(mesa.Model):
         folder = Path(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
         Path.joinpath(data_path, folder).mkdir()
 
-        self.sim_data.write_parquet(
-            file=Path.joinpath(data_path, folder, "sim_data.parquet")
+        self.arrivals_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "arrivals_data.parquet")
         )
 
-        self.light_data.write_parquet(
+        self.traffic_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "traffic_data.parquet")
+        )
+
+        self.get_light_data().write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
+        )
+
+        self.get_connections_data().write_parquet(
+            file=Path.joinpath(data_path, folder, "connections.parquet")
         )
 
         pl.DataFrame(
@@ -379,3 +371,154 @@ class TrafficModel(mesa.Model):
         ).write_parquet(file=Path.joinpath(data_path, folder, "num_cars.parquet"))
 
         return folder
+
+    def get_light_data(self) -> pl.DataFrame:
+        """Gets metadata of LightAgents in the model.
+
+        Returns:
+            pl.DataFrame: DataFrame containing metadata about LightAgents
+        """
+        light_data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Centrality": pl.Float32,
+                "Is_Entrypoint": pl.Boolean,
+            },
+            strict=False,
+            orient="row",
+        )
+
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
+            light_data.vstack(
+                other=pl.DataFrame(
+                    data=[
+                        (
+                            light.unique_id,
+                            light.get_centrality(self.grid),
+                            light.check_is_entrypoint(self.grid),
+                        )
+                    ],
+                    schema={
+                        "Light_ID": pl.Int16,
+                        "Centrality": pl.Float32,
+                        "Is_Entrypoint": pl.Boolean,
+                    },
+                    strict=False,
+                    orient="row",
+                ),
+                in_place=True,
+            )
+
+        return light_data
+
+    def update_arrivals_data(
+        self, arrivals_data: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """Updates the arrivals data
+
+        Args:
+            arrivals_data (pl.DataFrame): Current DataFrame
+            light (LightAgent): LightAgent to get and write data from
+
+        Returns:
+            pl.DataFrame: Updated DataFrame
+        """
+        arrivals_data.vstack(
+            pl.DataFrame(
+                data={
+                    "Index": self.steps,
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (self.steps % 200),
+                    "Arrivals": light.get_num_arrivals(),
+                },
+                schema={
+                    "Index": pl.Int32,
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Arrivals": pl.Int16,
+                },
+            ),
+            in_place=True,
+        )
+
+        return arrivals_data
+
+    def get_connections_data(self) -> pl.DataFrame:
+        """Constructs a DataFrame describing the connections between LightAgents.
+
+        - Connection is described as Light_u -> Light_v
+        - Includes the distance between the nodes the lights are on
+
+        Returns:
+            pl.DataFrame: DataFrame containing the data
+        """
+        connections_data = pl.DataFrame(
+            schema={
+                "Light_u": pl.Int16,
+                "Light_v": pl.Int16,
+                "Distance": pl.Int16,
+            },
+            strict=False,
+        )
+        for light_u in self.get_agents_by_type("LightAgent"):
+            light_u: LightAgent
+
+            for intersection in light_u.get_connected_intersections(self.grid):
+                for light_v in self.get_agents_by_type("LightAgent"):
+                    light_v: LightAgent
+
+                    if light_v.position == intersection:
+                        connections_data.vstack(
+                            other=pl.DataFrame(
+                                data={
+                                    "Light_u": light_u.unique_id,
+                                    "Light_v": light_v.unique_id,
+                                    "Distance": self.grid.get_edge_data(
+                                        u=light_u.position, v=light_v.position
+                                    )["weight"],
+                                },
+                                schema={
+                                    "Light_u": pl.Int16,
+                                    "Light_v": pl.Int16,
+                                    "Distance": pl.Int16,
+                                },
+                                strict=False,
+                            ),
+                            in_place=True,
+                        )
+
+        return connections_data
+
+    def update_traffic_data(
+        self, traffic_data: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """Updates the traffic data DataFrame.
+
+        Args:
+            traffic_data (pl.DataFrame): Current DataFrame
+            light (LightAgent): LightAgent to get and write data from
+
+        Returns:
+            pl.DataFrame: Updated DataFrame
+        """
+        traffic_data.vstack(
+            other=pl.DataFrame(
+                data={
+                    "Index": self.steps,
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (self.steps % 200),
+                    "Num_Cars": light.get_num_cars(),
+                },
+                schema={
+                    "Index": pl.Int32,
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Num_Cars": pl.Int16,
+                },
+                strict=False,
+            ),
+            in_place=True,
+        )
+
+        return traffic_data

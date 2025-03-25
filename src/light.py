@@ -57,14 +57,7 @@ class LightAgent(mesa.Agent):
         """
         super().__init__(model)
         self.position = kwargs.get("position", None)
-        self.centrality = closeness_centrality(
-            G=model.grid, u=self.position, distance="weight"
-        )
-        self.neighbor_lights = [
-            node
-            for node in self.model.grid.neighbors(self.position)
-            if node.startswith("intersection")
-        ]
+        self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
         # self.waiting_cars = {}
@@ -81,7 +74,7 @@ class LightAgent(mesa.Agent):
         """
         self.position = position
 
-    def update_waiting_cars(self) -> None:  # TODO: Fix
+    def update_waiting_cars(self) -> None:  # TODO: Fix @mxrio
         """NOT WORKING: Updates the details of the cars waiting at the intersection (waiting_cars)"""
 
         # if self.waiting_cars is not None:
@@ -228,7 +221,7 @@ class LightAgent(mesa.Agent):
 
         return avg_distance
 
-    def get_is_entrypoint(self, grid: Graph) -> bool:
+    def check_is_entrypoint(self, grid: Graph) -> bool:
         """Checks if intersection is connected to a border.
 
         Args:
@@ -243,8 +236,25 @@ class LightAgent(mesa.Agent):
 
         return False
 
+    def get_num_arrivals(self) -> int:
+        """Gets the number of cars arriving at the light
+
+        Returns:
+            int: Number of cars arriving at the light
+        """
+        num_arrivals = 0
+        for car in self.model.get_agents_by_type("CarAgent"):
+            car: CarAgent
+            if (
+                car.position == self.position
+                and self.model.cars_waiting_times[car.unique_id][self.position] == 0
+            ):
+                num_arrivals += 1
+
+        return num_arrivals
+
     def get_num_cars(self) -> int:
-        """Gets the number of cars currently at the light
+        """Gets the number of cars currently at the light.
 
         Returns:
             int: Number of cars currently at the light
@@ -252,10 +262,43 @@ class LightAgent(mesa.Agent):
         num_cars = 0
         for car in self.model.get_agents_by_type("CarAgent"):
             car: CarAgent
-            if car.position == self.position and car.waiting:
+            if car.position == self.position:
                 num_cars += 1
 
         return num_cars
+
+    def get_centrality(self, grid: Graph) -> float:
+        """Gets the centrality of the intersection a light is placed on.
+
+        - Measured as the reciprocal of the average shortest path distance to *u* over all *n-1* reachable nodes
+        - Uses networkx.closeness_centrality()
+
+        Args:
+            grid (Graph): Graph instance
+
+        Returns:
+            float: _description_
+        """
+        centrality = closeness_centrality(G=grid, u=self.position, distance="weight")
+
+        return centrality
+
+    def get_connected_intersections(self, grid: Graph) -> list[str]:
+        """Gets IDs of connected intersection nodes.
+
+        Args:
+            grid (Graph): Graph instance
+
+        Returns:
+            list[str]: List of connected node ids
+        """
+        connected_intersections = [
+            node
+            for node in grid.neighbors(self.position)
+            if node.startswith("intersection")
+        ]
+
+        return connected_intersections
 
 
 class LightCooldown(Exception):
