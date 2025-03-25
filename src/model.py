@@ -451,8 +451,8 @@ class TrafficModel(mesa.Model):
         """
         connections_data = pl.DataFrame(
             schema={
-                "Light_ID": pl.Int16,
-                "Connection_ID": pl.Int16,
+                "Light_u": pl.Int16,
+                "Light_v": pl.Int16,
                 "Distance": pl.Int16,
             },
             strict=False,
