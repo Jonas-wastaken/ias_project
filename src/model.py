@@ -354,6 +354,10 @@ class TrafficModel(mesa.Model):
             file=Path.joinpath(data_path, folder, "arrivals_data.parquet")
         )
 
+        self.traffic_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "traffic_data.parquet")
+        )
+
         self.get_light_data().write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
         )
@@ -425,7 +429,7 @@ class TrafficModel(mesa.Model):
                 data={
                     "Index": self.steps,
                     "Light_ID": light.unique_id,
-                    "Time": self.steps % 200,
+                    "Time": 200 - (self.steps % 200),
                     "Arrivals": light.get_num_arrivals(),
                 },
                 schema={
@@ -503,7 +507,7 @@ class TrafficModel(mesa.Model):
                 data={
                     "Index": self.steps,
                     "Light_ID": light.unique_id,
-                    "Time": self.steps % 200,
+                    "Time": 200 - (self.steps % 200),
                     "Num_Cars": light.get_num_cars(),
                 },
                 schema={
