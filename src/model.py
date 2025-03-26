@@ -116,26 +116,17 @@ class TrafficModel(mesa.Model):
         - Updates simulation data
         - CarAgents are respawned based on current time and number of cars in the model
         """
-        for car in self.get_agents_by_type("CarAgent")[:]:
-            self._car_step(car=car)
-
-        for light in self.get_agents_by_type("LightAgent"):
-            self._light_step(light=light)
-
-            self.arrivals_data = self.update_arrivals_data(
-                arrivals_data=self.arrivals_data, light=light
-            )
-            self.traffic_data = self.update_traffic_data(
-                traffic_data=self.traffic_data, light=light
-            )
+        self._car_step()
+        self._light_step()
 
         self.num_cars_hist = np.append(
             self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
         )
+
         self.car_respawn()
 
-    def _car_step(self, car: CarAgent) -> None:
-        """Actions a CarAgent takes each step.
+    def _car_step(self) -> None:
+        """Actions each CarAgent takes each step.
 
         - CarAgent moves to next position
             - If CarAgent is between intersections, distance is decremented by one
@@ -143,31 +134,36 @@ class TrafficModel(mesa.Model):
                 - Only if it's lane is open
             - Increments *travel_time* by 1
             - If CarAgent reaches it's goal, it is removed from model
-
-        Args:
-            car (CarAgent): CarAgent to make a step
         """
-        try:
-            car.move()
-            car.travel_time += 1
-        except AgentArrived:
-            car.remove()
+        for car in self.get_agents_by_type("CarAgent")[:]:
+            car: CarAgent
+            try:
+                car.move()
+                car.travel_time += 1
+            except AgentArrived:
+                car.remove()
 
-    def _light_step(self, light: LightAgent) -> None:
-        """Actions a LightAgent takes each step.
+    def _light_step(self) -> None:
+        """Actions each LightAgent takes each step.
 
         - Checks if it is blocked by cooldown
             - If not, it opens the best lane, determined by optimization technique
             - If blocked, cooldown is decremented by 1
-
-        Args:
-            light (LightAgent): _description_
         """
-        if light.current_switching_cooldown <= 0:
-            light.change_open_lane(light.optimize_open_lane())
-            # light.rotate_in_open_lane_cycle()
-        else:
-            light.current_switching_cooldown -= 1
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
+            if light.current_switching_cooldown <= 0:
+                light.change_open_lane(light.optimize_open_lane())
+                # light.rotate_in_open_lane_cycle()
+            else:
+                light.current_switching_cooldown -= 1
+
+            self.arrivals_data = self.update_arrivals_data(
+                arrivals_data=self.arrivals_data, light=light
+            )
+            self.traffic_data = self.update_traffic_data(
+                traffic_data=self.traffic_data, light=light
+            )
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add cars to the model.
