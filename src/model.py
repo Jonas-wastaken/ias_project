@@ -1,13 +1,15 @@
 """This module contains:
 - TrafficModel class: A Mesa model simulating traffic."""
 
-from pathlib import Path
-import random
 import datetime
+import random
+from pathlib import Path
+
 import mesa
 import numpy as np
 import polars as pl
-from car import CarAgent, AgentArrived
+
+from car import AgentArrived, CarAgent
 from graph import Graph
 from light import LightAgent
 
