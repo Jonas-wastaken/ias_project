@@ -81,16 +81,6 @@ class TrafficModel(mesa.Model):
             max_distance=kwargs.get("max_distance", 20),
         )
 
-        self.create_lights_for_intersections()
-        # CarAgent.create_agents(model=self, n=num_cars)
-        self.car_paths = {}
-        self.update_car_paths()
-        self.cars_waiting_times = {}
-        self.update_cars_waiting_times()
-        self.lights_decision_log = {}
-        self.num_cars_hist = np.array([])
-        self.create_cars(num_cars)
-
         self.arrivals_data = pl.DataFrame(
             schema={
                 "Index": pl.Int32,
@@ -110,6 +100,21 @@ class TrafficModel(mesa.Model):
             },
             strict=False,
         )
+
+        self.wait_times = pl.DataFrame(
+            schema={"Car_ID": pl.Int16, "Light_ID": pl.Int16, "Wait_Time": pl.Int16},
+            strict=False,
+        )
+
+        self.num_cars_hist = np.array([])
+
+        self.create_lights()
+        self.car_paths = {}
+        self.update_car_paths()
+        self.cars_waiting_times = {}
+        self.update_cars_waiting_times()
+        self.lights_decision_log = {}
+        self.create_cars(num_cars)
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -189,15 +194,7 @@ class TrafficModel(mesa.Model):
             car: CarAgent = random.choice(self.get_agents_by_type("CarAgent"))
             self.agents.remove(car)
 
-    # def create_lights(self, num_lights: int, position: str) -> None: TODO: Unused? @mxrio
-    #     """Function to add traffic lights to the model.
-
-    #     Args:
-    #         num_agents (int): Number of agents to add.
-    #     """
-    #     LightAgent.create_agents(model=self, n=num_lights, position=position)
-
-    def create_lights_for_intersections(self) -> None:
+    def create_lights(self) -> None:
         """Function to add traffic lights to the model.
 
         - Assigns one LightAgent to each intersection node
