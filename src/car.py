@@ -45,6 +45,7 @@ class CarAgent(mesa.Agent):
         self.position = self.start
         self.goal = self.compute_goal()
         self.path = self.compute_path()
+        self.full_path = self.path.copy()
         self.waiting = False
         self.global_waiting_time = 0
         self.travel_time = 0
