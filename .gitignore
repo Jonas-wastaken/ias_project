@@ -185,3 +185,6 @@ logs/
 
 # Data
 data/
+
+# DS Store
+.DS_Store
