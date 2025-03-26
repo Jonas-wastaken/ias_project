@@ -1,4 +1,5 @@
 import argparse
+import time
 from model import TrafficModel
 
 
@@ -54,16 +55,28 @@ class Sim:
             min_distance=config.min_distance,
             max_distance=config.max_distance,
         )
+
+        start_time = time.time()
+
         for _ in range(config.steps):
             model.step()
             if model.steps % 100 == 0:
                 print(f"Completed {model.steps} of {config.steps} steps...")
+                print(
+                    f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config.steps - model.steps))} seconds..."
+                )
+                print(100 * "-")
+        print("Sim completed!")
+        print(
+            f"Avg. time per 100 steps: {round((((time.time() - start_time) / model.steps) * 100), 2)}"
+        )
         self.data_path = model.save_sim_data()
 
 
 if __name__ == "__main__":
     config = parse_args()
     print(f"Starting simulation with config:\n{config}")
+    print(100 * "-")
     sim = Sim(config)
-    print(f"Simulation data stored in:\n{sim.data_path}")
+    print(f"Simulation data stored in: data/{sim.data_path}")
     print(f"Config: {config}")
