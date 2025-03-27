@@ -3,6 +3,7 @@
 
 import datetime
 import random
+from dataclasses import dataclass
 from pathlib import Path
 
 import mesa
@@ -152,10 +153,15 @@ class TrafficModel(mesa.Model):
             try:
                 car.move()
                 car.travel_time += 1
+                if (
+                    car.position.startswith("intersection")
+                    and car.path[car.position] == 1
+                ):
+                    self.wait_times = self.update_wait_times(
+                        wait_times=self.wait_times, car=car, waiting=car.waiting
+                    )
             except AgentArrived:
                 car.remove()
-
-        # TODO: update wait times
 
     def _light_step(self) -> None:
         """Actions each LightAgent takes each step.
@@ -593,7 +599,7 @@ class TrafficModel(mesa.Model):
         return wait_times
 
     def update_wait_times(
-        self, wait_times: pl.DataFrame, car: CarAgent
+        self, wait_times: pl.DataFrame, car: CarAgent, waiting: bool
     ) -> pl.DataFrame:
         """_summary_
 
@@ -604,8 +610,40 @@ class TrafficModel(mesa.Model):
         Returns:
             pl.DataFrame: _description_
         """
-        if car.waiting:
-            pass
+        if not waiting:
+            wait_times = wait_times.with_columns(
+                pl.when(
+                    (pl.col("Car_ID") == car.unique_id)
+                    & (
+                        pl.col("Light_ID")
+                        == self.light_intersection_mapping.filter(
+                            pl.col("Intersection") == car.position
+                        ).select(pl.col("Light_ID"))
+                    )
+                )
+                .then(0)
+                .otherwise(pl.col("Wait_Time"))
+                .alias("Wait_Time")
+            )
+        elif waiting:
+            wait_times = wait_times.with_columns(
+                pl.when(
+                    (pl.col("Car_ID") == car.unique_id)
+                    & (
+                        pl.col("Light_ID")
+                        == (
+                            self.light_intersection_mapping.filter(
+                                pl.col("Intersection") == car.position
+                            ).select(pl.col("Light_ID"))
+                        )
+                    )
+                )
+                .then(pl.col("Wait_Time") + 1)
+                .otherwise(pl.col("Wait_Time"))
+                .alias("Wait_Time")
+            )
+
+        return wait_times
 
     def update_light_intersection_mapping(
         self, light_intersection_mapping: pl.DataFrame, light: LightAgent
@@ -629,3 +667,9 @@ class TrafficModel(mesa.Model):
         )
 
         return light_intersection_mapping
+
+    @dataclass
+    class SimData:
+        def __init__(self):
+            """_summary_"""
+            pass
