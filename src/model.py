@@ -106,6 +106,11 @@ class TrafficModel(mesa.Model):
             strict=False,
         )
 
+        self.light_intersection_mapping = pl.DataFrame(
+            schema={"Light_ID": pl.Int16, "Intersection": pl.String},
+            strict=False,
+        )
+
         self.num_cars_hist = np.array([])
 
         self.create_lights()
@@ -150,6 +155,8 @@ class TrafficModel(mesa.Model):
             except AgentArrived:
                 car.remove()
 
+        # TODO: update wait times
+
     def _light_step(self) -> None:
         """Actions each LightAgent takes each step.
 
@@ -180,9 +187,14 @@ class TrafficModel(mesa.Model):
         Args:
             num_cars (int): Number of cars to add.
         """
-        CarAgent.create_agents(model=self, n=num_cars)
+        new_cars = CarAgent.create_agents(model=self, n=num_cars)
         self.update_car_paths()
         self.update_cars_waiting_times()
+
+        for car in new_cars:
+            self.wait_times = self.init_wait_times_data(
+                wait_times=self.wait_times, car=car
+            )
 
     def remove_random_cars(self, num_cars: int) -> None:
         """Function to randomly remove n cars from the model.
@@ -200,7 +212,11 @@ class TrafficModel(mesa.Model):
         - Assigns one LightAgent to each intersection node
         """
         for intersection in self.grid.get_nodes("intersection"):
-            LightAgent.create_agents(model=self, n=1, position=intersection)
+            light = LightAgent.create_agents(model=self, n=1, position=intersection)
+            self.light_intersection_mapping = self.update_light_intersection_mapping(
+                light_intersection_mapping=self.light_intersection_mapping,
+                light=light[0],
+            )
 
     def get_agents_by_type(self, agent_type: str) -> list[mesa.Agent]:
         """Function to get all agents of a certain type.
@@ -373,6 +389,10 @@ class TrafficModel(mesa.Model):
             file=Path.joinpath(data_path, folder, "traffic_data.parquet")
         )
 
+        self.wait_times.write_parquet(
+            file=Path.joinpath(data_path, folder, "wait_times.parquet")
+        )
+
         self.get_light_data().write_parquet(
             file=Path.joinpath(data_path, folder, "light_data.parquet")
         )
@@ -537,3 +557,75 @@ class TrafficModel(mesa.Model):
         )
 
         return traffic_data
+
+    def init_wait_times_data(
+        self, wait_times: pl.DataFrame, car: CarAgent
+    ) -> pl.DataFrame:
+        """_summary_
+
+        Args:
+            wait_times (pl.DataFrame): _description_
+            car (CarAgent): _description_
+
+        Returns:
+            pl.DataFrame: _description_
+        """
+        for hop in car.path.keys():
+            wait_times.vstack(
+                other=pl.DataFrame(
+                    data={
+                        "Car_ID": car.unique_id,
+                        "Light_ID": self.light_intersection_mapping.filter(
+                            pl.col("Intersection") == hop
+                        ).select("Light_ID"),
+                        "Wait_Time": None,
+                    },
+                    schema={
+                        "Car_ID": pl.Int16,
+                        "Light_ID": pl.Int16,
+                        "Wait_Time": pl.Int16,
+                    },
+                    strict=False,
+                ),
+                in_place=True,
+            )
+
+        return wait_times
+
+    def update_wait_times(
+        self, wait_times: pl.DataFrame, car: CarAgent
+    ) -> pl.DataFrame:
+        """_summary_
+
+        Args:
+            wait_times (pl.DataFrame): _description_
+            car (CarAgent): _description_
+
+        Returns:
+            pl.DataFrame: _description_
+        """
+        if car.waiting:
+            pass
+
+    def update_light_intersection_mapping(
+        self, light_intersection_mapping: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """_summary_
+
+        Args:
+            light_intersection_mapping (pl.DataFrame): _description_
+            light (LightAgent): _description_
+
+        Returns:
+            pl.DataFrame: _description_
+        """
+        light_intersection_mapping = light_intersection_mapping.vstack(
+            other=pl.DataFrame(
+                data={"Light_ID": light.unique_id, "Intersection": light.position},
+                schema={"Light_ID": pl.Int16, "Intersection": pl.String},
+                strict=False,
+            ),
+            in_place=True,
+        )
+
+        return light_intersection_mapping
