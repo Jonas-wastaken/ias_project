@@ -5,8 +5,9 @@ import mesa
 import random
 import numpy as np
 import pyoptinterface as poi
-from pyoptinterface import highs
+from pyoptinterface import highs, gurobi
 from networkx import closeness_centrality
+from pathlib import Path
 
 from graph import Graph
 from car import CarAgent
@@ -142,7 +143,7 @@ class LightAgent(mesa.Agent):
         opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
 
         possible_lanes = self.neighbor_lights
-        cars_at_light = self.model.get_cars_per_lane_of_light(self.position)
+        cars_at_light = self.model.get_cars_per_lane_of_light(self.position, 0)
         lanes = opt_model.add_variables(
             possible_lanes, domain=poi.VariableDomain.Binary
         )
@@ -175,6 +176,80 @@ class LightAgent(mesa.Agent):
         )
 
         return optimal_lane
+    
+    def optimize_open_lane_with_cooldown(self) -> str:
+        """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
+        light_cooldown = self.default_switching_cooldown
+
+        # Setup Gurobi model
+        license_path = Path.joinpath(Path(".secrets/"), Path("gurobi.lic"))
+
+        secrets = {}
+
+        with open(license_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith("#") or not line:
+                    continue
+                try:
+                    key, value = line.split("=", 1)
+                    secrets[key.strip()] = value.strip()
+                except ValueError:
+                    pass
+
+        WLSACCESSID = secrets.get("WLSACCESSID")
+        WLSSECRET = secrets.get("WLSSECRET")
+        LICENSEID = secrets.get("LICENSEID")
+
+        env = gurobi.Env(empty=True)
+
+        env.set_raw_parameter("WLSACCESSID", WLSACCESSID)
+        env.set_raw_parameter("WLSSECRET", WLSSECRET)
+        env.set_raw_parameter("LICENSEID", LICENSEID)
+        env.start()
+
+        opt_model = gurobi.Model(env)
+
+        # Optimization Environment
+        possible_lanes = self.neighbor_lights
+        time = range(-1, light_cooldown + 1)
+
+        cars_at_light = {tick : {} for tick in time[1:]}
+        for tick in time[1:]:
+            cars_at_light[tick] = self.model.get_cars_per_lane_of_light(self.position, tick)
+        
+        current_open_lane = self.open_lane
+
+        # Optimization
+        lanes = opt_model.add_variables(time, possible_lanes, domain=poi.VariableDomain.Binary)
+
+        for lane in possible_lanes:
+            if lane == current_open_lane:
+                lanes[-1, lane] = 1
+            else:
+                lanes[-1, lane] = 0
+
+
+        # Constraint: each light can only have exactly one open lane at a time
+        for tick in time[1:]:
+            opt_model.add_linear_constraint(poi.quicksum(lanes[tick, lane] for lane in possible_lanes ), poi.Eq, 1)
+
+        # Constraint: each light can only switch the open lane every x ticks (cooldown)
+        for lane in possible_lanes:
+            opt_model.add_quadratic_constraint(poi.quicksum(((lanes[tick-1, lane] - lanes[tick, lane]) * (lanes[tick-1, lane] - lanes[tick, lane])) for tick in time[1:]), poi.Leq, 1.0)
+
+        objective = poi.quicksum(poi.quicksum(lanes[tick, lane] * cars_at_light[tick][lane] for lane in possible_lanes) for tick in time[1:])
+        opt_model.set_objective(objective, poi.ObjectiveSense.Maximize)
+
+        opt_model.optimize()
+
+        for lane in possible_lanes:
+            if opt_model.get_value(lanes[0, lane]) > 0.1:
+                optimal_lane = lane
+
+        return optimal_lane
+        
+
 
     def get_num_connections(self, grid: Graph) -> int:
         """Gets the number of connected intersections.

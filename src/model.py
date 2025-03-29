@@ -48,10 +48,10 @@ class TrafficModel(mesa.Model):
             Function to update the paths of all agents.
         **car_respawn(self) -> None**:
             Respawns cars at each step depending on current time and number of cars in the model.
-        **def save_sim_data(self) -> Path**:
+        **save_sim_data(self) -> Path**:
             Function to save the sim_data to a parquet file
         **get_cars_per_lane_of_light(self, light_position: str) -> dict**:
-            Function to get the number of cars per lane of a light.
+            Function to get the number of cars per lane of a light at the defined time.
     """
 
     def __init__(
@@ -155,7 +155,8 @@ class TrafficModel(mesa.Model):
         for light in self.get_agents_by_type("LightAgent"):
             light: LightAgent
             if light.current_switching_cooldown <= 0:
-                light.change_open_lane(light.optimize_open_lane())
+                light.change_open_lane(light.optimize_open_lane_with_cooldown())
+                # light.change_open_lane(light.optimize_open_lane())
                 # light.rotate_in_open_lane_cycle()
             else:
                 light.current_switching_cooldown -= 1
@@ -308,26 +309,36 @@ class TrafficModel(mesa.Model):
         if cars_to_add > 0:
             self.create_cars(cars_to_add)
 
-    def get_cars_per_lane_of_light(self, light_position: str) -> dict:
-        """Function to get the number of cars per lane of a light.
+    def get_cars_per_lane_of_light(self, light_position: str, tick: int) -> dict:
+        """Function to get the number of cars per lane of a light at the defined time.
 
         Args:
             light_position (str): The position of the light.
+            tick (int): The time when the cars will arrive at the light (0 is the current tick).
 
         Returns:
             dict: A dictionary containing the number of cars per lane of the light.
         """
+        if tick < 0:
+            raise ValueError("Tick must be greater than or equal to 0")
+
         cars_per_lane = {
             lane: 0
             for lane in self.grid.neighbors(light_position)
             if lane.startswith("intersection")
         }
 
-        for car in self.get_agents_by_type("CarAgent"):
-            if car.position == light_position and car.waiting:
-                cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
+        if tick == 0:
+            for car in self.get_agents_by_type("CarAgent"):
+                if car.position == light_position and car.waiting:
+                    cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
+        else:
+            for car in self.get_agents_by_type("CarAgent"):
+                if list(car.path.keys())[0] == light_position and list(car.path.values())[0] == tick:
+                    cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
 
         return cars_per_lane
+    
 
     def update_lights_decision_log(
         self,
