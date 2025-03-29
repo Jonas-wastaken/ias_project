@@ -55,7 +55,7 @@ class TrafficModel(mesa.Model):
     """
 
     def __init__(
-        self, num_cars: int, sim_mode: bool = False, seed: int = None, **kwargs
+        self, num_cars: int, sim_mode: bool = False, seed: int = None, optimization_type: str = "advanced", **kwargs
     ):
         """Initializes a new traffic environment.
 
@@ -65,13 +65,23 @@ class TrafficModel(mesa.Model):
 
         Args:
             num_cars (int): Number of car agents to spawn.
+            sim_mode (bool): If True, the model is in simulation mode. Defaults to False.
             seed (int, optional): Seed used in model generation. Defaults to None.
+            optimization (str): Optimization technique used for the lights (none, simple, advanced). Defaults to "advanced".
+                - none: No optimization, lights are opend in a fixed cycle.
+                - simple: Lights are opened based on the curret number of cars waiting at each lane, not taking the switching cooldown into account.
+                - advanced: Lights are opened based on the curret and future number of cars waiting at each lane and taking the switching cooldown into account.
             **kwargs: Additional keyword arguments for configuring the graph object.
                 - num_intersections (int): Number of intersections in the graph. Defaults to 50.
                 - num_borders (int): Number of border nodes in the graph. Defaults to 25.
                 - min_distance (int): Minimum distance between nodes. Defaults to 10.
                 - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
+        if optimization_type not in ["none", "simple", "advanced"]:
+            raise ValueError(
+                f"Optimization type '{optimization_type}' not supported. Supported optimizations are: none, simple, advanced."
+            )
+        
         super().__init__(seed=seed)
 
         self.grid = Graph(
@@ -80,7 +90,7 @@ class TrafficModel(mesa.Model):
             min_distance=kwargs.get("min_distance", 10),
             max_distance=kwargs.get("max_distance", 20),
         )
-
+        self.optimization_type = optimization_type
         self.create_lights_for_intersections()
         # CarAgent.create_agents(model=self, n=num_cars)
         self.car_paths = {}
@@ -155,9 +165,12 @@ class TrafficModel(mesa.Model):
         for light in self.get_agents_by_type("LightAgent"):
             light: LightAgent
             if light.current_switching_cooldown <= 0:
-                light.change_open_lane(light.optimize_open_lane_with_cooldown())
-                # light.change_open_lane(light.optimize_open_lane())
-                # light.rotate_in_open_lane_cycle()
+                if self.optimization_type == "none":
+                    light.rotate_in_open_lane_cycle()
+                elif self.optimization_type == "simple":
+                    light.change_open_lane(light.optimize_open_lane())
+                elif self.optimization_type == "advanced":
+                    light.change_open_lane(light.optimize_open_lane_with_cooldown())
             else:
                 light.current_switching_cooldown -= 1
 
