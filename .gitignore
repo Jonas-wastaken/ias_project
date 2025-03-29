@@ -183,5 +183,12 @@ test.*
 logs/*
 *.log
 
+# Data
+data/
+
+# DS Store
+.DS_Store
+
+
 # Secrets
 .secrets/*

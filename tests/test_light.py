@@ -1,7 +1,7 @@
 import os
 import unittest
 import sys
-import logging
+from log_config import setup_logging
 import re
 import random
 from math import sqrt
@@ -12,15 +12,8 @@ sys.path.insert(
 
 from graph import Graph
 
-log_dir = os.path.join("tests", "logs")
-os.makedirs(log_dir, exist_ok=True)
+logger = setup_logging("test_light")
 
-logging.basicConfig(
-    level=logging.INFO,
-    filename=os.path.join(log_dir, "test_graph.log"),
-    filemode="w",
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 
 class TestLightAgent(unittest.TestCase):
     # TODO: Setup the test environment
@@ -28,5 +21,5 @@ class TestLightAgent(unittest.TestCase):
     # TODO: testen, ob cooldown beim ändern von open_lane beachtet wird
 
     # TODO später: update_waiting_cars testen, ob waiting_cars richtig aktualisiert wird
-    
+
     pass

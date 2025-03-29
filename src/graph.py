@@ -107,7 +107,7 @@ class Graph(nx.Graph):
             - Selects available nodes that are not already fully connected.
             - Randomly selects a number of nodes to connect to, ensuring it does not exceed the limits.
             - Adds the selected nodes to the connections of the current node and vice versa.
-        - Adds weighted edges between connected nodes with weights randomly chosen from the specified range.
+        - Adds weighted edges between connected nodes with weights chosen from the specified range. Weights are chosen with an inversely proportional likelihood using a power distribution.
 
         Args:
             new_intersections (list): A list of new intersection nodes to connect to other intersection nodes
@@ -159,7 +159,10 @@ class Graph(nx.Graph):
                 (
                     node,
                     target_node,
-                    random.randint(self.min_distance, self.max_distance),
+                    int(
+                        (self.max_distance - self.min_distance) * (random.random() ** 2)
+                        + self.min_distance
+                    ),
                 )
                 for target_node in target_nodes
             ]
@@ -336,27 +339,27 @@ class Graph(nx.Graph):
         """Get all connections between nodes.
 
         Args:
-            \*\*kwargs
-                filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
-                                        If only type is provided, all nodes of that type are considered. Defaults to None.
-                weights (bool, optional): Specifies whether weights should be returned.
+            **kwargs:
+            filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
+                           If only type is provided, all nodes of that type are considered. Defaults to None.
+            weights (bool, optional): Specifies whether weights should be returned. Defaults to False.
 
         Returns:
             dict: A dictionary with nodes as keys and a list of their connected nodes as values.
-                  If weights is True, the list will contain tuples with the connected node and the edge weight.
+              If weights is True, the list will contain tuples with the connected node and the edge weight.
         """
         filter_by = kwargs.get("filter_by", None)
         weights = kwargs.get("weights", False)
 
         if filter_by:
             try:
-                type, id = filter_by.split("_")
+                node_type, node_id = filter_by.split("_")
             except ValueError:
-                type, id = filter_by, None
-            if id:
-                nodes = [f"{type}_{id}"]
+                node_type, node_id = filter_by, None
+            if node_id:
+                nodes = [f"{node_type}_{node_id}"]
             else:
-                nodes = self.get_nodes(type)
+                nodes = self.get_nodes(node_type)
         else:
             nodes = self.nodes
 

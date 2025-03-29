@@ -1,10 +1,15 @@
 """This module contains:
 - TrafficModel class: A Mesa model simulating traffic."""
 
-import mesa
+import datetime
 import random
+from pathlib import Path
+
+import mesa
 import numpy as np
-from car import CarAgent, AgentArrived
+import polars as pl
+
+from car import AgentArrived, CarAgent
 from graph import Graph
 from light import LightAgent
 
@@ -18,6 +23,8 @@ class TrafficModel(mesa.Model):
         car_paths (dict): A dictionary containing the paths of all agents.
         cars_waiting_times (dict): A dictionary containing the waiting times of all cars at each intersection.
         num_cars_hist (np.array): An array containing the history of the number of cars in the model.
+        light_data (pl.DataFrame): A Polars DataFrame containing information about the LightAgents
+        sim_data (pl.DataFrame): A Polars DataFrame containing information about a simulation run.
         lights_decision_log (dict): A dictionary containing the decisions of all lights over time.
 
     ## Methods:
@@ -41,11 +48,15 @@ class TrafficModel(mesa.Model):
             Function to update the paths of all agents.
         **car_respawn(self) -> None**:
             Respawns cars at each step depending on current time and number of cars in the model.
+        **def save_sim_data(self) -> Path**:
+            Function to save the sim_data to a parquet file
         **get_cars_per_lane_of_light(self, light_position: str) -> dict**:
             Function to get the number of cars per lane of a light.
     """
 
-    def __init__(self, num_cars: int, seed: int = None, **kwargs):
+    def __init__(
+        self, num_cars: int, sim_mode: bool = False, seed: int = None, **kwargs
+    ):
         """Initializes a new traffic environment.
 
         - Spawns a graph representing the grid
@@ -56,16 +67,16 @@ class TrafficModel(mesa.Model):
             num_cars (int): Number of car agents to spawn.
             seed (int, optional): Seed used in model generation. Defaults to None.
             **kwargs: Additional keyword arguments for configuring the graph object.
-                - num_intersections (int): Number of intersections in the graph. Defaults to 30.
-                - num_borders (int): Number of border nodes in the graph. Defaults to 10.
-                - min_distance (int): Minimum distance between nodes. Defaults to 5.
-                - max_distance (int): Maximum distance between nodes. Defaults to 15.
+                - num_intersections (int): Number of intersections in the graph. Defaults to 50.
+                - num_borders (int): Number of border nodes in the graph. Defaults to 25.
+                - min_distance (int): Minimum distance between nodes. Defaults to 10.
+                - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
         super().__init__(seed=seed)
 
         self.grid = Graph(
-            num_intersections=kwargs.get("num_intersections", 50),
-            num_borders=kwargs.get("num_borders", 25),
+            num_intersections=kwargs.get("num_intersections", 15),
+            num_borders=kwargs.get("num_borders", 5),
             min_distance=kwargs.get("min_distance", 10),
             max_distance=kwargs.get("max_distance", 20),
         )
@@ -77,19 +88,54 @@ class TrafficModel(mesa.Model):
         self.cars_waiting_times = {}
         self.update_cars_waiting_times()
         self.lights_decision_log = {}
-        self.num_cars_hist = np.array(num_cars)
+        self.num_cars_hist = np.array([])
         self.create_cars(num_cars)
+
+        self.arrivals_data = pl.DataFrame(
+            schema={
+                "Index": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Arrivals": pl.Int16,
+            },
+            strict=False,
+        )
+
+        self.traffic_data = pl.DataFrame(
+            schema={
+                "Index": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Num_Cars": pl.Int16,
+            },
+            strict=False,
+        )
 
     def step(self) -> None:
         """Advances the environment to next state.
 
-        - Each CarAgent moves to it's next position.
-            - Depending on TrafficLights
-            - Updates internal travel_time
-            - If a CarAgent reached it's goal, it is removed from the AgentSet at the next step
-        - Each LightAgent opens next lane, if cooldown is completed
-            - Else the cooldown is updated
+        - Calls Agents step functions
+        - Updates simulation data
         - CarAgents are respawned based on current time and number of cars in the model
+        """
+        self._car_step()
+        self._light_step()
+
+        self.num_cars_hist = np.append(
+            self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
+        )
+
+        self.car_respawn()
+
+    def _car_step(self) -> None:
+        """Actions each CarAgent takes each step.
+
+        - CarAgent moves to next position
+            - If CarAgent is between intersections, distance is decremented by one
+            - If CarAgent is at an intersection, it changes it's position to the intersection
+                - Only if it's lane is open
+            - Increments *travel_time* by 1
+            - If CarAgent reaches it's goal, it is removed from model
         """
         for car in self.get_agents_by_type("CarAgent")[:]:
             car: CarAgent
@@ -99,21 +145,27 @@ class TrafficModel(mesa.Model):
             except AgentArrived:
                 car.remove()
 
-        for light in self.get_agents_by_type("LightAgent"):
-            # light: LightAgent
-            # light.update_waiting_cars()
+    def _light_step(self) -> None:
+        """Actions each LightAgent takes each step.
 
-            # Decide if the light should change the open lane (if the cooldown is over)
+        - Checks if it is blocked by cooldown
+            - If not, it opens the best lane, determined by optimization technique
+            - If blocked, cooldown is decremented by 1
+        """
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
             if light.current_switching_cooldown <= 0:
                 light.change_open_lane(light.optimize_open_lane())
                 # light.rotate_in_open_lane_cycle()
             else:
                 light.current_switching_cooldown -= 1
 
-        self.num_cars_hist = np.append(
-            self.num_cars_hist, len(self.get_agents_by_type("CarAgent"))
-        )
-        self.car_respawn()
+            self.arrivals_data = self.update_arrivals_data(
+                arrivals_data=self.arrivals_data, light=light
+            )
+            self.traffic_data = self.update_traffic_data(
+                traffic_data=self.traffic_data, light=light
+            )
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add cars to the model.
@@ -266,7 +318,9 @@ class TrafficModel(mesa.Model):
             dict: A dictionary containing the number of cars per lane of the light.
         """
         cars_per_lane = {
-            lane: 0 for lane in self.grid.neighbors(light_position) if lane.startswith("intersection")
+            lane: 0
+            for lane in self.grid.neighbors(light_position)
+            if lane.startswith("intersection")
         }
 
         for car in self.get_agents_by_type("CarAgent"):
@@ -274,11 +328,17 @@ class TrafficModel(mesa.Model):
                 cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
 
         return cars_per_lane
-    
-    def update_lights_decision_log (self, light: LightAgent, cars_per_lane: dict, decision_lane: str, model_step: int) -> None:
+
+    def update_lights_decision_log(
+        self,
+        light: LightAgent,
+        cars_per_lane: dict,
+        decision_lane: str,
+        model_step: int,
+    ) -> None:
         """Function to update the decision log of all lights.
         The dict looks like this: {light.unique_id: {step:{decision_lane:intersection_3, intersection_1:cars_at_lane_1, intersection_2:cars_at_lane_2, intersection_3:cars_at_lane_3}}}
-        
+
         """
         if light.unique_id not in list(self.lights_decision_log.keys()):
             self.lights_decision_log[light.unique_id] = {}
@@ -293,4 +353,190 @@ class TrafficModel(mesa.Model):
             }
             self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
 
+    def save_sim_data(self) -> Path:
+        """Function to save the model data to a parquet file
 
+        Saves:
+            - sim_data
+            - light_data
+            - num_cars_hist
+
+        Returns:
+            Path: Path object representing the folder the data is stored in.
+        """
+        data_path = Path.joinpath(Path.cwd(), "data")
+        folder = Path(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))
+        Path.joinpath(data_path, folder).mkdir()
+
+        self.arrivals_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "arrivals_data.parquet")
+        )
+
+        self.traffic_data.write_parquet(
+            file=Path.joinpath(data_path, folder, "traffic_data.parquet")
+        )
+
+        self.get_light_data().write_parquet(
+            file=Path.joinpath(data_path, folder, "light_data.parquet")
+        )
+
+        self.get_connections_data().write_parquet(
+            file=Path.joinpath(data_path, folder, "connections.parquet")
+        )
+
+        pl.DataFrame(
+            data=self.num_cars_hist, schema={"Num_Cars": pl.Int16}
+        ).write_parquet(file=Path.joinpath(data_path, folder, "num_cars.parquet"))
+
+        return folder
+
+    def get_light_data(self) -> pl.DataFrame:
+        """Gets metadata of LightAgents in the model.
+
+        Returns:
+            pl.DataFrame: DataFrame containing metadata about LightAgents
+        """
+        light_data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Centrality": pl.Float32,
+                "Is_Entrypoint": pl.Boolean,
+            },
+            strict=False,
+            orient="row",
+        )
+
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
+            light_data.vstack(
+                other=pl.DataFrame(
+                    data=[
+                        (
+                            light.unique_id,
+                            light.get_centrality(self.grid),
+                            light.check_is_entrypoint(self.grid),
+                        )
+                    ],
+                    schema={
+                        "Light_ID": pl.Int16,
+                        "Centrality": pl.Float32,
+                        "Is_Entrypoint": pl.Boolean,
+                    },
+                    strict=False,
+                    orient="row",
+                ),
+                in_place=True,
+            )
+
+        return light_data
+
+    def update_arrivals_data(
+        self, arrivals_data: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """Updates the arrivals data
+
+        Args:
+            arrivals_data (pl.DataFrame): Current DataFrame
+            light (LightAgent): LightAgent to get and write data from
+
+        Returns:
+            pl.DataFrame: Updated DataFrame
+        """
+        arrivals_data.vstack(
+            pl.DataFrame(
+                data={
+                    "Index": self.steps,
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (self.steps % 200),
+                    "Arrivals": light.get_num_arrivals(),
+                },
+                schema={
+                    "Index": pl.Int32,
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Arrivals": pl.Int16,
+                },
+            ),
+            in_place=True,
+        )
+
+        return arrivals_data
+
+    def get_connections_data(self) -> pl.DataFrame:
+        """Constructs a DataFrame describing the connections between LightAgents.
+
+        - Connection is described as Light_u -> Light_v
+        - Includes the distance between the nodes the lights are on
+
+        Returns:
+            pl.DataFrame: DataFrame containing the data
+        """
+        connections_data = pl.DataFrame(
+            schema={
+                "Light_u": pl.Int16,
+                "Light_v": pl.Int16,
+                "Distance": pl.Int16,
+            },
+            strict=False,
+        )
+        for light_u in self.get_agents_by_type("LightAgent"):
+            light_u: LightAgent
+
+            for intersection in light_u.get_connected_intersections(self.grid):
+                for light_v in self.get_agents_by_type("LightAgent"):
+                    light_v: LightAgent
+
+                    if light_v.position == intersection:
+                        connections_data.vstack(
+                            other=pl.DataFrame(
+                                data={
+                                    "Light_u": light_u.unique_id,
+                                    "Light_v": light_v.unique_id,
+                                    "Distance": self.grid.get_edge_data(
+                                        u=light_u.position, v=light_v.position
+                                    )["weight"],
+                                },
+                                schema={
+                                    "Light_u": pl.Int16,
+                                    "Light_v": pl.Int16,
+                                    "Distance": pl.Int16,
+                                },
+                                strict=False,
+                            ),
+                            in_place=True,
+                        )
+
+        return connections_data
+
+    def update_traffic_data(
+        self, traffic_data: pl.DataFrame, light: LightAgent
+    ) -> pl.DataFrame:
+        """Updates the traffic data DataFrame.
+
+        Args:
+            traffic_data (pl.DataFrame): Current DataFrame
+            light (LightAgent): LightAgent to get and write data from
+
+        Returns:
+            pl.DataFrame: Updated DataFrame
+        """
+        traffic_data.vstack(
+            other=pl.DataFrame(
+                data={
+                    "Index": self.steps,
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (self.steps % 200),
+                    "Num_Cars": light.get_num_cars(),
+                },
+                schema={
+                    "Index": pl.Int32,
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Num_Cars": pl.Int16,
+                },
+                strict=False,
+            ),
+            in_place=True,
+        )
+
+        return traffic_data

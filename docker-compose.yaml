@@ -2,19 +2,11 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: Dockerfile
     ports:
       - "8501:8501"
     volumes:
       - .:/app
-    # develop:
-    #   watch:
-    #     - action: sync
-    #       path: ./src/
-    #       target: /app/src/
-    #     - action: sync
-    #       path: ./app.py
-    #       target: /app/app.py
     command: [ "streamlit", "run", "app.py" ]
     environment:
       - STREAMLIT_SERVER_PORT=8501
@@ -26,17 +18,9 @@ services:
   test:
     build:
       context: .
-      dockerfile: Dockerfile.app
+      dockerfile: Dockerfile
     volumes:
       - .:/app
-    # develop:
-    #   watch:
-    #     - action: sync
-    #       path: ./src/
-    #       target: /app/src/
-    #     - action: sync
-    #       path: ./tests
-    #       target: /app/tests/
     entrypoint: [ "python", "-m", "unittest", "discover", "-s", "tests" ]
     profiles:
       - test
