@@ -180,7 +180,7 @@ test.*
 .vscode/
 
 # Logs
-logs/
+logs/*
 *.log
 
 # Data
@@ -188,3 +188,8 @@ data/
 
 # DS Store
 .DS_Store
+
+
+# Secrets
+.secrets/*
+.secrets/gurobi.lic
