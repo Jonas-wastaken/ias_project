@@ -122,13 +122,14 @@ class LightAgent(mesa.Agent):
         Raises:
             LightCooldown: If the current switching cooldown does not allow changing the open lane.
         """
-        if self.current_switching_cooldown <= 0:
-            self.open_lane = lane
-            self.current_switching_cooldown = self.default_switching_cooldown
-        else:
+        if self.current_switching_cooldown > 0:
             raise LightCooldown(
                 "The current switching cooldown does not allow changing the open lane."
             )
+        
+        if self.open_lane != lane:
+            self.open_lane = lane
+            self.current_switching_cooldown = self.default_switching_cooldown
 
     def rotate_in_open_lane_cycle(self) -> None:
         """Rotates the open lane to the next neighbor light in the cycle."""
@@ -241,7 +242,7 @@ class LightAgent(mesa.Agent):
             opt_model.add_linear_constraint(poi.quicksum(lanes[tick, lane] for lane in possible_lanes), poi.Eq, 1)
         for lane in possible_lanes:
             opt_model.add_quadratic_constraint(
-                poi.quicksum(((lanes[tick - 1, lane] - lanes[tick, lane]) ** 2) for tick in time[1:]), poi.Leq, 1.0
+                poi.quicksum(((lanes[tick - 1, lane] - lanes[tick, lane]) * (lanes[tick - 1, lane] - lanes[tick, lane])) for tick in time[1:]), poi.Leq, 1.0
             )
 
     def _set_objective(self, opt_model, lanes, cars_at_light, time, possible_lanes):
