@@ -166,7 +166,7 @@ class TrafficModel(mesa.Model):
             light: LightAgent
             if light.current_switching_cooldown <= 0:
                 if self.optimization_type == "none":
-                    light.rotate_in_open_lane_cycle()
+                    light.change_open_lane(light.rotate_in_open_lane_cycle())
                 elif self.optimization_type == "simple":
                     light.change_open_lane(light.optimize_open_lane())
                 elif self.optimization_type == "advanced":

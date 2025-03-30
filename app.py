@@ -519,7 +519,7 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_cars=15)
+        st.session_state["model"] = TrafficModel(num_cars=15, num_intersections=5, num_borders=10)
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:
