@@ -48,14 +48,14 @@ class TrafficModel(mesa.Model):
             Function to update the paths of all agents.
         **car_respawn(self) -> None**:
             Respawns cars at each step depending on current time and number of cars in the model.
-        **save_sim_data(self) -> Path**:
+        **def save_sim_data(self) -> Path**:
             Function to save the sim_data to a parquet file
         **get_cars_per_lane_of_light(self, light_position: str) -> dict**:
-            Function to get the number of cars per lane of a light at the defined time.
+            Function to get the number of cars per lane of a light.
     """
 
     def __init__(
-        self, num_cars: int, sim_mode: bool = False, seed: int = None, optimization_type: str = "advanced", **kwargs
+        self, num_cars: int, sim_mode: bool = False, seed: int = None, **kwargs
     ):
         """Initializes a new traffic environment.
 
@@ -65,23 +65,13 @@ class TrafficModel(mesa.Model):
 
         Args:
             num_cars (int): Number of car agents to spawn.
-            sim_mode (bool): If True, the model is in simulation mode. Defaults to False.
             seed (int, optional): Seed used in model generation. Defaults to None.
-            optimization (str): Optimization technique used for the lights (none, simple, advanced). Defaults to "advanced".
-                - none: No optimization, lights are opend in a fixed cycle.
-                - simple: Lights are opened based on the curret number of cars waiting at each lane, not taking the switching cooldown into account.
-                - advanced: Lights are opened based on the curret and future number of cars waiting at each lane and taking the switching cooldown into account.
             **kwargs: Additional keyword arguments for configuring the graph object.
                 - num_intersections (int): Number of intersections in the graph. Defaults to 50.
                 - num_borders (int): Number of border nodes in the graph. Defaults to 25.
                 - min_distance (int): Minimum distance between nodes. Defaults to 10.
                 - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
-        if optimization_type not in ["none", "simple", "advanced"]:
-            raise ValueError(
-                f"Optimization type '{optimization_type}' not supported. Supported optimizations are: none, simple, advanced."
-            )
-        
         super().__init__(seed=seed)
 
         self.grid = Graph(
@@ -90,7 +80,7 @@ class TrafficModel(mesa.Model):
             min_distance=kwargs.get("min_distance", 10),
             max_distance=kwargs.get("max_distance", 20),
         )
-        self.optimization_type = optimization_type
+
         self.create_lights_for_intersections()
         # CarAgent.create_agents(model=self, n=num_cars)
         self.car_paths = {}
@@ -322,36 +312,26 @@ class TrafficModel(mesa.Model):
         if cars_to_add > 0:
             self.create_cars(cars_to_add)
 
-    def get_cars_per_lane_of_light(self, light_position: str, tick: int) -> dict:
-        """Function to get the number of cars per lane of a light at the defined time.
+    def get_cars_per_lane_of_light(self, light_position: str) -> dict:
+        """Function to get the number of cars per lane of a light.
 
         Args:
             light_position (str): The position of the light.
-            tick (int): The time when the cars will arrive at the light (0 is the current tick).
 
         Returns:
             dict: A dictionary containing the number of cars per lane of the light.
         """
-        if tick < 0:
-            raise ValueError("Tick must be greater than or equal to 0")
-
         cars_per_lane = {
             lane: 0
             for lane in self.grid.neighbors(light_position)
             if lane.startswith("intersection")
         }
 
-        if tick == 0:
-            for car in self.get_agents_by_type("CarAgent"):
-                if car.position == light_position and car.waiting:
-                    cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
-        else:
-            for car in self.get_agents_by_type("CarAgent"):
-                if list(car.path.keys())[0] == light_position and list(car.path.values())[0] == tick:
-                    cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
+        for car in self.get_agents_by_type("CarAgent"):
+            if car.position == light_position and car.waiting:
+                cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
 
         return cars_per_lane
-    
 
     def update_lights_decision_log(
         self,

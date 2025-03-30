@@ -45,6 +45,14 @@ class LightAgent(mesa.Agent):
             Gets the average distance to connected intersections.
         **get_is_entrypoint(self, grid: Graph) -> bool**:
             Checks if intersection is connected to a border.
+        **optimize_open_lane(self) -> str**:
+            Decides which lane should be open based on the number of waiting cars.
+        **get_num_connections(self, grid: Graph) -> int**:
+            Gets the number of connected intersections.
+        **get_avg_distance(self, grid: Graph) -> float**:
+            Gets the average distance to connected intersections.
+        **get_is_entrypoint(self, grid: Graph) -> bool**:
+            Checks if intersection is connected to a border.
 
         **Coming soon**:
         - estimate_coming_cars?
@@ -58,9 +66,14 @@ class LightAgent(mesa.Agent):
         """
         super().__init__(model)
         self.position = kwargs.get("position", None)
-        self.neighbor_lights = [node for node in list(self.model.grid.neighbors(self.position)) if node.startswith("intersection")]
+        self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
+        # self.waiting_cars = {}
+        # self.waiting_cars = self.update_waiting_cars()
+        self.open_lane = self.neighbor_lights[
+            random.randint(0, len(self.neighbor_lights) - 1)
+        ]  # Randomly select a neighbor light as the open lane
         # self.waiting_cars = {}
         # self.waiting_cars = self.update_waiting_cars()
         self.open_lane = self.neighbor_lights[
@@ -83,7 +96,25 @@ class LightAgent(mesa.Agent):
         #     for car in self.waiting_cars.keys():
         #         if not car.waiting:
         #             self.waiting_cars.pop(car)
+        # if self.waiting_cars is not None:
+        #     # Remove all cars that have moved from the waiting_cars list
+        #     for car in self.waiting_cars.keys():
+        #         if not car.waiting:
+        #             self.waiting_cars.pop(car)
 
+        #     # Add all new cars that are now waiting at the intersection
+        #     for car in self.model.get_agents_by_type("CarAgent"):
+        #         if (
+        #             car.position == self.position
+        #             and car not in self.waiting_cars.keys()
+        #             and car.waiting
+        #         ):
+        #             self.waiting_cars[car] = {
+        #                 "last_intersection": car.model.get_last_intersection_of_car(
+        #                     car.unique_id
+        #                 ),
+        #                 "local_waiting_time": 0,
+        #             }
         #     # Add all new cars that are now waiting at the intersection
         #     for car in self.model.get_agents_by_type("CarAgent"):
         #         if (
@@ -112,12 +143,27 @@ class LightAgent(mesa.Agent):
         #                 ),
         #                 "local_waiting_time": 1,
         #             }
+        #     # Update car attributes in the waiting_cars list
+        #     for car in self.waiting_cars.keys():
+        #         self.waiting_cars[car]["local_waiting_time"] += 1
+
+        # else:
+        #     self.waiting_cars = {}
+        #     for car in self.model.get_agents_by_type("CarAgent"):
+        #         if car.position == self.position and car.waiting:
+        #             self.waiting_cars[car] = {
+        #                 "last_intersection": car.model.get_last_intersection_of_car(
+        #                     car.unique_id
+        #                 ),
+        #                 "local_waiting_time": 1,
+        #             }
 
     def change_open_lane(self, lane: str) -> None:
         """Changes from where cars are allowed to cross the intersection, if the current switching cooldown allows it.
 
         Args:
             lane (str): The ID of the edge from where cars are allowed to cross the intersection.
+
 
         Raises:
             LightCooldown: If the current switching cooldown does not allow changing the open lane.
