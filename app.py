@@ -22,6 +22,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from model import TrafficModel
 from graph_viz import TrafficGraph
 from car import CarAgent
+from light import LightAgent
 
 
 class App:
@@ -130,36 +131,48 @@ class CarPathContainer:
 
     @st.fragment
     def __init__(self):
-        """Creates a horizontally scrollable list of car agent information cards."""
+        """Creates two horizontally scrollable lists of car agent and light agent information cards."""
 
         car: CarAgent = st.session_state["model"].get_agents_by_type("CarAgent")[
-            int(st.query_params["scroll_index"])
+            int(st.query_params["scroll_index_cars"])
         ]
 
-        self.render_current_path(car)
+        light: CarAgent = st.session_state["model"].get_agents_by_type("LightAgent")[
+            int(st.query_params["scroll_index_lights"])
+        ]
 
-    def scroll_left(self) -> None:
+
+        self.render_current_path(car)
+        self.render_lights_info(light)
+
+    def scroll_left(self, query_index: str) -> None:
         """Scrolls the car path list to the left.
 
         - Checks first if there are more items in the list to render
         - Decreases the scroll_index by 1
         """
-        if int(st.query_params["scroll_index"]) > 0:
-            st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) - 1
+        if int(st.query_params[query_index]) > 0:
+            st.query_params[query_index] = int(st.query_params[query_index]) - 1
             st.rerun(scope="fragment")
 
-    def scroll_right(self) -> None:
+    def scroll_right(self, query_index: str) -> None:
         """Scrolls the car path list to the right.
 
         - Checks first if there are more items in the list to render
         - Increases the scroll_index by 1
         """
-        if (
-            int(st.query_params["scroll_index"])
-            < st.session_state["env_config"]["num_cars"] - 1
-        ):
-            st.query_params["scroll_index"] = int(st.query_params["scroll_index"]) + 1
-            st.rerun(scope="fragment")
+
+        if query_index == "scroll_index_lights":
+            if int(st.query_params[query_index]) < st.session_state["env_config"]["num_intersections"] - 1:
+                st.query_params[query_index] = int(st.query_params[query_index]) + 1
+                st.rerun(scope="fragment")
+        if query_index == "scroll_index_cars":
+            if int(st.query_params[query_index]) < st.session_state["env_config"]["num_cars"] - 1:
+                st.query_params[query_index] = int(st.query_params[query_index]) + 1
+                st.rerun(scope="fragment")
+
+
+        
 
     def render_current_path(self, car: CarAgent) -> None:
         """Renders a car's path.
@@ -169,18 +182,18 @@ class CarPathContainer:
         """
         cols = st.columns([0.3, 0.1, 0.4, 0.1, 0.1], vertical_alignment="center")
         with cols[0]:
-            st.subheader(f"Agent {car.unique_id}")
+            st.subheader(f"Car {car.unique_id - st.session_state["env_config"]["num_intersections"]}")
         # with cols[1]:
         #     num_cars = self.NumCars(st.session_state["model"]).num_cars
         #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
         with cols[2]:
             self.render_full_path(car)
         with cols[3]:
-            if st.button("<-"):
-                self.scroll_left()
+            if st.button("<-", key="cars_left"):
+                self.scroll_left("scroll_index_cars")
         with cols[4]:
-            if st.button("->"):
-                self.scroll_right()
+            if st.button("->", key="cars_right"):
+                self.scroll_right("scroll_index_cars")
         st.dataframe(
             self.get_current_path(car),
             use_container_width=True,
@@ -201,6 +214,33 @@ class CarPathContainer:
                 hide_index=True,
                 column_config={"0": "", "1": ""},
             )
+
+    def render_lights_info(self, light: LightAgent) -> None:
+        """Render the lights info box.
+
+        Args:
+            light (LightAgent): LightAgent instance
+        """
+        cols = st.columns([0.3, 0.1, 0.4, 0.1, 0.1], vertical_alignment="center")
+        with cols[0]:
+            st.subheader(f"Light {light.unique_id}")
+        # with cols[1]:
+        #     num_cars = self.NumCars(st.session_state["model"]).num_cars
+        #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
+        # with cols[2]:
+        #     self.render_full_path(car)
+        with cols[3]:
+            if st.button("<-", key="lights_left"):
+                self.scroll_left("scroll_index_lights")
+        with cols[4]:
+            if st.button("->", key="lights_right"):
+                self.scroll_right("scroll_index_lights")
+        st.dataframe(
+            self.get_lights_info(light),   
+            use_container_width=True,
+            column_config={"value": st.column_config.TextColumn("")},
+        )
+
 
     def get_full_path(self, car_id: int) -> list[tuple[str, int]]:
         """Creates a List with the full path a car agent takes.
@@ -251,6 +291,35 @@ class CarPathContainer:
         }
 
         return path_dict
+
+
+    def get_lights_info (self, light: LightAgent):
+        """Creates a dict with the position, all lanes, current open lane, switching cooldown and the waiting cars from each lane.
+
+        Args:
+            light (LightAgent): LightAgent instance
+
+        Returns:
+            dict: Dict holding the status information
+        """
+
+        current_position = light.position
+        all_lanes = light.neighbor_lights
+        open_lane = light.open_lane
+        switching_cooldown = light.current_switching_cooldown
+        waiting_cars = light.model.get_cars_per_lane_of_light(light.position, 0)
+
+        lights_info = {
+            "Position": str(current_position).title().replace("_", " "),
+            "Open Lane": str(open_lane),
+            "Switching Cooldown": str(switching_cooldown),
+        }
+
+        for lane in all_lanes:
+            lights_info[f"Waiting Cars {lane}"] = str(waiting_cars[lane])
+
+        return lights_info
+
 
     # @dataclass
     # class NumCars:
@@ -393,7 +462,8 @@ class SettingsContainer:
             max_distance=distance_range[1],
         )
         st.query_params["run_steps"] = 0
-        st.query_params["scroll_index"] = 0
+        st.query_params["scroll_index_cars"] = 0
+        st.query_params["scroll_index_lights"] = 0
         st.rerun()
 
 
@@ -441,13 +511,15 @@ if __name__ == "__main__":
         menu_items=None,
     )
 
-    if "scroll_index" not in st.query_params:
-        st.query_params["scroll_index"] = 0
+    if "scroll_index_cars" not in st.query_params:
+        st.query_params["scroll_index_cars"] = 0
+    if "scroll_index_lights" not in st.query_params:
+        st.query_params["scroll_index_lights"] = 0
     if "run_steps" not in st.query_params:
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_cars=15)
+        st.session_state["model"] = TrafficModel(num_cars=15, num_intersections=5, num_borders=10)
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:

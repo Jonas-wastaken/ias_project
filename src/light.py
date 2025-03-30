@@ -5,8 +5,9 @@ import mesa
 import random
 import numpy as np
 import pyoptinterface as poi
-from pyoptinterface import highs
+from pyoptinterface import highs, gurobi
 from networkx import closeness_centrality
+from pathlib import Path
 
 from graph import Graph
 from car import CarAgent
@@ -44,6 +45,14 @@ class LightAgent(mesa.Agent):
             Gets the average distance to connected intersections.
         **get_is_entrypoint(self, grid: Graph) -> bool**:
             Checks if intersection is connected to a border.
+        **optimize_open_lane(self) -> str**:
+            Decides which lane should be open based on the number of waiting cars.
+        **get_num_connections(self, grid: Graph) -> int**:
+            Gets the number of connected intersections.
+        **get_avg_distance(self, grid: Graph) -> float**:
+            Gets the average distance to connected intersections.
+        **get_is_entrypoint(self, grid: Graph) -> bool**:
+            Checks if intersection is connected to a border.
 
         **Coming soon**:
         - estimate_coming_cars?
@@ -65,6 +74,11 @@ class LightAgent(mesa.Agent):
         self.open_lane = self.neighbor_lights[
             random.randint(0, len(self.neighbor_lights) - 1)
         ]  # Randomly select a neighbor light as the open lane
+        # self.waiting_cars = {}
+        # self.waiting_cars = self.update_waiting_cars()
+        self.open_lane = self.neighbor_lights[
+            random.randint(0, len(self.neighbor_lights) - 1)
+        ]  # Randomly select a neighbor light as the open lane
 
     def set_position(self, position: str) -> None:
         """Sets the position of the agent to the given node ID.
@@ -74,7 +88,7 @@ class LightAgent(mesa.Agent):
         """
         self.position = position
 
-    def update_waiting_cars(self) -> None:  # TODO: Fix @mxrio
+    # def update_waiting_cars(self) -> None:  # TODO: Fix @mxrio
         """NOT WORKING: Updates the details of the cars waiting at the intersection (waiting_cars)"""
 
         # if self.waiting_cars is not None:
@@ -82,7 +96,25 @@ class LightAgent(mesa.Agent):
         #     for car in self.waiting_cars.keys():
         #         if not car.waiting:
         #             self.waiting_cars.pop(car)
+        # if self.waiting_cars is not None:
+        #     # Remove all cars that have moved from the waiting_cars list
+        #     for car in self.waiting_cars.keys():
+        #         if not car.waiting:
+        #             self.waiting_cars.pop(car)
 
+        #     # Add all new cars that are now waiting at the intersection
+        #     for car in self.model.get_agents_by_type("CarAgent"):
+        #         if (
+        #             car.position == self.position
+        #             and car not in self.waiting_cars.keys()
+        #             and car.waiting
+        #         ):
+        #             self.waiting_cars[car] = {
+        #                 "last_intersection": car.model.get_last_intersection_of_car(
+        #                     car.unique_id
+        #                 ),
+        #                 "local_waiting_time": 0,
+        #             }
         #     # Add all new cars that are now waiting at the intersection
         #     for car in self.model.get_agents_by_type("CarAgent"):
         #         if (
@@ -111,6 +143,20 @@ class LightAgent(mesa.Agent):
         #                 ),
         #                 "local_waiting_time": 1,
         #             }
+        #     # Update car attributes in the waiting_cars list
+        #     for car in self.waiting_cars.keys():
+        #         self.waiting_cars[car]["local_waiting_time"] += 1
+
+        # else:
+        #     self.waiting_cars = {}
+        #     for car in self.model.get_agents_by_type("CarAgent"):
+        #         if car.position == self.position and car.waiting:
+        #             self.waiting_cars[car] = {
+        #                 "last_intersection": car.model.get_last_intersection_of_car(
+        #                     car.unique_id
+        #                 ),
+        #                 "local_waiting_time": 1,
+        #             }
 
     def change_open_lane(self, lane: str) -> None:
         """Changes from where cars are allowed to cross the intersection, if the current switching cooldown allows it.
@@ -118,22 +164,25 @@ class LightAgent(mesa.Agent):
         Args:
             lane (str): The ID of the edge from where cars are allowed to cross the intersection.
 
+
         Raises:
             LightCooldown: If the current switching cooldown does not allow changing the open lane.
         """
-        if self.current_switching_cooldown <= 0:
-            self.open_lane = lane
-            self.current_switching_cooldown = self.default_switching_cooldown
-        else:
+        if self.current_switching_cooldown > 0:
             raise LightCooldown(
                 "The current switching cooldown does not allow changing the open lane."
             )
+        
+        if self.open_lane != lane:
+            self.open_lane = lane
+            self.current_switching_cooldown = self.default_switching_cooldown
 
-    def rotate_in_open_lane_cycle(self) -> None:
+    def rotate_in_open_lane_cycle(self) -> str:
         """Rotates the open lane to the next neighbor light in the cycle."""
         current_index = self.neighbor_lights.index(self.open_lane)
         next_index = (current_index + 1) % len(self.neighbor_lights)
-        self.change_open_lane(self.neighbor_lights[next_index])
+        
+        return self.neighbor_lights[next_index]
 
     def optimize_open_lane(self) -> str:
         """Decides which lane should be open based on the number of waiting cars."""
@@ -142,7 +191,7 @@ class LightAgent(mesa.Agent):
         opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
 
         possible_lanes = self.neighbor_lights
-        cars_at_light = self.model.get_cars_per_lane_of_light(self.position)
+        cars_at_light = self.model.get_cars_per_lane_of_light(self.position, 0)
         lanes = opt_model.add_variables(
             possible_lanes, domain=poi.VariableDomain.Binary
         )
@@ -175,6 +224,88 @@ class LightAgent(mesa.Agent):
         )
 
         return optimal_lane
+    
+    def optimize_open_lane_with_cooldown(self) -> str:
+        """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
+        light_cooldown = self.default_switching_cooldown
+        secrets = self._load_gurobi_secrets()
+        env = self._initialize_gurobi_env(secrets)
+        opt_model = gurobi.Model(env)
+
+        possible_lanes = self.neighbor_lights
+        time = range(-1, light_cooldown + 1)
+        cars_at_light = self._get_cars_at_light_over_time(time)
+        current_open_lane = self.open_lane
+
+        lanes = self._initialize_lanes(opt_model, time, possible_lanes, current_open_lane)
+        self._add_constraints(opt_model, lanes, time, possible_lanes)
+        self._set_objective(opt_model, lanes, cars_at_light, time, possible_lanes)
+
+        opt_model.optimize()
+        return self._get_optimal_lane(opt_model, lanes, possible_lanes)
+
+    def _load_gurobi_secrets(self) -> dict:
+        """Loads Gurobi secrets from the license file."""
+        license_path = Path.joinpath(Path(".secrets/"), Path("gurobi.lic"))
+        secrets = {}
+        with open(license_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith("#") or not line:
+                    continue
+                try:
+                    key, value = line.split("=", 1)
+                    secrets[key.strip()] = value.strip()
+                except ValueError:
+                    pass
+        return secrets
+
+    def _initialize_gurobi_env(self, secrets: dict) -> gurobi.Env:
+        """Initializes the Gurobi environment with the provided secrets."""
+        env = gurobi.Env(empty=True)
+        env.set_raw_parameter("WLSACCESSID", secrets.get("WLSACCESSID"))
+        env.set_raw_parameter("WLSSECRET", secrets.get("WLSSECRET"))
+        env.set_raw_parameter("LICENSEID", secrets.get("LICENSEID"))
+        env.start()
+        return env
+
+    def _get_cars_at_light_over_time(self, time: range) -> dict:
+        """Gets the number of cars at the light over the given time range."""
+        cars_at_light = {tick: {} for tick in time[1:]}
+        for tick in time[1:]:
+            cars_at_light[tick] = self.model.get_cars_per_lane_of_light(self.position, tick)
+        return cars_at_light
+
+    def _initialize_lanes(self, opt_model, time, possible_lanes, current_open_lane):
+        """Initializes the lane variables for the optimization model."""
+        lanes = opt_model.add_variables(time, possible_lanes, domain=poi.VariableDomain.Binary)
+        for lane in possible_lanes:
+            lanes[-1, lane] = 1 if lane == current_open_lane else 0
+        return lanes
+
+    def _add_constraints(self, opt_model, lanes, time, possible_lanes):
+        """Adds constraints to the optimization model."""
+        for tick in time[1:]:
+            opt_model.add_linear_constraint(poi.quicksum(lanes[tick, lane] for lane in possible_lanes), poi.Eq, 1)
+        for lane in possible_lanes:
+            opt_model.add_quadratic_constraint(
+                poi.quicksum(((lanes[tick - 1, lane] - lanes[tick, lane]) * (lanes[tick - 1, lane] - lanes[tick, lane])) for tick in time[1:]), poi.Leq, 1.0
+            )
+
+    def _set_objective(self, opt_model, lanes, cars_at_light, time, possible_lanes):
+        """Sets the objective function for the optimization model."""
+        objective = poi.quicksum(
+            poi.quicksum(lanes[tick, lane] * cars_at_light[tick][lane] for lane in possible_lanes) for tick in time[1:]
+        )
+        opt_model.set_objective(objective, poi.ObjectiveSense.Maximize)
+
+    def _get_optimal_lane(self, opt_model, lanes, possible_lanes) -> str:
+        """Determines the optimal lane from the optimization results."""
+        for lane in possible_lanes:
+            if opt_model.get_value(lanes[0, lane]) > 0.1:
+                return lane
+        
+
 
     def get_num_connections(self, grid: Graph) -> int:
         """Gets the number of connected intersections.
