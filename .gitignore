@@ -192,3 +192,4 @@ data/
 
 # Secrets
 .secrets/*
+.secrets/gurobi.lic
