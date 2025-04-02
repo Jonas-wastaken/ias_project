@@ -188,3 +188,6 @@ data/
 
 # DS Store
 .DS_Store
+
+# Secrets
+.secrets/*
