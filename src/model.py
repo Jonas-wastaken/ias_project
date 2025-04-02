@@ -108,7 +108,6 @@ class TrafficModel(mesa.Model):
 
         self.create_lights()
         self.optimization_type = optimization_type
-        self.create_lights()
         self.car_paths = {}
         self.update_car_paths()
         self.lights_decision_log = {}
