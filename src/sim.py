@@ -70,7 +70,14 @@ class Sim:
         print(
             f"Avg. time per 100 steps: {round((((time.time() - start_time) / model.steps) * 100), 2)}"
         )
-        self.data_path = model.save_sim_data()
+        self.data_path = model.DataPath().path
+        model.arrivals.save_data(self.data_path)
+        model.traffic.save_data(self.data_path)
+        model.wait_times.save_data(self.data_path)
+        model.light_intersection_mapping.save_data(self.data_path)
+        model.light_data.save_data(self.data_path)
+        model.n_cars.save_data(self.data_path)
+        model.connections.save_data(self.data_path)
 
 
 if __name__ == "__main__":
