@@ -59,7 +59,6 @@ class TrafficModel(mesa.Model):
     def __init__(
         self,
         num_cars: int,
-        sim_mode: bool = False,
         seed: int = None,
         optimization_type: str = "advanced",
         **kwargs,
