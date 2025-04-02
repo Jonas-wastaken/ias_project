@@ -57,7 +57,12 @@ class TrafficModel(mesa.Model):
     """
 
     def __init__(
-        self, num_cars: int, sim_mode: bool = False, seed: int = None, optimization_type: str = "advanced", **kwargs
+        self,
+        num_cars: int,
+        sim_mode: bool = False,
+        seed: int = None,
+        optimization_type: str = "advanced",
+        **kwargs,
     ):
         """Initializes a new traffic environment.
 
@@ -83,7 +88,7 @@ class TrafficModel(mesa.Model):
             raise ValueError(
                 f"Optimization type '{optimization_type}' not supported. Supported optimizations are: none, simple, advanced."
             )
-        
+
         super().__init__(seed=seed)
 
         self.grid = Graph(
@@ -103,7 +108,7 @@ class TrafficModel(mesa.Model):
 
         self.create_lights()
         self.optimization_type = optimization_type
-        self.create_lights_for_intersections()
+        self.create_lights()
         self.car_paths = {}
         self.update_car_paths()
         self.lights_decision_log = {}
@@ -354,11 +359,13 @@ class TrafficModel(mesa.Model):
                     cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
         else:
             for car in self.get_agents_by_type("CarAgent"):
-                if list(car.path.keys())[0] == light_position and list(car.path.values())[0] == tick:
+                if (
+                    list(car.path.keys())[0] == light_position
+                    and list(car.path.values())[0] == tick
+                ):
                     cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
 
         return cars_per_lane
-    
 
     def update_lights_decision_log(
         self,
