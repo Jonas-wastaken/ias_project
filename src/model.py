@@ -96,7 +96,6 @@ class TrafficModel(mesa.Model):
         self.car_paths = {}
         self.update_car_paths()
         self.cars_waiting_times = {}
-        self.update_cars_waiting_times()
         self.lights_decision_log = {}
         self.create_cars(num_cars)
 
@@ -169,7 +168,6 @@ class TrafficModel(mesa.Model):
         """
         new_cars = CarAgent.create_agents(model=self, n=num_cars)
         self.update_car_paths()
-        self.update_cars_waiting_times()
 
         for car in new_cars:
             self.wait_times.init_wait_times(
@@ -267,24 +265,24 @@ class TrafficModel(mesa.Model):
 
         return previous_position
 
-    def update_cars_waiting_times(self) -> None:
-        """Function to update the waiting times of all cars at each intersection."""
+    # def update_cars_waiting_times(self) -> None:
+    #     """Function to update the waiting times of all cars at each intersection."""
 
-        for car in self.get_agents_by_type("CarAgent"):
-            car: CarAgent
-            if car.unique_id not in list(self.cars_waiting_times.keys()):
-                self.cars_waiting_times[car.unique_id] = {
-                    intersection: 0
-                    for intersection in list(
-                        car.model.car_paths[car.unique_id].keys()  # s.o. @mxrio
-                    )
-                    if intersection.startswith(
-                        "intersection"
-                    )  # grid.get_nodes verwenden vielleicht? @mxrio
-                }
+    #     for car in self.get_agents_by_type("CarAgent"):
+    #         car: CarAgent
+    #         if car.unique_id not in list(self.cars_waiting_times.keys()):
+    #             self.cars_waiting_times[car.unique_id] = {
+    #                 intersection: 0
+    #                 for intersection in list(
+    #                     car.model.car_paths[car.unique_id].keys()  # s.o. @mxrio
+    #                 )
+    #                 if intersection.startswith(
+    #                     "intersection"
+    #                 )  # grid.get_nodes verwenden vielleicht? @mxrio
+    #             }
 
-            if car.waiting:
-                self.cars_waiting_times[car.unique_id][car.position] += 1
+    #         if car.waiting:
+    #             self.cars_waiting_times[car.unique_id][car.position] += 1
 
     def update_car_paths(self) -> None:
         """Function to update the paths of all cars."""
@@ -584,6 +582,20 @@ class TrafficModel(mesa.Model):
                     ),
                     in_place=True,
                 )
+
+        def is_arrival(self, car: CarAgent, light: LightAgent) -> bool:
+            if (
+                self.data.filter(
+                    (pl.col("Car_ID") == car.unique_id)
+                    & (pl.col("Light_ID") == light.unique_id)
+                )
+                .select(pl.col("Wait_Time"))
+                .item()
+                == 0
+            ):
+                return True
+            else:
+                return False
 
     @dataclass
     class LightIntersectionMapping(SimData):

@@ -245,9 +245,8 @@ class LightAgent(mesa.Agent):
         num_arrivals = 0
         for car in self.model.get_agents_by_type("CarAgent"):
             car: CarAgent
-            if (
-                car.position == self.position
-                and self.model.cars_waiting_times[car.unique_id][self.position] == 0
+            if car.position == self.position and self.model.wait_times.is_arrival(
+                car=car, light=self
             ):
                 num_arrivals += 1
 
