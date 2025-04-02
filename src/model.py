@@ -74,9 +74,9 @@ class TrafficModel(mesa.Model):
             sim_mode (bool): If True, the model is in simulation mode. Defaults to False.
             seed (int, optional): Seed used in model generation. Defaults to None.
             optimization (str): Optimization technique used for the lights (none, simple, advanced). Defaults to "advanced".
-                - none: No optimization, lights are opend in a fixed cycle.
-                - simple: Lights are opened based on the curret number of cars waiting at each lane, not taking the switching cooldown into account.
-                - advanced: Lights are opened based on the curret and future number of cars waiting at each lane and taking the switching cooldown into account.
+                - none: No optimization, lights are open in a fixed cycle.
+                - simple: Lights are opened based on the current number of cars waiting at each lane, not taking the switching cooldown into account.
+                - advanced: Lights are opened based on the current and future number of cars waiting at each lane and taking the switching cooldown into account.
             **kwargs: Additional keyword arguments for configuring the graph object.
                 - num_intersections (int): Number of intersections in the graph. Defaults to 50.
                 - num_borders (int): Number of border nodes in the graph. Defaults to 25.
