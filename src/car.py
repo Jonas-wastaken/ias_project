@@ -45,8 +45,9 @@ class CarAgent(mesa.Agent):
         self.position = self.start
         self.goal = self.compute_goal()
         self.path = self.compute_path()
+        self.full_path = self.path.copy()  # TODO: use where necessary, delete otherwise
         self.waiting = False
-        self.global_waiting_time = 0
+        self.global_waiting_time = 0  # TODO: löschen?
         self.travel_time = 0
 
     def compute_goal(self) -> str:
