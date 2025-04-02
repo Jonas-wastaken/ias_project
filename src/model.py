@@ -272,11 +272,7 @@ class TrafficModel(mesa.Model):
 
         # Get the corresponding intersection, if the cars last position was a border node (TODO) @mxrio
         if previous_position.startswith("border"):
-            first_intersection = list(
-                car.model.car_paths[car.unique_id].keys()
-            )[
-                1
-            ]  # Warum über car den car_path holen -> self.car_paths[car.unique_id] @mxrio
+            first_intersection = list(self.car_paths[car.unique_id].keys())[1]
             lane = list(self.grid.neighbors(previous_position))
             lane.remove(first_intersection)
             previous_position = lane[0]
