@@ -279,25 +279,6 @@ class TrafficModel(mesa.Model):
 
         return previous_position
 
-    # def update_cars_waiting_times(self) -> None:
-    #     """Function to update the waiting times of all cars at each intersection."""
-
-    #     for car in self.get_agents_by_type("CarAgent"):
-    #         car: CarAgent
-    #         if car.unique_id not in list(self.cars_waiting_times.keys()):
-    #             self.cars_waiting_times[car.unique_id] = {
-    #                 intersection: 0
-    #                 for intersection in list(
-    #                     car.model.car_paths[car.unique_id].keys()  # s.o. @mxrio
-    #                 )
-    #                 if intersection.startswith(
-    #                     "intersection"
-    #                 )  # grid.get_nodes verwenden vielleicht? @mxrio
-    #             }
-
-    #         if car.waiting:
-    #             self.cars_waiting_times[car.unique_id][car.position] += 1
-
     def update_car_paths(self) -> None:
         """Function to update the paths of all cars."""
         for car in self.get_agents_by_type("CarAgent"):
