@@ -59,7 +59,6 @@ class TrafficModel(mesa.Model):
     def __init__(
         self,
         num_cars: int,
-        sim_mode: bool = False,
         seed: int = None,
         optimization_type: str = "advanced",
         **kwargs,
@@ -75,9 +74,9 @@ class TrafficModel(mesa.Model):
             sim_mode (bool): If True, the model is in simulation mode. Defaults to False.
             seed (int, optional): Seed used in model generation. Defaults to None.
             optimization (str): Optimization technique used for the lights (none, simple, advanced). Defaults to "advanced".
-                - none: No optimization, lights are opend in a fixed cycle.
-                - simple: Lights are opened based on the curret number of cars waiting at each lane, not taking the switching cooldown into account.
-                - advanced: Lights are opened based on the curret and future number of cars waiting at each lane and taking the switching cooldown into account.
+                - none: No optimization, lights are open in a fixed cycle.
+                - simple: Lights are opened based on the current number of cars waiting at each lane, not taking the switching cooldown into account.
+                - advanced: Lights are opened based on the current and future number of cars waiting at each lane and taking the switching cooldown into account.
             **kwargs: Additional keyword arguments for configuring the graph object.
                 - num_intersections (int): Number of intersections in the graph. Defaults to 50.
                 - num_borders (int): Number of border nodes in the graph. Defaults to 25.
@@ -272,35 +271,12 @@ class TrafficModel(mesa.Model):
 
         # Get the corresponding intersection, if the cars last position was a border node (TODO) @mxrio
         if previous_position.startswith("border"):
-            first_intersection = list(
-                car.model.car_paths[car.unique_id].keys()
-            )[
-                1
-            ]  # Warum über car den car_path holen -> self.car_paths[car.unique_id] @mxrio
+            first_intersection = list(self.car_paths[car.unique_id].keys())[1]
             lane = list(self.grid.neighbors(previous_position))
             lane.remove(first_intersection)
             previous_position = lane[0]
 
         return previous_position
-
-    # def update_cars_waiting_times(self) -> None:
-    #     """Function to update the waiting times of all cars at each intersection."""
-
-    #     for car in self.get_agents_by_type("CarAgent"):
-    #         car: CarAgent
-    #         if car.unique_id not in list(self.cars_waiting_times.keys()):
-    #             self.cars_waiting_times[car.unique_id] = {
-    #                 intersection: 0
-    #                 for intersection in list(
-    #                     car.model.car_paths[car.unique_id].keys()  # s.o. @mxrio
-    #                 )
-    #                 if intersection.startswith(
-    #                     "intersection"
-    #                 )  # grid.get_nodes verwenden vielleicht? @mxrio
-    #             }
-
-    #         if car.waiting:
-    #             self.cars_waiting_times[car.unique_id][car.position] += 1
 
     def update_car_paths(self) -> None:
         """Function to update the paths of all cars."""
