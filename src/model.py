@@ -8,7 +8,7 @@ import mesa
 import numpy as np
 import polars as pl
 
-from car import AgentArrived, CarAgent
+from car import CarAgent
 from graph import Graph
 from light import LightAgent
 from data import SimData
