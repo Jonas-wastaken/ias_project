@@ -83,6 +83,30 @@ class LightAgent(mesa.Agent):
             random.randint(0, len(self.neighbor_lights) - 1)
         ]  # Randomly select a neighbor light as the open lane
 
+    def step(self, optimization_type: str, steps: int) -> None:
+        """Actions each LightAgent takes each step.
+
+        - Checks if it is blocked by cooldown
+            - If not, it opens the best lane, determined by optimization technique
+            - If blocked, cooldown is decremented by 1
+
+        Args:
+            optimization_type (str): Type of optimization to use
+            steps (int): Internal step counter of TrafficModel instance
+        """
+        if self.current_switching_cooldown <= 0:
+            if optimization_type == "none":
+                self.rotate_in_open_lane_cycle()
+            elif optimization_type == "simple":
+                self.change_open_lane(self.optimize_open_lane())
+            elif optimization_type == "advanced":
+                self.change_open_lane(self.optimize_open_lane_with_cooldown())
+        else:
+            self.current_switching_cooldown -= 1
+
+            self.arrivals.update_data(light=self, steps=steps)
+            self.traffic.update_data(light=self, steps=steps)
+
     def set_position(self, position: str) -> None:
         """Sets the position of the agent to the given node ID.
 

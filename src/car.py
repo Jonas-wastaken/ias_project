@@ -55,6 +55,31 @@ class CarAgent(mesa.Agent):
 
         self.wait_times = WaitTimes()
 
+    def step(self) -> None:
+        """Actions each CarAgent takes each step.
+
+        - CarAgent moves to next position
+            - If CarAgent is between intersections, distance is decremented by one
+            - If CarAgent is at an intersection, it changes it's position to the intersection
+                - Only if it's lane is open
+            - Increments *travel_time* by 1
+            - If CarAgent reaches it's goal, it is removed from model
+        """
+        try:
+            self.move()
+            self.travel_time += 1
+            if (
+                self.position.startswith("intersection")
+                and self.path[self.position] == 1
+            ):
+                self.wait_times.update_data(
+                    car=self,
+                    waiting=self.waiting,
+                    light_intersection_mapping=self.model.light_intersection_mapping.data,
+                )
+        except AgentArrived:
+            self.remove()
+
     def compute_goal(self) -> str:
         """Assigns a random border node, which is not the starting node, as the goal of the car.
 

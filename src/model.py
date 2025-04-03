@@ -114,61 +114,18 @@ class TrafficModel(mesa.Model):
         - Updates simulation data
         - CarAgents are respawned based on current time and number of cars in the model
         """
-        self._car_step()
-        self._light_step()
+        for light in self.get_agents_by_type("LightAgent"):
+            light: LightAgent
+            light.step(optimization_type=self.optimization_type, steps=self.steps)
+
+        for car in self.get_agents_by_type("CarAgent")[:]:
+            car: CarAgent
+            car.step()
+
         self.n_cars.update_data(
             steps=self.steps, n_cars=len(self.get_agents_by_type("CarAgent"))
         )
         self.car_respawn()
-
-    def _car_step(self) -> None:
-        """Actions each CarAgent takes each step.
-
-        - CarAgent moves to next position
-            - If CarAgent is between intersections, distance is decremented by one
-            - If CarAgent is at an intersection, it changes it's position to the intersection
-                - Only if it's lane is open
-            - Increments *travel_time* by 1
-            - If CarAgent reaches it's goal, it is removed from model
-        """
-        for car in self.get_agents_by_type("CarAgent")[:]:
-            car: CarAgent
-            try:
-                car.move()
-                car.travel_time += 1
-                if (
-                    car.position.startswith("intersection")
-                    and car.path[car.position] == 1
-                ):
-                    car.wait_times.update_data(
-                        car=car,
-                        waiting=car.waiting,
-                        light_intersection_mapping=self.light_intersection_mapping.data,
-                    )
-            except AgentArrived:
-                car.remove()
-
-    def _light_step(self) -> None:
-        """Actions each LightAgent takes each step.
-
-        - Checks if it is blocked by cooldown
-            - If not, it opens the best lane, determined by optimization technique
-            - If blocked, cooldown is decremented by 1
-        """
-        for light in self.get_agents_by_type("LightAgent"):
-            light: LightAgent
-            if light.current_switching_cooldown <= 0:
-                if self.optimization_type == "none":
-                    light.rotate_in_open_lane_cycle()
-                elif self.optimization_type == "simple":
-                    light.change_open_lane(light.optimize_open_lane())
-                elif self.optimization_type == "advanced":
-                    light.change_open_lane(light.optimize_open_lane_with_cooldown())
-            else:
-                light.current_switching_cooldown -= 1
-
-            light.arrivals.update_data(light=light, steps=self.steps)
-            light.traffic.update_data(light=light, steps=self.steps)
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add cars to the model.
