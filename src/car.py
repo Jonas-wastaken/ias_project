@@ -4,7 +4,6 @@
 
 import mesa
 import random
-from pathlib import Path
 from dataclasses import dataclass, field
 import polars as pl
 from networkx import dijkstra_path
@@ -170,6 +169,8 @@ class AgentArrived(Exception):
 
 @dataclass
 class WaitTimes(SimData):
+    """Holds the wait time of CarAgent instance at each light"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -219,13 +220,13 @@ class WaitTimes(SimData):
                 .alias("Wait_Time")
             )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "wait_times.parquet"))
+        return self.data
 
     def init_wait_times(
         self, car: CarAgent, light_intersection_mapping: pl.DataFrame

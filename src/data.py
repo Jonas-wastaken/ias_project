@@ -1,4 +1,4 @@
-from pathlib import Path
+import polars as pl
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -18,10 +18,10 @@ class SimData(ABC):
         pass
 
     @abstractmethod
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
         pass

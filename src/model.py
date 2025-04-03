@@ -1,10 +1,8 @@
 """This module contains:
 - TrafficModel class: A Mesa model simulating traffic."""
 
-import datetime
 import random
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import mesa
 import numpy as np
@@ -364,22 +362,47 @@ class TrafficModel(mesa.Model):
             }
             self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
 
-    @dataclass
-    class DataPath:
-        path: Path = field(
-            default_factory=lambda: Path.joinpath(
-                Path.cwd(),
-                "data",
-                datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
-            )
-        )
+    class DataCollector:
+        """Collects data stored locally by agents"""
 
-        def __post_init__(self):
-            self.path.mkdir(parents=True, exist_ok=True)
+        def __init__(self, agents: list[mesa.Agent], data_name: str) -> None:
+            """Collects data stored locally by agents
+
+            Args:
+                agents (list[mesa.Agent]): AgentSet to collect data from
+                data_name (str): Name of the attribute to retrieve
+
+            Raises:
+                ValueError: If AgentSet is empty
+                TypeError: If attribute is not of type SimData
+            """
+            if not agents:
+                raise ValueError("AgentSet is empty")
+
+            if not isinstance(getattr(agents[0], data_name), SimData):
+                raise TypeError(f"Attribute {data_name} is not a valid data structure.")
+            else:
+                self.data_instance: SimData = getattr(agents[0], data_name)
+                self.data = self.data_instance.get_data()
+
+            for agent in agents[1:]:
+                agent_data_instance: SimData = getattr(agent, data_name)
+                agent_data = agent_data_instance.get_data()
+                self.data.vstack(agent_data, in_place=True)
+
+        def get_data(self) -> pl.DataFrame:
+            """Function to retrieve collected data
+
+            Returns:
+                pl.DataFrame: Combined data
+            """
+            return self.data
 
 
 @dataclass
 class LightIntersectionMapping(SimData):
+    """Mapping table of LightAgents IDs to intersection IDs"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -404,19 +427,25 @@ class LightIntersectionMapping(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(
-            file=Path.joinpath(path, "light_intersection_mapping.parquet")
-        )
+        return self.data
 
 
 @dataclass
 class LightData(SimData):
+    """Metadata of LightAgents
+
+    Includes:
+        - ID
+        - Centrality measured as closeness centrality
+        - Is_Entrypoint: Boolean value indicating whether LightAgent is connected to border node
+    """
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -458,17 +487,19 @@ class LightData(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "lights.parquet"))
+        return self.data
 
 
 @dataclass
 class NumCars(SimData):
+    """Stores the total number of CarAgents in the model"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -496,17 +527,19 @@ class NumCars(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "num_cars.parquet"))
+        return self.data
 
 
 @dataclass
 class Connections(SimData):
+    """Mapping table of all connections including distances"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -548,10 +581,10 @@ class Connections(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "connections.parquet"))
+        return self.data

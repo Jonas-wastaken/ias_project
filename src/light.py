@@ -400,6 +400,8 @@ class LightCooldown(Exception):
 
 @dataclass
 class ArrivalsData(SimData):
+    """Holds the number of cars arriving at a LightAgent instance at each step"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -436,17 +438,19 @@ class ArrivalsData(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "arrivals.parquet"))
+        return self.data
 
 
 @dataclass
 class TrafficData(SimData):
+    """Holds the number of cars at a LightAgent instance at each step"""
+
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
@@ -484,10 +488,10 @@ class TrafficData(SimData):
             in_place=True,
         )
 
-    def save_data(self, path: Path) -> None:
-        """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-        Args:
-            path (Path): Folder path to save the file in
+        Returns:
+            pl.DataFrame: Data
         """
-        self.data.write_parquet(file=Path.joinpath(path, "traffic.parquet"))
+        return self.data
