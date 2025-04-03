@@ -4,6 +4,8 @@
 import mesa
 import random
 import numpy as np
+from dataclasses import dataclass, field
+import polars as pl
 import pyoptinterface as poi
 from pyoptinterface import highs, gurobi
 from networkx import closeness_centrality
@@ -11,6 +13,7 @@ from pathlib import Path
 
 from graph import Graph
 from car import CarAgent
+from data import SimData
 
 
 class LightAgent(mesa.Agent):
@@ -67,6 +70,10 @@ class LightAgent(mesa.Agent):
         super().__init__(model)
         self.position = kwargs.get("position", None)
         self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
+
+        self.arrivals = ArrivalsData()
+        self.traffic = TrafficData()
+
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
         self.open_lane = self.neighbor_lights[
@@ -297,7 +304,7 @@ class LightAgent(mesa.Agent):
 
         return avg_distance
 
-    def check_is_entrypoint(self, grid: Graph) -> bool:
+    def is_entrypoint(self, grid: Graph) -> bool:
         """Checks if intersection is connected to a border.
 
         Args:
@@ -321,7 +328,7 @@ class LightAgent(mesa.Agent):
         num_arrivals = 0
         for car in self.model.get_agents_by_type("CarAgent"):
             car: CarAgent
-            if car.position == self.position and self.model.wait_times.is_arrival(
+            if car.position == self.position and car.wait_times.is_arrival(
                 car=car, light=self
             ):
                 num_arrivals += 1
@@ -389,3 +396,102 @@ class LightCooldown(Exception):
 
     def __str__(self):
         return f"{self.message}"
+
+
+@dataclass
+class ArrivalsData(SimData):
+    """Holds the number of cars arriving at a LightAgent instance at each step"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Arrivals": pl.Int16,
+            },
+            strict=False,
+        )
+
+    def update_data(self, light: LightAgent, steps: int) -> None:
+        """Updates the data
+
+        Args:
+            light (LightAgent): LightAgent instance
+            steps (int): Internal step counter of TrafficModel instance
+        """
+        self.data.vstack(
+            pl.DataFrame(
+                data={
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (steps % 200),
+                    "Arrivals": light.get_num_arrivals(),
+                },
+                schema={
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Arrivals": pl.Int16,
+                },
+            ),
+            in_place=True,
+        )
+
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
+
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
+
+
+@dataclass
+class TrafficData(SimData):
+    """Holds the number of cars at a LightAgent instance at each step"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Num_Cars": pl.Int16,
+            },
+            strict=False,
+        )
+
+    def update_data(self, light: LightAgent, steps: int) -> None:
+        """Updates the data
+
+        Args:
+            light (LightAgent): LightAgent instance
+            steps (int): Internal step counter of TrafficModel instance
+        """
+        self.data.vstack(
+            other=pl.DataFrame(
+                data={
+                    "Light_ID": light.unique_id,
+                    "Time": 200 - (steps % 200),
+                    "Num_Cars": light.get_num_cars(),
+                },
+                schema={
+                    "Light_ID": pl.Int16,
+                    "Time": pl.Int16,
+                    "Num_Cars": pl.Int16,
+                },
+                strict=False,
+            ),
+            in_place=True,
+        )
+
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
+
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data

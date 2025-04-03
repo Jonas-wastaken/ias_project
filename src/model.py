@@ -1,11 +1,8 @@
 """This module contains:
 - TrafficModel class: A Mesa model simulating traffic."""
 
-import datetime
 import random
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import mesa
 import numpy as np
@@ -14,6 +11,7 @@ import polars as pl
 from car import AgentArrived, CarAgent
 from graph import Graph
 from light import LightAgent
+from data import SimData
 
 
 class TrafficModel(mesa.Model):
@@ -97,13 +95,10 @@ class TrafficModel(mesa.Model):
             max_distance=kwargs.get("max_distance", 20),
         )
 
-        self.arrivals = self.ArrivalsData()
-        self.traffic = self.TrafficData()
-        self.wait_times = self.WaitTimes()
-        self.light_intersection_mapping = self.LightIntersectionMapping()
-        self.light_data = self.LightData()
-        self.n_cars = self.NumCars()
-        self.connections = self.Connections()
+        self.light_intersection_mapping = LightIntersectionMapping()
+        self.light_data = LightData()
+        self.n_cars = NumCars()
+        self.connections = Connections()
 
         self.create_lights()
         self.optimization_type = optimization_type
@@ -145,7 +140,7 @@ class TrafficModel(mesa.Model):
                     car.position.startswith("intersection")
                     and car.path[car.position] == 1
                 ):
-                    self.wait_times.update_data(
+                    car.wait_times.update_data(
                         car=car,
                         waiting=car.waiting,
                         light_intersection_mapping=self.light_intersection_mapping.data,
@@ -172,8 +167,8 @@ class TrafficModel(mesa.Model):
             else:
                 light.current_switching_cooldown -= 1
 
-            self.arrivals.update_data(light=light, steps=self.steps)
-            self.traffic.update_data(light=light, steps=self.steps)
+            light.arrivals.update_data(light=light, steps=self.steps)
+            light.traffic.update_data(light=light, steps=self.steps)
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add cars to the model.
@@ -187,7 +182,8 @@ class TrafficModel(mesa.Model):
         self.update_car_paths()
 
         for car in new_cars:
-            self.wait_times.init_wait_times(
+            car: CarAgent
+            car.wait_times.init_wait_times(
                 car=car, light_intersection_mapping=self.light_intersection_mapping.data
             )
 
@@ -366,286 +362,120 @@ class TrafficModel(mesa.Model):
             }
             self.lights_decision_log[light.unique_id][model_step].update(cars_per_lane)
 
-    @dataclass
-    class DataPath:
-        path: Path = field(
-            default_factory=lambda: Path.joinpath(
-                Path.cwd(),
-                "data",
-                datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
-            )
+    class DataCollector:
+        """Collects data stored locally by agents"""
+
+        def __init__(self, agents: list[mesa.Agent], data_name: str) -> None:
+            """Collects data stored locally by agents
+
+            Args:
+                agents (list[mesa.Agent]): AgentSet to collect data from
+                data_name (str): Name of the attribute to retrieve
+
+            Raises:
+                ValueError: If AgentSet is empty
+                TypeError: If attribute is not of type SimData
+            """
+            if not agents:
+                raise ValueError("AgentSet is empty")
+
+            if not isinstance(getattr(agents[0], data_name), SimData):
+                raise TypeError(f"Attribute {data_name} is not a valid data structure.")
+            else:
+                self.data_instance: SimData = getattr(agents[0], data_name)
+                self.data = self.data_instance.get_data()
+
+            for agent in agents[1:]:
+                agent_data_instance: SimData = getattr(agent, data_name)
+                agent_data = agent_data_instance.get_data()
+                self.data.vstack(agent_data, in_place=True)
+
+        def get_data(self) -> pl.DataFrame:
+            """Function to retrieve collected data
+
+            Returns:
+                pl.DataFrame: Combined data
+            """
+            return self.data
+
+
+@dataclass
+class LightIntersectionMapping(SimData):
+    """Mapping table of LightAgents IDs to intersection IDs"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={"Light_ID": pl.Int16, "Intersection": pl.String},
+            strict=False,
         )
 
-        def __post_init__(self):
-            self.path.mkdir(parents=True, exist_ok=True)
+    def update_data(self, light: LightAgent) -> None:
+        """Updates the data
 
-    @dataclass
-    class SimData(ABC):
-        @abstractmethod
-        def __post_init__(self):
-            """Constructs the data schema"""
-            pass
-
-        @abstractmethod
-        def update_data(self) -> None:
-            """Updates the data"""
-            pass
-
-        @abstractmethod
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
-
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            pass
-
-    @dataclass
-    class ArrivalsData(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
-
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
-                schema={
-                    "Index": pl.Int32,
-                    "Light_ID": pl.Int16,
-                    "Time": pl.Int16,
-                    "Arrivals": pl.Int16,
-                },
-                strict=False,
-            )
-
-        def update_data(self, light: LightAgent, steps: int) -> None:
-            """Updates the data
-
-            Args:
-                light (LightAgent): LightAgent instance
-                steps (int): Internal step counter of TrafficModel instance
-            """
-            self.data.vstack(
-                pl.DataFrame(
-                    data={
-                        "Index": steps,
-                        "Light_ID": light.unique_id,
-                        "Time": 200 - (steps % 200),
-                        "Arrivals": light.get_num_arrivals(),
-                    },
-                    schema={
-                        "Index": pl.Int32,
-                        "Light_ID": pl.Int16,
-                        "Time": pl.Int16,
-                        "Arrivals": pl.Int16,
-                    },
-                ),
-                in_place=True,
-            )
-
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
-
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "arrivals.parquet"))
-
-    @dataclass
-    class TrafficData(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
-
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
-                schema={
-                    "Index": pl.Int32,
-                    "Light_ID": pl.Int16,
-                    "Time": pl.Int16,
-                    "Num_Cars": pl.Int16,
-                },
-                strict=False,
-            )
-
-        def update_data(self, light: LightAgent, steps: int) -> None:
-            """Updates the data
-
-            Args:
-                light (LightAgent): LightAgent instance
-                steps (int): Internal step counter of TrafficModel instance
-            """
-            self.data.vstack(
-                other=pl.DataFrame(
-                    data={
-                        "Index": steps,
-                        "Light_ID": light.unique_id,
-                        "Time": 200 - (steps % 200),
-                        "Num_Cars": light.get_num_cars(),
-                    },
-                    schema={
-                        "Index": pl.Int32,
-                        "Light_ID": pl.Int16,
-                        "Time": pl.Int16,
-                        "Num_Cars": pl.Int16,
-                    },
-                    strict=False,
-                ),
-                in_place=True,
-            )
-
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
-
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "traffic.parquet"))
-
-    @dataclass
-    class WaitTimes(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
-
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
-                schema={
-                    "Car_ID": pl.Int32,
-                    "Light_ID": pl.Int16,
-                    "Wait_Time": pl.Int16,
-                },
-                strict=False,
-            )
-
-        def update_data(
-            self, car: CarAgent, waiting: bool, light_intersection_mapping: pl.DataFrame
-        ) -> None:
-            """Updates the data
-
-            Args:
-                car (CarAgent): CarAgent instance
-                waiting (bool): Indicates whether the CarAgent instance is currently waiting at a light
-                light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
-            """
-            light_id = (
-                light_intersection_mapping.filter(
-                    pl.col("Intersection") == car.position
-                )
-                .select(pl.col("Light_ID"))
-                .item()
-            )
-            if not waiting:
-                self.data = self.data.with_columns(
-                    pl.when(
-                        (pl.col("Car_ID") == car.unique_id)
-                        & (pl.col("Light_ID") == light_id)
-                    )
-                    .then(0)
-                    .otherwise(pl.col("Wait_Time"))
-                    .alias("Wait_Time")
-                )
-            elif waiting:
-                self.data = self.data.with_columns(
-                    pl.when(
-                        (pl.col("Car_ID") == car.unique_id)
-                        & (pl.col("Light_ID") == light_id)
-                    )
-                    .then(pl.col("Wait_Time") + 1)
-                    .otherwise(pl.col("Wait_Time"))
-                    .alias("Wait_Time")
-                )
-
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
-
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "wait_times.parquet"))
-
-        def init_wait_times(
-            self, car: CarAgent, light_intersection_mapping: pl.DataFrame
-        ) -> None:
-            """Adds blank entries for each step the CarAgent instance takes through the grid
-
-            Args:
-                car (CarAgent): CarAgent instance
-                light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
-            """
-            for hop in car.path.keys():
-                self.data.vstack(
-                    other=pl.DataFrame(
-                        data={
-                            "Car_ID": car.unique_id,
-                            "Light_ID": light_intersection_mapping.filter(
-                                pl.col("Intersection") == hop
-                            ).select("Light_ID"),
-                            "Wait_Time": None,
-                        },
-                        schema={
-                            "Car_ID": pl.Int32,
-                            "Light_ID": pl.Int16,
-                            "Wait_Time": pl.Int16,
-                        },
-                        strict=False,
-                    ),
-                    in_place=True,
-                )
-
-        def is_arrival(self, car: CarAgent, light: LightAgent) -> bool:
-            if (
-                self.data.filter(
-                    (pl.col("Car_ID") == car.unique_id)
-                    & (pl.col("Light_ID") == light.unique_id)
-                )
-                .select(pl.col("Wait_Time"))
-                .item()
-                == 0
-            ):
-                return True
-            else:
-                return False
-
-    @dataclass
-    class LightIntersectionMapping(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
-
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
+        Args:
+            light (LightAgent): LightAgent instance
+        """
+        self.data = self.data.vstack(
+            other=pl.DataFrame(
+                data={"Light_ID": light.unique_id, "Intersection": light.position},
                 schema={"Light_ID": pl.Int16, "Intersection": pl.String},
                 strict=False,
-            )
+            ),
+            in_place=True,
+        )
 
-        def update_data(self, light: LightAgent) -> None:
-            """Updates the data
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-            Args:
-                light (LightAgent): LightAgent instance
-            """
-            self.data = self.data.vstack(
-                other=pl.DataFrame(
-                    data={"Light_ID": light.unique_id, "Intersection": light.position},
-                    schema={"Light_ID": pl.Int16, "Intersection": pl.String},
-                    strict=False,
-                ),
-                in_place=True,
-            )
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
 
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
 
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(
-                file=Path.joinpath(path, "light_intersection_mapping.parquet")
-            )
+@dataclass
+class LightData(SimData):
+    """Metadata of LightAgents
 
-    @dataclass
-    class LightData(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
+    Includes:
+        - ID
+        - Centrality measured as closeness centrality
+        - Is_Entrypoint: Boolean value indicating whether LightAgent is connected to border node
+    """
 
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Light_ID": pl.Int16,
+                "Centrality": pl.Float32,
+                "Is_Entrypoint": pl.Boolean,
+            },
+            strict=False,
+            orient="row",
+        )
+
+    def update_data(self, light: LightAgent, grid: Graph) -> None:
+        """Updates the data
+
+        Args:
+            light (LightAgent): LightAgent instance
+            grid (Graph): Graph instance the TrafficModel uses
+        """
+        self.data.vstack(
+            other=pl.DataFrame(
+                data=[
+                    (
+                        light.unique_id,
+                        light.get_centrality(grid),
+                        light.is_entrypoint(grid),
+                    )
+                ],
                 schema={
                     "Light_ID": pl.Int16,
                     "Centrality": pl.Float32,
@@ -653,127 +483,108 @@ class TrafficModel(mesa.Model):
                 },
                 strict=False,
                 orient="row",
-            )
+            ),
+            in_place=True,
+        )
 
-        def update_data(self, light: LightAgent, grid: Graph) -> None:
-            """Updates the data
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-            Args:
-                light (LightAgent): LightAgent instance
-                grid (Graph): Graph instance the TrafficModel uses
-            """
-            self.data.vstack(
-                other=pl.DataFrame(
-                    data=[
-                        (
-                            light.unique_id,
-                            light.get_centrality(grid),
-                            light.check_is_entrypoint(grid),
-                        )
-                    ],
-                    schema={
-                        "Light_ID": pl.Int16,
-                        "Centrality": pl.Float32,
-                        "Is_Entrypoint": pl.Boolean,
-                    },
-                    strict=False,
-                    orient="row",
-                ),
-                in_place=True,
-            )
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
 
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
 
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "lights.parquet"))
+@dataclass
+class NumCars(SimData):
+    """Stores the total number of CarAgents in the model"""
 
-    @dataclass
-    class NumCars(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
-                schema={"Time": pl.Int32, "Num_Cars": pl.Int32}, strict=False
-            )
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={"Time": pl.Int32, "Num_Cars": pl.Int32}, strict=False
+        )
 
-        def update_data(self, steps: int, n_cars: int) -> None:
-            """Updates the data
+    def update_data(self, steps: int, n_cars: int) -> None:
+        """Updates the data
 
-            Args:
-                steps (int): Internal step counter of TrafficModel instance
-                n_cars (int): Number of CarAgent instances in TrafficModel
-            """
-            self.data = self.data.vstack(
-                other=pl.DataFrame(
-                    data={
-                        "Time": 200 - (steps % 200),
-                        "Num_Cars": n_cars,
-                    },
-                    schema={"Time": pl.Int32, "Num_Cars": pl.Int32},
-                    strict=False,
-                ),
-                in_place=True,
-            )
+        Args:
+            steps (int): Internal step counter of TrafficModel instance
+            n_cars (int): Number of CarAgent instances in TrafficModel
+        """
+        self.data = self.data.vstack(
+            other=pl.DataFrame(
+                data={
+                    "Time": 200 - (steps % 200),
+                    "Num_Cars": n_cars,
+                },
+                schema={"Time": pl.Int32, "Num_Cars": pl.Int32},
+                strict=False,
+            ),
+            in_place=True,
+        )
 
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "num_cars.parquet"))
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
 
-    @dataclass
-    class Connections(SimData):
-        data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
-        def __post_init__(self):
-            """Constructs the data schema"""
-            self.data = pl.DataFrame(
+@dataclass
+class Connections(SimData):
+    """Mapping table of all connections including distances"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Intersection_u": pl.String,
+                "Intersection_v": pl.String,
+                "Distance": pl.Int16,
+            },
+            strict=False,
+        )
+
+    def update_data(
+        self, intersection_u: str, intersection_v: str, distance: int
+    ) -> None:
+        """Updates the data
+
+        Args:
+            intersection_u (str): Intersection u
+            intersection_v (str): Intersection v
+            distance (int): Weight of edge between intersection_u and intersection_v
+        """
+
+        self.data.vstack(
+            other=pl.DataFrame(
+                data={
+                    "Intersection_u": intersection_u,
+                    "Intersection_v": intersection_v,
+                    "Distance": distance,
+                },
                 schema={
                     "Intersection_u": pl.String,
                     "Intersection_v": pl.String,
                     "Distance": pl.Int16,
                 },
                 strict=False,
-            )
+            ),
+            in_place=True,
+        )
 
-        def update_data(
-            self, intersection_u: str, intersection_v: str, distance: int
-        ) -> None:
-            """Updates the data
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
 
-            Args:
-                intersection_u (str): Intersection u
-                intersection_v (str): Intersection v
-                distance (int): Weight of edge between intersection_u and intersection_v
-            """
-
-            self.data.vstack(
-                other=pl.DataFrame(
-                    data={
-                        "Intersection_u": intersection_u,
-                        "Intersection_v": intersection_v,
-                        "Distance": distance,
-                    },
-                    schema={
-                        "Intersection_u": pl.String,
-                        "Intersection_v": pl.String,
-                        "Distance": pl.Int16,
-                    },
-                    strict=False,
-                ),
-                in_place=True,
-            )
-
-        def save_data(self, path: Path) -> None:
-            """Writes the data to a parquet file.
-
-            Args:
-                path (Path): Folder path to save the file in
-            """
-            self.data.write_parquet(file=Path.joinpath(path, "connections.parquet"))
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data

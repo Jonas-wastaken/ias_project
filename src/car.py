@@ -4,7 +4,11 @@
 
 import mesa
 import random
+from dataclasses import dataclass, field
+import polars as pl
 from networkx import dijkstra_path
+
+from data import SimData
 
 
 class CarAgent(mesa.Agent):
@@ -48,6 +52,8 @@ class CarAgent(mesa.Agent):
         self.waiting = False
         self.global_waiting_time = 0  # TODO: löschen?
         self.travel_time = 0
+
+        self.wait_times = WaitTimes()
 
     def compute_goal(self) -> str:
         """Assigns a random border node, which is not the starting node, as the goal of the car.
@@ -159,3 +165,108 @@ class AgentArrived(Exception):
 
     def __str__(self):
         return f"{self.message}"
+
+
+@dataclass
+class WaitTimes(SimData):
+    """Holds the wait time of CarAgent instance at each light"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Car_ID": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Wait_Time": pl.Int16,
+            },
+            strict=False,
+        )
+
+    def update_data(
+        self, car: CarAgent, waiting: bool, light_intersection_mapping: pl.DataFrame
+    ) -> None:
+        """Updates the data
+
+        Args:
+            car (CarAgent): CarAgent instance
+            waiting (bool): Indicates whether the CarAgent instance is currently waiting at a light
+            light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
+        """
+        light_id = (
+            light_intersection_mapping.filter(pl.col("Intersection") == car.position)
+            .select(pl.col("Light_ID"))
+            .item()
+        )
+        if not waiting:
+            self.data = self.data.with_columns(
+                pl.when(
+                    (pl.col("Car_ID") == car.unique_id)
+                    & (pl.col("Light_ID") == light_id)
+                )
+                .then(0)
+                .otherwise(pl.col("Wait_Time"))
+                .alias("Wait_Time")
+            )
+        elif waiting:
+            self.data = self.data.with_columns(
+                pl.when(
+                    (pl.col("Car_ID") == car.unique_id)
+                    & (pl.col("Light_ID") == light_id)
+                )
+                .then(pl.col("Wait_Time") + 1)
+                .otherwise(pl.col("Wait_Time"))
+                .alias("Wait_Time")
+            )
+
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
+
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
+
+    def init_wait_times(
+        self, car: CarAgent, light_intersection_mapping: pl.DataFrame
+    ) -> None:
+        """Adds blank entries for each step the CarAgent instance takes through the grid
+
+        Args:
+            car (CarAgent): CarAgent instance
+            light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
+        """
+        for hop in car.path.keys():
+            self.data.vstack(
+                other=pl.DataFrame(
+                    data={
+                        "Car_ID": car.unique_id,
+                        "Light_ID": light_intersection_mapping.filter(
+                            pl.col("Intersection") == hop
+                        ).select("Light_ID"),
+                        "Wait_Time": None,
+                    },
+                    schema={
+                        "Car_ID": pl.Int32,
+                        "Light_ID": pl.Int16,
+                        "Wait_Time": pl.Int16,
+                    },
+                    strict=False,
+                ),
+                in_place=True,
+            )
+
+    def is_arrival(self, car: CarAgent, light) -> bool:
+        if (
+            self.data.filter(
+                (pl.col("Car_ID") == car.unique_id)
+                & (pl.col("Light_ID") == light.unique_id)
+            )
+            .select(pl.col("Wait_Time"))
+            .item()
+            == 0
+        ):
+            return True
+        else:
+            return False

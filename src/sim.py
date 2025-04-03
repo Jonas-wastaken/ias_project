@@ -1,5 +1,8 @@
 import argparse
 import time
+from pathlib import Path
+from dataclasses import dataclass, field
+import datetime
 from model import TrafficModel
 
 
@@ -33,6 +36,43 @@ def parse_args() -> argparse.Namespace:
         "-s", "--steps", type=int, default=10000, help="Number of steps"
     )
     return parser.parse_args()
+
+
+@dataclass
+class DataPath:
+    """Holds a Path object representing the directory where sim data is stored in"""
+
+    path: Path = field(
+        default_factory=lambda: Path.joinpath(
+            Path.cwd(),
+            "data",
+            datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
+        )
+    )
+
+    def __post_init__(self):
+        """Create the directory"""
+        self.path.mkdir(parents=True, exist_ok=True)
+
+    def get_path(self) -> Path:
+        """Get directory where data is stored
+
+        Returns:
+            Path: Path object
+        """
+        return self.path
+
+    def get_file_path(self, filename: str) -> Path:
+        """Constructs a file path from a directory
+
+        Args:
+            filename (str): Name of the file to store
+
+        Returns:
+            Path: Path object
+        """
+        file_path = Path.joinpath(self.path, filename)
+        return file_path
 
 
 class Sim:
@@ -70,14 +110,33 @@ class Sim:
         print(
             f"Avg. time per 100 steps: {round((((time.time() - start_time) / model.steps) * 100), 2)}"
         )
-        self.data_path = model.DataPath().path
-        model.arrivals.save_data(self.data_path)
-        model.traffic.save_data(self.data_path)
-        model.wait_times.save_data(self.data_path)
-        model.light_intersection_mapping.save_data(self.data_path)
-        model.light_data.save_data(self.data_path)
-        model.n_cars.save_data(self.data_path)
-        model.connections.save_data(self.data_path)
+
+        self.data_path = DataPath()
+        model.DataCollector(
+            agents=model.get_agents_by_type("LightAgent"), data_name="arrivals"
+        ).get_data().write_parquet(
+            file=self.data_path.get_file_path("arrivals.parquet")
+        )
+        model.DataCollector(
+            agents=model.get_agents_by_type("LightAgent"), data_name="traffic"
+        ).get_data().write_parquet(file=self.data_path.get_file_path("traffic.parquet"))
+        model.DataCollector(
+            agents=model.get_agents_by_type("CarAgent"), data_name="wait_times"
+        ).get_data().write_parquet(
+            file=self.data_path.get_file_path("wait_times.parquet")
+        )
+        model.light_intersection_mapping.get_data().write_parquet(
+            file=self.data_path.get_file_path("light_intersection_mapping.parquet")
+        )
+        model.light_data.get_data().write_parquet(
+            file=self.data_path.get_file_path("light_data.parquet")
+        )
+        model.n_cars.get_data().write_parquet(
+            file=self.data_path.get_file_path("n_cars.parquet")
+        )
+        model.connections.get_data().write_parquet(
+            file=self.data_path.get_file_path("connections.parquet")
+        )
 
 
 if __name__ == "__main__":
@@ -85,5 +144,5 @@ if __name__ == "__main__":
     print(f"Starting simulation with config:\n{config}")
     print(100 * "-")
     sim = Sim(config)
-    print(f"Simulation data stored in: data/{sim.data_path}")
+    print(f"Simulation data stored in: data/{sim.data_path.get_path()}")
     print(f"Config: {config}")
