@@ -37,13 +37,15 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
     if args.num_cars is None:
-        args.num_cars = args.num_intersections * random.randint(20, 30)
+        args.num_cars = int(round((args.num_intersections * random.uniform(20, 30), 0)))
     if args.num_borders is None:
-        args.num_borders = args.num_intersections * random.randint(3, 10)
+        args.num_borders = int(
+            round((args.num_intersections * random.randint(3, 10)), 0)
+        )
     if args.min_distance is None:
         args.min_distance = random.randint(5, 10)
     if args.max_distance is None:
-        args.max_distance = args.min_distance * random.randint(2, 4)
+        args.max_distance = int(round((args.min_distance * random.randint(2, 4)), 0))
     return args
 
 
@@ -153,5 +155,5 @@ if __name__ == "__main__":
     print(f"Starting simulation with config:\n{config}")
     print(100 * "-")
     sim = Sim(config)
-    print(f"Simulation data stored in: data/{sim.data_path.get_path()}")
+    print(f"Simulation data stored in: {sim.data_path.get_path()}")
     print(f"Config: {config}")
