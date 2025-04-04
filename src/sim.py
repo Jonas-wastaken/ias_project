@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
     if args.num_cars is None:
-        args.num_cars = int(round((args.num_intersections * random.uniform(20, 30), 0)))
+        args.num_cars = int(round((args.num_intersections * random.uniform(20, 30)), 0))
     if args.num_borders is None:
         args.num_borders = int(
             round((args.num_intersections * random.randint(3, 10)), 0)
