@@ -1,5 +1,6 @@
 import argparse
 import time
+import random
 from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
@@ -14,28 +15,36 @@ def parse_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Traffic Simulation Configuration")
     parser.add_argument(
-        "-c", "--num_cars", type=int, default=100, help="Number of cars"
-    )
-    parser.add_argument(
         "-i",
         "--num_intersections",
         type=int,
-        default=100,
+        default=random.randint(75, 125),
         help="Number of intersections",
     )
     parser.add_argument(
-        "-b", "--num_borders", type=int, default=30, help="Number of borders"
+        "-c", "--num_cars", type=int, default=None, help="Number of cars"
     )
     parser.add_argument(
-        "-min", "--min_distance", type=int, default=10, help="Minimum distance"
+        "-b", "--num_borders", type=int, default=None, help="Number of borders"
     )
     parser.add_argument(
-        "-max", "--max_distance", type=int, default=20, help="Maximum distance"
+        "-min", "--min_distance", type=int, default=None, help="Minimum distance"
     )
     parser.add_argument(
-        "-s", "--steps", type=int, default=10000, help="Number of steps"
+        "-max", "--max_distance", type=int, default=None, help="Maximum distance"
     )
-    return parser.parse_args()
+    parser.add_argument("-s", "--steps", type=int, default=1000, help="Number of steps")
+
+    args = parser.parse_args()
+    if args.num_cars is None:
+        args.num_cars = args.num_intersections * random.randint(20, 30)
+    if args.num_borders is None:
+        args.num_borders = args.num_intersections * random.randint(3, 10)
+    if args.min_distance is None:
+        args.min_distance = random.randint(5, 10)
+    if args.max_distance is None:
+        args.max_distance = args.min_distance * random.randint(2, 4)
+    return args
 
 
 @dataclass
