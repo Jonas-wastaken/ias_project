@@ -30,6 +30,7 @@ ipython==8.31.0
 ipywidgets==8.1.5
 jedi==0.19.2
 Jinja2==3.1.6
+joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 jupyter_client==8.6.3
@@ -78,7 +79,9 @@ referencing==0.36.1
 requests==2.32.3
 rich==13.9.4
 rpds-py==0.22.3
+scikit-learn==1.6.1
 scipy==1.15.1
+seaborn==0.13.2
 six==1.17.0
 smmap==5.0.2
 soupsieve==2.6
@@ -99,6 +102,7 @@ streamlit-keyup==0.3.0
 streamlit-toggle-switch==1.0.2
 streamlit-vertical-slider==2.5.5
 tenacity==9.0.0
+threadpoolctl==3.6.0
 toml==0.10.2
 tornado==6.4.2
 tqdm==4.67.1
