@@ -432,6 +432,7 @@ class ArrivalsData(SimData):
         """Constructs the data schema"""
         self.data = pl.DataFrame(
             schema={
+                "Step": pl.Int32,
                 "Light_ID": pl.Int16,
                 "Time": pl.Int16,
                 "Arrivals": pl.Int16,
@@ -449,11 +450,13 @@ class ArrivalsData(SimData):
         self.data.vstack(
             pl.DataFrame(
                 data={
+                    "Step": steps,
                     "Light_ID": light.unique_id,
                     "Time": 200 - (steps % 200),
                     "Arrivals": light.get_num_arrivals(),
                 },
                 schema={
+                    "Step": pl.Int32,
                     "Light_ID": pl.Int16,
                     "Time": pl.Int16,
                     "Arrivals": pl.Int16,
@@ -481,6 +484,7 @@ class TrafficData(SimData):
         """Constructs the data schema"""
         self.data = pl.DataFrame(
             schema={
+                "Step": pl.Int32,
                 "Light_ID": pl.Int16,
                 "Time": pl.Int16,
                 "Num_Cars": pl.Int16,
@@ -498,11 +502,13 @@ class TrafficData(SimData):
         self.data.vstack(
             other=pl.DataFrame(
                 data={
+                    "Step": steps,
                     "Light_ID": light.unique_id,
                     "Time": 200 - (steps % 200),
                     "Num_Cars": light.get_num_cars(),
                 },
                 schema={
+                    "Step": pl.Int32,
                     "Light_ID": pl.Int16,
                     "Time": pl.Int16,
                     "Num_Cars": pl.Int16,
