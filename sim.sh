@@ -7,7 +7,7 @@ NUM_BORDERS=$((NUM_INTERSECTIONS * (RANDOM % 3 + 2))) # -b
 NUM_CARS=$((NUM_INTERSECTIONS * (RANDOM % 6 + 5))) # -c
 MIN_DISTANCE=$((RANDOM % 16 + 5)) # -min
 MAX_DISTANCE=$((MIN_DISTANCE * (RANDOM % 3 + 2))) # -max
-STEPS=10000 # -s
+STEPS=1000 # -s
 
 # Print the generated values (optional, for debugging or verification)
 echo "NUM_INTERSECTIONS: $NUM_INTERSECTIONS"

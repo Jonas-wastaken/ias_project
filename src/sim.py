@@ -100,7 +100,7 @@ class Sim:
 
         for _ in range(config.steps):
             model.step()
-            if model.steps % 100 == 0:
+            if model.steps % 10 == 0:
                 print(f"Completed {model.steps} of {config.steps} steps...")
                 print(
                     f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config.steps - model.steps))} seconds..."
@@ -108,7 +108,7 @@ class Sim:
                 print(100 * "-")
         print("Sim completed!")
         print(
-            f"Avg. time per 100 steps: {round((((time.time() - start_time) / model.steps) * 100), 2)}"
+            f"Avg. time per 10 steps: {round((((time.time() - start_time) / model.steps) * 10), 2)}"
         )
 
         self.data_path = DataPath()
