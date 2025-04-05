@@ -29,7 +29,7 @@ ipykernel==6.29.5
 ipython==8.31.0
 ipywidgets==8.1.5
 jedi==0.19.2
-Jinja2==3.1.6
+Jinja2==3.1.5
 joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
@@ -114,3 +114,4 @@ validators==0.34.0
 watchdog==6.0.0
 wcwidth==0.2.13
 widgetsnbextension==4.0.13
+xgboost==3.0.0
