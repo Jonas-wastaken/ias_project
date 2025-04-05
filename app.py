@@ -224,11 +224,6 @@ class CarPathContainer:
         cols = st.columns([0.3, 0.1, 0.4, 0.1, 0.1], vertical_alignment="center")
         with cols[0]:
             st.subheader(f"Light {light.unique_id}")
-        # with cols[1]:
-        #     num_cars = self.NumCars(st.session_state["model"]).num_cars
-        #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
-        # with cols[2]:
-        #     self.render_full_path(car)
         with cols[3]:
             if st.button("<-", key="lights_left"):
                 self.scroll_left("scroll_index_lights")
@@ -356,15 +351,18 @@ class SettingsContainer:
         - Number of Borders
         - Distance Range
         - Run Steps
+        - Optimization Type
         """
         with st.form(key="Settings"):
             num_cars = self.NumCarsInput().num_cars
             num_intersections = self.NumIntersectionsInput().num_intersections
             num_borders = self.NumBordersInput().num_borders
             distance_range = self.DistanceRangeSlider().distance_range
+            optimization_type = self.OptimizationTypeInput().optimization_type
+    
             if st.form_submit_button("Submit"):
                 self.update_env_config(
-                    num_cars, num_intersections, num_borders, distance_range
+                    num_cars, num_intersections, num_borders, distance_range, optimization_type
                 )
 
     @dataclass
@@ -444,12 +442,32 @@ class SettingsContainer:
                 ),
             )
 
+    @dataclass
+    class OptimizationTypeInput:
+        """Dataclass for the optimization type input field.
+
+        ## Attributes:
+            **optimization_type (str)**: Optimization type input by the user.
+        """
+
+        optimization_type: str
+
+        def __init__(self):
+            """Initializes the optimization type input field with a default value from session state."""
+            self.optimization_type = st.selectbox(
+                label="Optimization Type",
+                options=["none", "basic", "advanced"],
+                index=2,
+                label_visibility="collapsed",
+            )
+    
     def update_env_config(
         self,
         num_cars: int,
         num_intersections: int,
         num_borders: int,
         distance_range: tuple[int, int],
+        optimization_type: str,
     ):
         del st.session_state["model"]
         st.session_state["model"] = TrafficModel(
@@ -458,6 +476,7 @@ class SettingsContainer:
             num_borders=num_borders,
             min_distance=distance_range[0],
             max_distance=distance_range[1],
+            optimization_type=optimization_type,
         )
         st.query_params["run_steps"] = 0
         st.query_params["scroll_index_cars"] = 0
