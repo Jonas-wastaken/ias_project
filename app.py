@@ -280,14 +280,12 @@ class CarPathContainer:
             else None
         )
         is_waiting = car.waiting
-        global_waiting_time = car.global_waiting_time
 
         path_dict = {
             "Current Position": str(current_position).title().replace("_", " "),
             "Next Position": str(next_position).title().replace("_", " "),
             "Distance": str(distance),
             "Waiting": str(is_waiting),
-            "Waiting Time": str(global_waiting_time),
         }
 
         return path_dict
@@ -519,7 +517,7 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_cars=15, num_intersections=5, num_borders=10)
+        st.session_state["model"] = TrafficModel(num_cars=15, num_intersections=5, num_borders=10, optimization_type="advanced")
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:

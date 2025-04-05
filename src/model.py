@@ -106,6 +106,14 @@ class TrafficModel(mesa.Model):
         self.update_car_paths()
         self.lights_decision_log = {}
         self.create_cars(num_cars)
+        self.global_car_waiting_times = pl.DataFrame(
+            schema={
+                "Car_ID": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Wait_Time": pl.Int16,
+            },
+            strict=False,
+        )
 
     def step(self) -> None:
         """Advances the environment to next state.

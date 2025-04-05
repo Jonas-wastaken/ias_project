@@ -23,7 +23,7 @@ class LightAgent(mesa.Agent):
 
     Attributes:
         position (str): The ID of the node, where the agent is currently located.
-        waiting_cars (dict): A nested dictionary of cars waiting at the intersection. (outer dict: cars; inner dict: last_intersection, global_waiting_time, local_waiting_time)
+        waiting_cars (dict): A nested dictionary of cars waiting at the intersection. (outer dict: cars; inner dict: last_intersection, local_waiting_time)
         default_switching_cooldown (int): The default number of steps the agent waits before changing the open lane again.
         current_switching_cooldown (int): The current number of steps the agent has to wait before changing the open lane again.
         neighbor_lights (list): A list of the neighboring lights of the agent.
@@ -96,7 +96,7 @@ class LightAgent(mesa.Agent):
         """
         if self.current_switching_cooldown <= 0:
             if optimization_type == "none":
-                self.rotate_in_open_lane_cycle()
+                self.change_open_lane(self.rotate_in_open_lane_cycle())
             elif optimization_type == "simple":
                 self.change_open_lane(self.optimize_open_lane())
             elif optimization_type == "advanced":
