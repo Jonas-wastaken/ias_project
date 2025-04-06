@@ -62,13 +62,15 @@ class TrafficGraph(go.Figure):
         node_color = self.create_node_color()
         node_trace = self.create_trace_nodes(node_x, node_y, node_color)
         node_trace.text = self.create_node_text()
+        border_x, border_y = self.get_coords_borders()
+        border_trace = self.create_trace_borders(border_x, border_y)
         light_x, light_y = self.get_coords_lights()
         arrows = self.create_trace_lights(light_x, light_y)
         car_x, car_y = self.get_coords_cars()
         car_trace = self.create_trace_cars(car_x, car_y)
 
         # Create the figure
-        self.add_traces([edge_trace, node_trace, car_trace])
+        self.add_traces([edge_trace, node_trace, border_trace, car_trace])
         self.update_layout(
             showlegend=False,
             hovermode="closest",
@@ -80,27 +82,6 @@ class TrafficGraph(go.Figure):
             width=width,
         )
 
-    def get_coords_edges(self) -> tuple[np.array, np.array]:
-        """Get the x and y coordinates of the edges.
-
-        Returns:
-            tuple[np.array, np.array]: Arrays of x and y coordinates of the edges
-        """
-        edge_x = np.empty(shape=(0,), dtype=np.float16)
-        edge_y = np.empty(shape=(0,), dtype=np.float16)
-
-        for edge in self._model.grid.edges():
-            x0, y0 = self._model.grid.nodes[edge[0]]["pos"]
-            x1, y1 = self._model.grid.nodes[edge[1]]["pos"]
-            edge_x = np.append(arr=edge_x, values=x0)
-            edge_x = np.append(arr=edge_x, values=x1)
-            edge_x = np.append(arr=edge_x, values=None)
-            edge_y = np.append(arr=edge_y, values=y0)
-            edge_y = np.append(arr=edge_y, values=y1)
-            edge_y = np.append(arr=edge_y, values=None)
-
-        return edge_x, edge_y
-
     def get_coords_nodes(self) -> tuple[np.array, np.array]:
         """Get the x and y coordinates of the nodes.
 
@@ -111,30 +92,12 @@ class TrafficGraph(go.Figure):
         node_y = np.empty(shape=(0,), dtype=np.float16)
 
         for node in self._model.grid.nodes(data="pos"):
-            x, y = node[1]
-            node_x = np.append(arr=node_x, values=x)
-            node_y = np.append(arr=node_y, values=y)
+            if node[0].startswith("intersection"):
+                x, y = node[1]
+                node_x = np.append(arr=node_x, values=x)
+                node_y = np.append(arr=node_y, values=y)
 
         return node_x, node_y
-
-    def create_trace_edges(self, edge_x: np.array, edge_y: np.array) -> go.Scatter:
-        """Create a plotly trace for the edges.
-
-        Args:
-            edge_x (np.array): X coordinates of the edges
-            edge_y (np.array): Y coordinates of the edges
-
-        Returns:
-            go.Scatter: Plotly trace for the edges
-        """
-        edge_trace = go.Scatter(
-            x=edge_x,
-            y=edge_y,
-            line=dict(width=0.5, color="#888"),
-            hoverinfo="none",
-            mode="lines",
-        )
-        return edge_trace
 
     def create_trace_nodes(
         self, node_x: np.array, node_y: np.array, node_color: list
@@ -155,7 +118,7 @@ class TrafficGraph(go.Figure):
             mode="markers",
             hoverinfo="text",
             marker=dict(
-                color=node_color,
+                color="#C140FF",
                 size=10,
                 line_width=1,
             ),
@@ -195,6 +158,105 @@ class TrafficGraph(go.Figure):
 
         return node_text
 
+    def get_coords_edges(self) -> tuple[np.array, np.array]:
+        """Get the x and y coordinates of the edges.
+
+        Returns:
+            tuple[np.array, np.array]: Arrays of x and y coordinates of the edges
+        """
+        edge_x = np.empty(shape=(0,), dtype=np.float16)
+        edge_y = np.empty(shape=(0,), dtype=np.float16)
+
+        for edge in self._model.grid.edges():
+            if edge[0].startswith("i") and edge[1].startswith("i"):
+                x0, y0 = self._model.grid.nodes[edge[0]]["pos"]
+                x1, y1 = self._model.grid.nodes[edge[1]]["pos"]
+                edge_x = np.append(arr=edge_x, values=x0)
+                edge_x = np.append(arr=edge_x, values=x1)
+                edge_x = np.append(arr=edge_x, values=None)
+                edge_y = np.append(arr=edge_y, values=y0)
+                edge_y = np.append(arr=edge_y, values=y1)
+                edge_y = np.append(arr=edge_y, values=None)
+
+        return edge_x, edge_y
+
+    def create_trace_edges(self, edge_x: np.array, edge_y: np.array) -> go.Scatter:
+        """Create a plotly trace for the edges.
+
+        Args:
+            edge_x (np.array): X coordinates of the edges
+            edge_y (np.array): Y coordinates of the edges
+
+        Returns:
+            go.Scatter: Plotly trace for the edges
+        """
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=0.5, color="#888"),
+            hoverinfo="none",
+            mode="lines",
+        )
+        return edge_trace
+
+    def get_coords_border(self, border: str) -> tuple[float, float]:
+        intersection_u, intersection_v = self._model.grid.neighbors(border)
+
+        distance_intersection_u = self._model.grid.get_edge_data(
+            u=intersection_u, v=border
+        )["weight"]
+
+        distance_intersections = self._model.grid.get_edge_data(
+            u=intersection_u, v=intersection_v
+        )["weight"]
+
+        intersection_u_coords = np.array(self._model.grid.nodes[intersection_u]["pos"])
+        intersection_v_coords = np.array(self._model.grid.nodes[intersection_v]["pos"])
+
+        vector = intersection_v_coords - intersection_u_coords
+        steps = vector / distance_intersections
+
+        border_coords = intersection_u_coords + steps * (
+            distance_intersections - distance_intersection_u
+        )
+
+        return border_coords[0], border_coords[1]
+
+    def get_coords_borders(self) -> tuple[np.array, np.array]:
+        border_x = np.empty(shape=(0,), dtype=np.float16)
+        border_y = np.empty(shape=(0,), dtype=np.float16)
+
+        for border in self._model.grid.get_nodes(type="border"):
+            border_coords = self.get_coords_border(border)
+            border_x = np.append(arr=border_x, values=border_coords[0])
+            border_y = np.append(arr=border_y, values=border_coords[1])
+
+        return border_x, border_y
+
+    def create_trace_borders(self, border_x: list, border_y: list) -> go.Scatter:
+        """Create a plotly trace for the nodes.
+
+        Args:
+            border_x (list): X coordinates of the borders
+            border_y (list): Y coordinates of the borders
+
+        Returns:
+            go.Scatter: Plotly trace for the cars
+        """
+        car_trace = go.Scatter(
+            x=border_x,
+            y=border_y,
+            mode="markers",
+            hoverinfo=None,
+            marker=dict(
+                color="#7FF9E2",
+                size=7.5,
+                line_width=1,
+            ),
+        )
+
+        return car_trace
+
     def get_coords_cars(self) -> tuple[np.array, np.array]:
         """Get the x and y coordinates of the cars.
 
@@ -204,6 +266,8 @@ class TrafficGraph(go.Figure):
             - Calculates the vector between the current and next position.
             - Determines the steps as the vector length divided by the edge weight.
             - Computes the current position on the path by calculating the total steps taken on the current path.
+
+        - Handles custom computation of position of border nodes
 
         If an IndexError occurs (e.g., the car has reached its goal), it retrieves the goal position coordinates.
 
@@ -223,10 +287,25 @@ class TrafficGraph(go.Figure):
                     "weight"
                 ]
 
-                current_pos_coords = np.array(
-                    self._model.grid.nodes[current_pos]["pos"]
-                )
-                next_pos_coords = np.array(self._model.grid.nodes[next_pos]["pos"])
+                if car.position.startswith("i") and list(car.path.keys())[1].startswith(
+                    "i"
+                ):
+                    current_pos_coords = np.array(
+                        self._model.grid.nodes[current_pos]["pos"]
+                    )
+                    next_pos_coords = np.array(self._model.grid.nodes[next_pos]["pos"])
+                elif car.position.startswith("b") and list(car.path.keys())[
+                    1
+                ].startswith("i"):
+                    current_pos_coords = np.array(self.get_coords_border(current_pos))
+                    next_pos_coords = np.array(self._model.grid.nodes[next_pos]["pos"])
+                elif car.position.startswith("i") and list(car.path.keys())[
+                    1
+                ].startswith("b"):
+                    current_pos_coords = np.array(
+                        self._model.grid.nodes[current_pos]["pos"]
+                    )
+                    next_pos_coords = self.get_coords_border(car.goal)
 
                 vector = next_pos_coords - current_pos_coords
                 steps = vector / edge_weight
@@ -235,7 +314,7 @@ class TrafficGraph(go.Figure):
                 car_x = np.append(arr=car_x, values=current_position[0])
                 car_y = np.append(arr=car_y, values=current_position[1])
             except IndexError:
-                x, y = self._model.grid.nodes[car.goal]["pos"]
+                x, y = self.get_coords_border(car.goal)
                 car_x = np.append(arr=car_x, values=x)
                 car_y = np.append(arr=car_y, values=y)
 
@@ -320,7 +399,7 @@ class TrafficGraph(go.Figure):
                     arrowhead=3,
                     arrowsize=1.25,
                     arrowwidth=1.25,
-                    arrowcolor="#777",
+                    arrowcolor="green",
                 )
             )
             for i in range(0, len(light_x) - 1, 2)
