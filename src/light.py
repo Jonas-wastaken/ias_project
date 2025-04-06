@@ -277,7 +277,7 @@ class LightAgent(mesa.Agent):
 
     def _load_gurobi_secrets(self) -> dict:
         """Loads Gurobi secrets from the license file."""
-        license_path = Path.joinpath(Path(".secrets/"), Path("gurobi.lic"))
+        license_path = Path.joinpath(Path.cwd(), Path(".secrets/"), Path("gurobi.lic"))
         secrets = {}
         with open(license_path, "r") as file:
             for line in file:
