@@ -29,10 +29,10 @@ def parse_args() -> dict:
         "-b", "--num_borders", type=int, default=None, help="Number of borders"
     )
     parser.add_argument(
-        "-min", "--min_distance", type=int, default=None, help="Minimum distance"
+        "-m", "--min_distance", type=int, default=None, help="Minimum distance"
     )
     parser.add_argument(
-        "-max", "--max_distance", type=int, default=None, help="Maximum distance"
+        "-x", "--max_distance", type=int, default=None, help="Maximum distance"
     )
     parser.add_argument(
         "-o",
@@ -47,11 +47,11 @@ def parse_args() -> dict:
 
     if config["num_cars"] is None:
         config["num_cars"] = int(
-            round((config["num_intersections"] * random.uniform(20, 30)), 0)
+            round((config["num_intersections"] * random.uniform(10, 20)), 0)
         )
     if config["num_borders"] is None:
         config["num_borders"] = int(
-            round((config["num_intersections"] * random.randint(3, 10)), 0)
+            round((config["num_intersections"] * random.randint(3, 5)), 0)
         )
     if config["min_distance"] is None:
         config["min_distance"] = random.randint(5, 10)
