@@ -17,8 +17,7 @@ import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 import pandas as pd
 
-sys.path.append(os.path.join(os.getcwd(), "src"))
-
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from model import TrafficModel
 from graph_viz import TrafficGraph
 from car import CarAgent
