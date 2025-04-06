@@ -399,7 +399,7 @@ class TrafficGraph(go.Figure):
                     arrowhead=3,
                     arrowsize=1.25,
                     arrowwidth=1.25,
-                    arrowcolor="#777",
+                    arrowcolor="green",
                 )
             )
             for i in range(0, len(light_x) - 1, 2)
