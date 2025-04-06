@@ -12,6 +12,7 @@ from car import CarAgent
 from graph import Graph
 from light import LightAgent
 from data import SimData
+from regressor import Regressor
 
 
 class TrafficModel(mesa.Model):
@@ -58,7 +59,7 @@ class TrafficModel(mesa.Model):
         self,
         num_cars: int,
         seed: int = None,
-        optimization_type: str = "advanced",
+        optimization_type: str = "advanced_ml",
         **kwargs,
     ):
         """Initializes a new traffic environment.
@@ -81,7 +82,7 @@ class TrafficModel(mesa.Model):
                 - min_distance (int): Minimum distance between nodes. Defaults to 10.
                 - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
-        if optimization_type not in ["none", "simple", "advanced"]:
+        if optimization_type not in ["none", "simple", "advanced", "advanced_ml"]:
             raise ValueError(
                 f"Optimization type '{optimization_type}' not supported. Supported optimizations are: none, simple, advanced."
             )
@@ -102,6 +103,8 @@ class TrafficModel(mesa.Model):
 
         self.create_lights()
         self.optimization_type = optimization_type
+        if self.optimization_type == "advanced_ml":
+            self.regressor = Regressor()
         self.car_paths = {}
         self.update_car_paths()
         self.lights_decision_log = {}

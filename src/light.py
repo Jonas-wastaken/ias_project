@@ -101,6 +101,8 @@ class LightAgent(mesa.Agent):
                 self.change_open_lane(self.optimize_open_lane())
             elif optimization_type == "advanced":
                 self.change_open_lane(self.optimize_open_lane_with_cooldown())
+            elif optimization_type == "advanced_ml":
+                self.change_open_lane  # TODO
         else:
             self.current_switching_cooldown -= 1
 
@@ -203,6 +205,65 @@ class LightAgent(mesa.Agent):
 
         opt_model.optimize()
         return self._get_optimal_lane(opt_model, lanes, possible_lanes)
+
+    def advanced_ml_optimzier(self) -> str:
+        """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
+        light_cooldown = self.default_switching_cooldown
+        secrets = self._load_gurobi_secrets()
+        env = self._initialize_gurobi_env(secrets)
+        opt_model = gurobi.Model(env)
+        opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
+
+        possible_lanes = self.neighbor_lights
+        time = range(-1, light_cooldown + 1)
+        cars_at_light = self.predict_cars_at_light(time)  # TODO: change
+        current_open_lane = self.open_lane
+
+        lanes = self._initialize_lanes(
+            opt_model, time, possible_lanes, current_open_lane
+        )
+        self._add_constraints(opt_model, lanes, time, possible_lanes)
+        self._set_objective(opt_model, lanes, cars_at_light, time, possible_lanes)
+
+        opt_model.optimize()
+        return self._get_optimal_lane(opt_model, lanes, possible_lanes)
+
+    def predict_cars_at_light(self, time) -> dict:
+        cars_at_light = {tick: {} for tick in time[1:]}
+        for tick in time[1:]:
+            for neighbor in self.neighbor_lights:
+                model_time = 200 - (self.model.steps % 200)
+                centrality = self.get_centrality(grid=self.model.grid)
+                distance = (
+                    self.model.connections.data.filter(
+                        (pl.col("Intersection_v") == self.position)
+                        & (pl.col("Intersection_v") == neighbor)
+                    )
+                    .select(pl.col("Distance"))
+                    .item()
+                )
+                light_agent: LightAgent = self.model.agents[
+                    self.model.light_intersection_mapping.data.filter(
+                        pl.col("Intersection") == neighbor
+                    )
+                    .select(pl.col("Light_ID"))
+                    .item()
+                ]
+                incoming_cars = (
+                    light_agent.traffic.data.filter(
+                        pl.col("Step") == (self.model.steps - 5)
+                    )
+                    .select(pl.col("Num_Cars"))
+                    .item()
+                )
+
+            cars_at_light[tick] = {
+                neighbor: self.model.regressor.predict(
+                    model_time, centrality, distance, incoming_cars
+                )
+            }
+
+        return cars_at_light
 
     def _load_gurobi_secrets(self) -> dict:
         """Loads Gurobi secrets from the license file."""
