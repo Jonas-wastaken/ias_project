@@ -9,7 +9,7 @@ STEPS="1000"
 OPTIMIZATION_TYPES=("none" "simple" "advanced" "advanced_ml")
 
 for opt_type in "${OPTIMIZATION_TYPES[@]}"; do
-    python src/sim.py \
+    python sim.py \
         -i "$NUM_INTERSECTIONS" \
         -b "$NUM_BORDERS" \
         -c "$NUM_CARS" \
