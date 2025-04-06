@@ -10,7 +10,7 @@ import datetime
 
 sys.path.append(Path.joinpath(Path.cwd(), Path("src")))
 
-from model import TrafficModel
+from src.model import TrafficModel
 
 
 def parse_args() -> dict:
