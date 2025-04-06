@@ -1,17 +1,18 @@
 import argparse
 import time
 import random
+import json
 from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
 from model import TrafficModel
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args() -> dict:
     """Parses command line arguments for the traffic simulation configuration.
 
     Returns:
-        argparse.Namespace: Parsed command line arguments.
+        dict: Parsed command line arguments as a dictionary.
     """
     parser = argparse.ArgumentParser(description="Traffic Simulation Configuration")
     parser.add_argument(
@@ -28,25 +29,38 @@ def parse_args() -> argparse.Namespace:
         "-b", "--num_borders", type=int, default=None, help="Number of borders"
     )
     parser.add_argument(
-        "-min", "--min_distance", type=int, default=None, help="Minimum distance"
+        "-m", "--min_distance", type=int, default=None, help="Minimum distance"
     )
     parser.add_argument(
-        "-max", "--max_distance", type=int, default=None, help="Maximum distance"
+        "-x", "--max_distance", type=int, default=None, help="Maximum distance"
+    )
+    parser.add_argument(
+        "-o",
+        "--optimization_type",
+        type=str,
+        default="advanced_ml",
+        help="Optimization technique used for the LightAgents. One of: ['none', 'simple', 'advanced', 'advanced_ml']",
     )
     parser.add_argument("-s", "--steps", type=int, default=1000, help="Number of steps")
 
-    args = parser.parse_args()
-    if args.num_cars is None:
-        args.num_cars = int(round((args.num_intersections * random.uniform(20, 30)), 0))
-    if args.num_borders is None:
-        args.num_borders = int(
-            round((args.num_intersections * random.randint(3, 10)), 0)
+    config = vars(parser.parse_args())
+
+    if config["num_cars"] is None:
+        config["num_cars"] = int(
+            round((config["num_intersections"] * random.uniform(10, 20)), 0)
         )
-    if args.min_distance is None:
-        args.min_distance = random.randint(5, 10)
-    if args.max_distance is None:
-        args.max_distance = int(round((args.min_distance * random.randint(2, 4)), 0))
-    return args
+    if config["num_borders"] is None:
+        config["num_borders"] = int(
+            round((config["num_intersections"] * random.randint(3, 5)), 0)
+        )
+    if config["min_distance"] is None:
+        config["min_distance"] = random.randint(5, 10)
+    if config["max_distance"] is None:
+        config["max_distance"] = int(
+            round((config["min_distance"] * random.randint(2, 4)), 0)
+        )
+
+    return config
 
 
 @dataclass
@@ -100,23 +114,26 @@ class Sim:
             config (argparse.Namespace): Configuration parameters for the simulation.
         """
         model = TrafficModel(
-            num_cars=config.num_cars,
-            num_intersections=config.num_intersections,
-            num_borders=config.num_borders,
-            min_distance=config.min_distance,
-            max_distance=config.max_distance,
+            num_cars=config["num_cars"],
+            optimization_type=config["optimization_type"],
+            num_intersections=config["num_intersections"],
+            num_borders=config["num_borders"],
+            min_distance=config["min_distance"],
+            max_distance=config["max_distance"],
         )
+
+        log_interval = 100 if config["optimization_type"] in ["none", "simple"] else 1
 
         start_time = time.time()
 
-        for _ in range(config.steps):
+        for _ in range(config["steps"]):
             model.step()
-            # if model.steps % 10 == 0:
-            print(f"Completed {model.steps} of {config.steps} steps...")
-            print(
-                f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config.steps - model.steps))} seconds..."
-            )
-            print(100 * "-")
+            if model.steps % log_interval == 0:
+                print(f"Completed {model.steps} of {config['steps']} steps...")
+                print(
+                    f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config['steps'] - model.steps))} seconds..."
+                )
+                print(100 * "-")
         print("Sim completed!")
         print(
             f"Avg. time per 10 steps: {round((((time.time() - start_time) / model.steps) * 10), 2)}"
@@ -148,13 +165,14 @@ class Sim:
         model.connections.get_data().write_parquet(
             file=self.data_path.get_file_path("connections.parquet")
         )
-        print(f"{model.optimization_type}")
 
 
 if __name__ == "__main__":
     config = parse_args()
-    print(f"Starting simulation with config:\n{config}")
+    print(f"Starting simulation with config: {config}")
     print(100 * "-")
     sim = Sim(config)
+    with open(file=sim.data_path.get_file_path("config.json"), mode="w") as file:
+        json.dump(obj=config, fp=file, indent=4)
     print(f"Simulation data stored in: {sim.data_path.get_path()}")
     print(f"Config: {config}")
