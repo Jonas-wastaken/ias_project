@@ -8,10 +8,10 @@ from sklearn.ensemble import RandomForestRegressor
 class Regressor:
     def __init__(self):
         self.scaler: StandardScaler = joblib.load(
-            os.path.join("artifacts", "scaler.pkl")
+            os.path.join("..", "artifacts", "scaler.pkl")
         )
         self.model: RandomForestRegressor = joblib.load(
-            os.path.join("artifacts", "model.pkl")
+            os.path.join("..", "artifacts", "model.pkl")
         )
 
     def scale_input(
