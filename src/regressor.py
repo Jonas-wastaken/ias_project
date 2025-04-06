@@ -17,7 +17,7 @@ class Regressor:
     def scale_input(
         self, time: int, centrality: float, distance: int, incoming_cars: int
     ) -> np.array:
-        x = np.array([time, centrality, distance, incoming_cars])
+        x = np.array([time, centrality, distance, incoming_cars]).reshape(1, -1)
         x = self.scaler.transform(x)
 
         return x
@@ -29,6 +29,6 @@ class Regressor:
             self.scale_input(time, centrality, distance, incoming_cars)
         )
 
-        y = int(round(y, 0))
+        y = np.round(y, 0).astype(int)
 
-        return y
+        return int(y[0])

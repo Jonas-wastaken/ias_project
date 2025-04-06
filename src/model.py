@@ -117,6 +117,10 @@ class TrafficModel(mesa.Model):
         - Updates simulation data
         - CarAgents are respawned based on current time and number of cars in the model
         """
+        self.n_cars.update_data(
+            steps=self.steps, n_cars=len(self.get_agents_by_type("CarAgent"))
+        )
+
         for light in self.get_agents_by_type("LightAgent"):
             light: LightAgent
             light.step(optimization_type=self.optimization_type, steps=self.steps)
@@ -125,9 +129,6 @@ class TrafficModel(mesa.Model):
             car: CarAgent
             car.step()
 
-        self.n_cars.update_data(
-            steps=self.steps, n_cars=len(self.get_agents_by_type("CarAgent"))
-        )
         self.car_respawn()
 
     def create_cars(self, num_cars: int) -> None:

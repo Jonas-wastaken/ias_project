@@ -102,7 +102,7 @@ class LightAgent(mesa.Agent):
             elif optimization_type == "advanced":
                 self.change_open_lane(self.optimize_open_lane_with_cooldown())
             elif optimization_type == "advanced_ml":
-                self.change_open_lane  # TODO
+                self.change_open_lane(self.advanced_ml_optimizer())
         else:
             self.current_switching_cooldown -= 1
 
@@ -206,7 +206,7 @@ class LightAgent(mesa.Agent):
         opt_model.optimize()
         return self._get_optimal_lane(opt_model, lanes, possible_lanes)
 
-    def advanced_ml_optimzier(self) -> str:
+    def advanced_ml_optimizer(self) -> str:
         """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
         light_cooldown = self.default_switching_cooldown
         secrets = self._load_gurobi_secrets()
@@ -216,7 +216,7 @@ class LightAgent(mesa.Agent):
 
         possible_lanes = self.neighbor_lights
         time = range(-1, light_cooldown + 1)
-        cars_at_light = self.predict_cars_at_light(time)  # TODO: change
+        cars_at_light = self.predict_cars_at_light(time)
         current_open_lane = self.open_lane
 
         lanes = self._initialize_lanes(
@@ -231,37 +231,47 @@ class LightAgent(mesa.Agent):
     def predict_cars_at_light(self, time) -> dict:
         cars_at_light = {tick: {} for tick in time[1:]}
         for tick in time[1:]:
+            cars_per_lane = {neighbor: {} for neighbor in self.neighbor_lights}
             for neighbor in self.neighbor_lights:
                 model_time = 200 - (self.model.steps % 200)
                 centrality = self.get_centrality(grid=self.model.grid)
                 distance = (
                     self.model.connections.data.filter(
                         (pl.col("Intersection_v") == self.position)
-                        & (pl.col("Intersection_v") == neighbor)
+                        & (pl.col("Intersection_u") == neighbor)
                     )
                     .select(pl.col("Distance"))
                     .item()
                 )
-                light_agent: LightAgent = self.model.agents[
-                    self.model.light_intersection_mapping.data.filter(
-                        pl.col("Intersection") == neighbor
-                    )
-                    .select(pl.col("Light_ID"))
-                    .item()
-                ]
+                light_agent: LightAgent = self.model.get_agents_by_id(
+                    [
+                        self.model.light_intersection_mapping.data.filter(
+                            pl.col("Intersection") == neighbor
+                        )
+                        .select(pl.col("Light_ID"))
+                        .item()
+                    ]
+                )[0]
                 incoming_cars = (
-                    light_agent.traffic.data.filter(
-                        pl.col("Step") == (self.model.steps - 5)
+                    (
+                        light_agent.traffic.data.filter(
+                            pl.col("Step") == (self.model.steps - 5)
+                        )
+                        .select(pl.col("Num_Cars"))
+                        .item()
                     )
-                    .select(pl.col("Num_Cars"))
-                    .item()
+                    if light_agent.traffic.data.filter(
+                        pl.col("Step") == (self.model.steps - 5)
+                    ).height
+                    > 0
+                    else 0
                 )
 
-            cars_at_light[tick] = {
-                neighbor: self.model.regressor.predict(
+                cars_per_lane[neighbor] = self.model.regressor.predict(
                     model_time, centrality, distance, incoming_cars
                 )
-            }
+
+            cars_at_light[tick] = cars_per_lane
 
         return cars_at_light
 
