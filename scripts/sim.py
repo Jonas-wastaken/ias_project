@@ -1,3 +1,5 @@
+import sys
+import os
 import argparse
 import time
 import random
@@ -5,6 +7,9 @@ import json
 from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
 from model import TrafficModel
 
 
