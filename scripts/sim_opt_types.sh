@@ -1,4 +1,5 @@
 #!/bin/bash
+# execute from working directory
 
 NUM_INTERSECTIONS="50"
 NUM_BORDERS="150"
@@ -9,7 +10,7 @@ STEPS="1000"
 OPTIMIZATION_TYPES=("none" "simple" "advanced" "advanced_ml")
 
 for opt_type in "${OPTIMIZATION_TYPES[@]}"; do
-    python sim.py \
+    python scripts/sim.py \
         -i "$NUM_INTERSECTIONS" \
         -b "$NUM_BORDERS" \
         -c "$NUM_CARS" \
