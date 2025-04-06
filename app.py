@@ -17,7 +17,7 @@ import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 import pandas as pd
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(os.path.join(os.getcwd(), "src"))
 
 from model import TrafficModel
 from graph_viz import TrafficGraph
@@ -141,7 +141,6 @@ class CarPathContainer:
             int(st.query_params["scroll_index_lights"])
         ]
 
-
         self.render_current_path(car)
         self.render_lights_info(light)
 
@@ -163,16 +162,19 @@ class CarPathContainer:
         """
 
         if query_index == "scroll_index_lights":
-            if int(st.query_params[query_index]) < st.session_state["env_config"]["num_intersections"] - 1:
+            if (
+                int(st.query_params[query_index])
+                < st.session_state["env_config"]["num_intersections"] - 1
+            ):
                 st.query_params[query_index] = int(st.query_params[query_index]) + 1
                 st.rerun(scope="fragment")
         if query_index == "scroll_index_cars":
-            if int(st.query_params[query_index]) < st.session_state["env_config"]["num_cars"] - 1:
+            if (
+                int(st.query_params[query_index])
+                < st.session_state["env_config"]["num_cars"] - 1
+            ):
                 st.query_params[query_index] = int(st.query_params[query_index]) + 1
                 st.rerun(scope="fragment")
-
-
-        
 
     def render_current_path(self, car: CarAgent) -> None:
         """Renders a car's path.
@@ -182,7 +184,9 @@ class CarPathContainer:
         """
         cols = st.columns([0.3, 0.1, 0.4, 0.1, 0.1], vertical_alignment="center")
         with cols[0]:
-            st.subheader(f"Car {car.unique_id - st.session_state["env_config"]["num_intersections"]}")
+            st.subheader(
+                f"Car {car.unique_id - st.session_state['env_config']['num_intersections']}"
+            )
         # with cols[1]:
         #     num_cars = self.NumCars(st.session_state["model"]).num_cars
         #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
@@ -231,11 +235,10 @@ class CarPathContainer:
             if st.button("->", key="lights_right"):
                 self.scroll_right("scroll_index_lights")
         st.dataframe(
-            self.get_lights_info(light),   
+            self.get_lights_info(light),
             use_container_width=True,
             column_config={"value": st.column_config.TextColumn("")},
         )
-
 
     def get_full_path(self, car_id: int) -> list[tuple[str, int]]:
         """Creates a List with the full path a car agent takes.
@@ -285,8 +288,7 @@ class CarPathContainer:
 
         return path_dict
 
-
-    def get_lights_info (self, light: LightAgent):
+    def get_lights_info(self, light: LightAgent):
         """Creates a dict with the position, all lanes, current open lane, switching cooldown and the waiting cars from each lane.
 
         Args:
@@ -312,7 +314,6 @@ class CarPathContainer:
             lights_info[f"Waiting Cars {lane}"] = str(waiting_cars[lane])
 
         return lights_info
-
 
     # @dataclass
     # class NumCars:
@@ -359,10 +360,14 @@ class SettingsContainer:
             num_borders = self.NumBordersInput().num_borders
             distance_range = self.DistanceRangeSlider().distance_range
             optimization_type = self.OptimizationTypeInput().optimization_type
-    
+
             if st.form_submit_button("Submit"):
                 self.update_env_config(
-                    num_cars, num_intersections, num_borders, distance_range, optimization_type
+                    num_cars,
+                    num_intersections,
+                    num_borders,
+                    distance_range,
+                    optimization_type,
                 )
 
     @dataclass
@@ -460,7 +465,7 @@ class SettingsContainer:
                 index=2,
                 label_visibility="collapsed",
             )
-    
+
     def update_env_config(
         self,
         num_cars: int,
@@ -536,7 +541,12 @@ if __name__ == "__main__":
         st.query_params["run_steps"] = 0
 
     if "model" not in st.session_state:
-        st.session_state["model"] = TrafficModel(num_cars=15, num_intersections=5, num_borders=10, optimization_type="advanced")
+        st.session_state["model"] = TrafficModel(
+            num_cars=15,
+            num_intersections=5,
+            num_borders=10,
+            optimization_type="advanced",
+        )
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:
