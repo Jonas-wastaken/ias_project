@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -8,10 +8,10 @@ from sklearn.ensemble import RandomForestRegressor
 class Regressor:
     def __init__(self):
         self.scaler: StandardScaler = joblib.load(
-            os.path.join("artifacts", "scaler.pkl")
+            Path.joinpath(Path.cwd(), "artifacts", "scaler.pkl")
         )
         self.model: RandomForestRegressor = joblib.load(
-            os.path.join("artifacts", "model.pkl")
+            Path.joinpath(Path.cwd(), "artifacts", "model.pkl")
         )
 
     def scale_input(
