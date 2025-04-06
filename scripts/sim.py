@@ -7,8 +7,8 @@ import json
 from dataclasses import dataclass, field
 import datetime
 
-sys.path.append(Path.cwd())
-sys.path.append(Path.joinpath(Path.cwd(), Path("src")))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 
 from src.model import TrafficModel
 
