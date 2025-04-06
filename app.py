@@ -10,14 +10,15 @@ This module contains:
 """
 
 import sys
-import os
+from pathlib import Path
 import time
 from dataclasses import dataclass
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 import pandas as pd
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(str(Path(__file__).resolve().parent / "src"))
+
 from model import TrafficModel
 from graph_viz import TrafficGraph
 from car import CarAgent
@@ -269,13 +270,7 @@ class CarPathContainer:
             next_position: str = list(car.path.keys())[1]
         except IndexError:
             next_position = None
-        distance = (
-            st.session_state["model"].grid.get_edge_data(
-                current_position, next_position
-            )["weight"]
-            if next_position
-            else None
-        )
+        distance = car.path[car.position] if next_position else None
         is_waiting = car.waiting
 
         path_dict = {
