@@ -337,7 +337,7 @@ class TrafficGraph(go.Figure):
             mode="markers",
             hoverinfo=None,
             marker=dict(
-                color="red",
+                color="#FF8300",
                 size=5,
                 line_width=1,
             ),
