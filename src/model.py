@@ -72,7 +72,7 @@ class TrafficModel(mesa.Model):
             num_cars (int): Number of car agents to spawn.
             sim_mode (bool): If True, the model is in simulation mode. Defaults to False.
             seed (int, optional): Seed used in model generation. Defaults to None.
-            optimization (str): Optimization technique used for the lights (none, simple, advanced). Defaults to "advanced".
+            optimization (str): Optimization technique used for the LightAgents. One of: ['none', 'simple', 'advanced', 'advanced_ml']. Defaults to "advanced_ml".
                 - none: No optimization, lights are open in a fixed cycle.
                 - simple: Lights are opened based on the current number of cars waiting at each lane, not taking the switching cooldown into account.
                 - advanced: Lights are opened based on the current and future number of cars waiting at each lane and taking the switching cooldown into account.
