@@ -122,7 +122,7 @@ class Sim:
             max_distance=config["max_distance"],
         )
 
-        log_interval = 100 if config["optimization_type"] in ["none", "simple"] else 1
+        log_interval = 10 if config["optimization_type"] in ["none", "simple"] else 1
 
         start_time = time.time()
 
