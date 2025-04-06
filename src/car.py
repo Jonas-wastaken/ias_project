@@ -22,7 +22,6 @@ class CarAgent(mesa.Agent):
         path (dict): A dictionary containing the steps in the car's path as keys and the distance to the next step as values.
         position (str): The ID of the node, where the car is currently located.
         waiting (bool): A flag indicating whether the car is waiting at a traffic light.
-        global_waiting_time (int): The total time the car has spent waiting at traffic lights.
         travel_time (int): The total time the car has spent traveling.
 
     ## Methods:
@@ -50,7 +49,6 @@ class CarAgent(mesa.Agent):
         self.goal = self.compute_goal()
         self.path = self.compute_path()
         self.waiting = False
-        self.global_waiting_time = 0  # TODO: löschen?
         self.travel_time = 0
 
         self.wait_times = WaitTimes()
@@ -67,10 +65,9 @@ class CarAgent(mesa.Agent):
         """
         try:
             self.move()
-            self.travel_time += 1
             if (
-                self.position.startswith("intersection")
-                and self.path[self.position] == 1
+                self.check_if_car_at_light()
+                # and self.position.startswith("intersection")
             ):
                 self.wait_times.update_data(
                     car=self,
@@ -78,6 +75,9 @@ class CarAgent(mesa.Agent):
                     light_intersection_mapping=self.model.light_intersection_mapping.data,
                 )
         except AgentArrived:
+            self.model.global_car_waiting_times.vstack(
+                other=self.wait_times.data, in_place=True
+            )
             self.remove()
 
     def compute_goal(self) -> str:
@@ -137,10 +137,31 @@ class CarAgent(mesa.Agent):
                     self.position = steps[next_index]
                 else:
                     self.path[self.position] = self.path.get(self.position) - 1
-        else:
-            self.global_waiting_time += 1
 
         self.travel_time += 1
+
+    def check_if_car_at_light(self) -> bool:
+        """Checks if the car is at a light.
+
+        Returns:
+            bool: True if the car is at a light, False otherwise.
+        """
+        current_intersection = list(
+            self.model.get_agents_by_id([self.unique_id])[0].path
+        )[0]
+        current_distance = list(
+            self.model.get_agents_by_id([self.unique_id])[0].path.values()
+        )[0]
+
+        if self.position.startswith("intersection"):
+            at_light = (
+                self.model.car_paths[self.unique_id][current_intersection]
+                == current_distance
+            )
+        else:
+            at_light = False
+
+        return at_light
 
     def check_lights(self) -> None:
         """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
@@ -160,6 +181,7 @@ class CarAgent(mesa.Agent):
             )
         else:
             at_light = False
+        # at_light = self.check_if_car_at_light()
 
         if at_light:
             current_light = [
