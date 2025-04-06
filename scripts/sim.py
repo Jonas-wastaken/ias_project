@@ -4,10 +4,10 @@ import argparse
 import time
 import random
 import json
-from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
 
+sys.path.append(Path.cwd())
 sys.path.append(Path.joinpath(Path.cwd(), Path("src")))
 
 from src.model import TrafficModel
