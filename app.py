@@ -542,9 +542,9 @@ if __name__ == "__main__":
 
     if "model" not in st.session_state:
         st.session_state["model"] = TrafficModel(
-            num_cars=15,
-            num_intersections=5,
-            num_borders=10,
+            num_cars=10,
+            num_intersections=10,
+            num_borders=20,
             optimization_type="advanced",
         )
     model: TrafficModel = st.session_state["model"]
