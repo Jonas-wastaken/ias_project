@@ -184,10 +184,13 @@ logs/
 *.log
 
 # Data
-# data/
+data/
 
 # DS Store
 .DS_Store
 
 # Secrets
 .secrets/*
+
+# Artifacts
+*/artifacts/*

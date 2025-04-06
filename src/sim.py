@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
         "-i",
         "--num_intersections",
         type=int,
-        default=random.randint(75, 125),
+        default=random.randint(25, 75),
         help="Number of intersections",
     )
     parser.add_argument(
@@ -111,12 +111,12 @@ class Sim:
 
         for _ in range(config.steps):
             model.step()
-            if model.steps % 10 == 0:
-                print(f"Completed {model.steps} of {config.steps} steps...")
-                print(
-                    f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config.steps - model.steps))} seconds..."
-                )
-                print(100 * "-")
+            # if model.steps % 10 == 0:
+            print(f"Completed {model.steps} of {config.steps} steps...")
+            print(
+                f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config.steps - model.steps))} seconds..."
+            )
+            print(100 * "-")
         print("Sim completed!")
         print(
             f"Avg. time per 10 steps: {round((((time.time() - start_time) / model.steps) * 10), 2)}"
@@ -148,6 +148,7 @@ class Sim:
         model.connections.get_data().write_parquet(
             file=self.data_path.get_file_path("connections.parquet")
         )
+        print(f"{model.optimization_type}")
 
 
 if __name__ == "__main__":
