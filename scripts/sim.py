@@ -8,7 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(os.path.join("..", "src"))
 
 from model import TrafficModel
 
