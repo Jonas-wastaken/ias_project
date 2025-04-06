@@ -1,5 +1,5 @@
+from pathlib import Path
 import sys
-import os
 import argparse
 import time
 import random
@@ -8,7 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 import datetime
 
-sys.path.append(os.path.join("..", "src"))
+sys.path.append(Path.joinpath(Path.cwd(), Path("src")))
 
 from model import TrafficModel
 
