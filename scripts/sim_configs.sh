@@ -4,37 +4,24 @@
 NUM_INTERSECTIONS=("25" "50" "100")
 NUM_BORDERS=("25" "50" "100")
 NUM_CARS=("25" "50" "100")
-MIN_DISTANCE="2"
-MAX_DISTANCE="8"
 STEPS="1000"
 OPTIMIZATION_TYPE="advanced_ml"
 
 for intersections in "${NUM_INTERSECTIONS[@]}"; do
     for borders in "${NUM_BORDERS[@]}"; do
-        for cars in "${NUM_CARS[@]}"; do
-            python scripts/sim.py --num_intersections "$intersections" --num_borders "$borders" --num_cars "$cars" --min_distance "$MIN_DISTANCE" --max_distance "$MAX_DISTANCE" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
-        done
+        python scripts/sim.py --num_intersections "$intersections" --num_borders "$borders" --num_cars "50" --min_distance "9" --max_distance "15" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
     done
 done
 
-MIN_DISTANCE="9"
-MAX_DISTANCE="15"
-
-for intersections in "${NUM_INTERSECTIONS[@]}"; do
-    for borders in "${NUM_BORDERS[@]}"; do
-        for cars in "${NUM_CARS[@]}"; do
-            python scripts/sim.py --num_intersections "$intersections" --num_borders "$borders" --num_cars "$cars" --min_distance "$MIN_DISTANCE" --max_distance "$MAX_DISTANCE" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
-        done
-    done
+for cars in "${NUM_CARS[@]}"; do
+    python scripts/sim.py --num_intersections "25" --num_borders "50" --num_cars "$cars" --min_distance "2" --max_distance "8" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
 done
 
-MIN_DISTANCE="16"
-MAX_DISTANCE="22"
-
-for intersections in "${NUM_INTERSECTIONS[@]}"; do
-    for borders in "${NUM_BORDERS[@]}"; do
-        for cars in "${NUM_CARS[@]}"; do
-            python scripts/sim.py --num_intersections "$intersections" --num_borders "$borders" --num_cars "$cars" --min_distance "$MIN_DISTANCE" --max_distance "$MAX_DISTANCE" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
-        done
-    done
+for cars in "${NUM_CARS[@]}"; do
+    python scripts/sim.py --num_intersections "25" --num_borders "50" --num_cars "$cars" --min_distance "9" --max_distance "15" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
 done
+
+for cars in "${NUM_CARS[@]}"; do
+    python scripts/sim.py --num_intersections "25" --num_borders "50" --num_cars "$cars" --min_distance "16" --max_distance "22" --steps "$STEPS" --optimization_type "$OPTIMIZATION_TYPE"
+done
+
