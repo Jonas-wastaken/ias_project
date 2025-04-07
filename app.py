@@ -78,6 +78,13 @@ class App:
 
         with outer_cols[1]:
             inner_cols = st.columns([0.55, 0.25, 0.2])
+            with inner_cols[0]:
+                with st.popover(
+                    label="Settings",
+                    help="Adjust the Settings of the Model",
+                    use_container_width=True,
+                ):
+                    SettingsContainer()
             with inner_cols[1]:
                 st.session_state["auto_run_steps"] = st.number_input(
                     label="Auto Run Steps",
@@ -91,7 +98,6 @@ class App:
                 ):
                     st.query_params["run_steps"] = st.session_state["auto_run_steps"]
                     self.step(fig)
-            SettingsContainer()
             if st.session_state["env_config"]["num_cars"] > 0:
                 CarPathContainer()
 
@@ -379,7 +385,7 @@ class SettingsContainer:
             self.num_cars = st.number_input(
                 label="Number of Cars",
                 min_value=0,
-                value=st.session_state["env_config"]["num_cars"],
+                value=st.session_state["model"].num_cars,
                 key="num_cars",
             )
 
