@@ -455,7 +455,7 @@ class SettingsContainer:
             """Initializes the optimization type input field with a default value from session state."""
             self.optimization_type = st.selectbox(
                 label="Optimization Type",
-                options=["none", "basic", "advanced", "advanced_ml"],
+                options=["none", "simple", "advanced", "advanced_ml"],
                 index=3,
                 label_visibility="collapsed",
             )
