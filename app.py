@@ -536,15 +536,15 @@ if __name__ == "__main__":
 
     if "model" not in st.session_state:
         st.session_state["model"] = TrafficModel(
-            num_cars=10,
-            num_intersections=10,
-            num_borders=20,
-            optimization_type="advanced",
+            num_cars=15,
+            num_intersections=15,
+            num_borders=30,
+            optimization_type="advanced_ml",
         )
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:
-        st.session_state["auto_run_steps"] = 200
+        st.session_state["auto_run_steps"] = 1
 
     st.session_state["env_config"] = {
         "num_intersections": len(model.grid.get_nodes("intersection")),
