@@ -119,7 +119,7 @@ class TrafficGraph(go.Figure):
             hoverinfo="text",
             marker=dict(
                 color="#C140FF",
-                size=10,
+                size=12.5,
                 line_width=1,
             ),
         )
@@ -193,7 +193,7 @@ class TrafficGraph(go.Figure):
         edge_trace = go.Scatter(
             x=edge_x,
             y=edge_y,
-            line=dict(width=0.5, color="#888"),
+            line=dict(width=0.75, color="#888"),
             hoverinfo="none",
             mode="lines",
         )
@@ -250,7 +250,7 @@ class TrafficGraph(go.Figure):
             hoverinfo=None,
             marker=dict(
                 color="#7FF9E2",
-                size=7.5,
+                size=10,
                 line_width=1,
             ),
         )
@@ -338,7 +338,7 @@ class TrafficGraph(go.Figure):
             hoverinfo=None,
             marker=dict(
                 color="#FF8300",
-                size=5,
+                size=7.5,
                 line_width=1,
             ),
         )
