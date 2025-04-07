@@ -58,7 +58,7 @@ class TrafficModel(mesa.Model):
     def __init__(
         self,
         num_cars: int,
-        seed: int = None,
+        seed: int = 42,
         optimization_type: str = "advanced_ml",
         **kwargs,
     ):
@@ -82,12 +82,14 @@ class TrafficModel(mesa.Model):
                 - min_distance (int): Minimum distance between nodes. Defaults to 10.
                 - max_distance (int): Maximum distance between nodes. Defaults to 20.
         """
+        super().__init__(seed=seed)
+
         if optimization_type not in ["none", "simple", "advanced", "advanced_ml"]:
             raise ValueError(
                 f"Optimization type '{optimization_type}' not supported. Supported optimizations are: none, simple, advanced."
             )
-
-        super().__init__(seed=seed)
+        else:
+            self.optimization_type = optimization_type
 
         self.grid = Graph(
             num_intersections=kwargs.get("num_intersections", 15),
@@ -96,19 +98,19 @@ class TrafficModel(mesa.Model):
             max_distance=kwargs.get("max_distance", 20),
         )
 
+        self.num_cars = num_cars
         self.light_intersection_mapping = LightIntersectionMapping()
         self.light_data = LightData()
         self.n_cars = NumCars()
         self.connections = Connections()
 
         self.create_lights()
-        self.optimization_type = optimization_type
         if self.optimization_type == "advanced_ml":
             self.regressor = Regressor()
         self.car_paths = {}
         self.update_car_paths()
         self.lights_decision_log = {}
-        self.create_cars(num_cars)
+        self.create_cars(self.num_cars)
         self.global_car_waiting_times = pl.DataFrame(
             schema={
                 "Car_ID": pl.Int32,

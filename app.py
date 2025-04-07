@@ -10,6 +10,7 @@ This module contains:
 """
 
 import sys
+import json
 from pathlib import Path
 import time
 from dataclasses import dataclass
@@ -78,6 +79,13 @@ class App:
 
         with outer_cols[1]:
             inner_cols = st.columns([0.55, 0.25, 0.2])
+            with inner_cols[0]:
+                with st.popover(
+                    label="Settings",
+                    help="Adjust the Settings of the Model",
+                    use_container_width=True,
+                ):
+                    SettingsContainer()
             with inner_cols[1]:
                 st.session_state["auto_run_steps"] = st.number_input(
                     label="Auto Run Steps",
@@ -91,7 +99,6 @@ class App:
                 ):
                     st.query_params["run_steps"] = st.session_state["auto_run_steps"]
                     self.step(fig)
-            SettingsContainer()
             if st.session_state["env_config"]["num_cars"] > 0:
                 CarPathContainer()
 
@@ -190,8 +197,8 @@ class CarPathContainer:
         # with cols[1]:
         #     num_cars = self.NumCars(st.session_state["model"]).num_cars
         #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
-        with cols[2]:
-            self.render_full_path(car)
+        # with cols[2]:
+        # self.render_full_path(car)
         with cols[3]:
             if st.button("<-", key="cars_left"):
                 self.scroll_left("scroll_index_cars")
@@ -240,21 +247,25 @@ class CarPathContainer:
             column_config={"value": st.column_config.TextColumn("")},
         )
 
-    def get_full_path(self, car_id: int) -> list[tuple[str, int]]:
-        """Creates a List with the full path a car agent takes.
+    # def get_full_path(self, car_id: int) -> str:
+    #     """Creates a List with the full path a car agent takes.
 
-        Args:
-            car_id (int): ID of CarAgent instance
+    #     Args:
+    #         car_id (int): ID of CarAgent instance
 
-        Returns:
-            list[tuple[str, int]]: List of tuples with node id and distance to next step.
-        """
-        path = [
-            (node.title().replace("_", " "), distance)
-            for node, distance in st.session_state["model"].car_paths[car_id].items()
-        ]
+    #     Returns:
+    #         list[tuple[str, int]]: List of tuples with node id and distance to next step.
+    #     """
+    #     path = ""
+    #     for hop in st.session_state["model"].car_paths[car_id].items():
+    #         path += " "
+    #         path += str(hop[0]).title().replace("_", " ")
+    #         path += ": "
+    #         path += str(hop[1])
+    #         path += " ->"
+    #         path += "\n"
 
-        return path
+    #     return path
 
     def get_current_path(self, car: CarAgent) -> dict:
         """Creates a dict with the current (last) position, next position, distance to next position, waiting status and waiting time of a car agent.
@@ -379,7 +390,7 @@ class SettingsContainer:
             self.num_cars = st.number_input(
                 label="Number of Cars",
                 min_value=0,
-                value=st.session_state["env_config"]["num_cars"],
+                value=st.session_state["model"].num_cars,
                 key="num_cars",
             )
 
@@ -455,7 +466,7 @@ class SettingsContainer:
             """Initializes the optimization type input field with a default value from session state."""
             self.optimization_type = st.selectbox(
                 label="Optimization Type",
-                options=["none", "basic", "advanced", "advanced_ml"],
+                options=["none", "simple", "advanced", "advanced_ml"],
                 index=3,
                 label_visibility="collapsed",
             )
@@ -536,15 +547,15 @@ if __name__ == "__main__":
 
     if "model" not in st.session_state:
         st.session_state["model"] = TrafficModel(
-            num_cars=10,
-            num_intersections=10,
-            num_borders=20,
-            optimization_type="advanced",
+            num_cars=15,
+            num_intersections=15,
+            num_borders=30,
+            optimization_type="advanced_ml",
         )
     model: TrafficModel = st.session_state["model"]
 
     if "auto_run_steps" not in st.session_state:
-        st.session_state["auto_run_steps"] = 200
+        st.session_state["auto_run_steps"] = 1
 
     st.session_state["env_config"] = {
         "num_intersections": len(model.grid.get_nodes("intersection")),
