@@ -217,7 +217,9 @@ class TrafficModel(mesa.Model):
 
         return agents
 
-    def get_last_intersection_of_car(self, car_id: int) -> str:
+    def get_last_intersection_of_car(
+        self, car_id: int
+    ) -> str:  # TODO: make attribute of car
         """Function to get the last position of a car.
 
         Args:

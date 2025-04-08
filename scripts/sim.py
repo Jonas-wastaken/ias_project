@@ -24,7 +24,7 @@ def parse_args() -> dict:
         "-i",
         "--num_intersections",
         type=int,
-        default=random.randint(25, 75),
+        default=random.randint(50, 125),
         help="Number of intersections",
     )
     parser.add_argument(
@@ -52,7 +52,7 @@ def parse_args() -> dict:
 
     if config["num_cars"] is None:
         config["num_cars"] = int(
-            round((config["num_intersections"] * random.uniform(10, 20)), 0)
+            round((config["num_intersections"] * random.uniform(5, 10)), 0)
         )
     if config["num_borders"] is None:
         config["num_borders"] = int(
@@ -145,11 +145,11 @@ class Sim:
         )
 
         self.data_path = DataPath()
-        model.DataCollector(
-            agents=model.get_agents_by_type("LightAgent"), data_name="arrivals"
-        ).get_data().write_parquet(
-            file=self.data_path.get_file_path("arrivals.parquet")
-        )
+        # model.DataCollector(
+        #     agents=model.get_agents_by_type("LightAgent"), data_name="arrivals"
+        # ).get_data().write_parquet(
+        #     file=self.data_path.get_file_path("arrivals.parquet")
+        # )
         model.DataCollector(
             agents=model.get_agents_by_type("LightAgent"), data_name="traffic"
         ).get_data().write_parquet(file=self.data_path.get_file_path("traffic.parquet"))
