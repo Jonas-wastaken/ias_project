@@ -10,6 +10,7 @@ import pyoptinterface as poi
 from pyoptinterface import highs, gurobi
 from networkx import closeness_centrality
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 from graph import Graph
 from car import CarAgent
@@ -98,9 +99,11 @@ class LightAgent(mesa.Agent):
             if optimization_type == "none":
                 self.change_open_lane(self.rotate_in_open_lane_cycle())
             elif optimization_type == "simple":
-                self.change_open_lane(self.optimize_open_lane())
+                self.change_open_lane(SimpleOptimizer(light=self).get_optimal_lane())
             elif optimization_type == "advanced":
-                self.change_open_lane(self.optimize_open_lane_with_cooldown())
+                self.change_open_lane(
+                    AdvancedOptimizer(light=self, mode="base").get_optimal_lane()
+                )
             elif optimization_type == "advanced_ml":
                 self.change_open_lane(self.advanced_ml_optimizer())
         else:
@@ -430,6 +433,22 @@ class LightAgent(mesa.Agent):
 
         return num_cars
 
+    def get_num_cars_per_lane(self) -> dict:
+        """Gets the number of cars per lane currently at the LightAgent instance.
+
+        Returns:
+            dict: Number of cars per lane
+        """
+        num_cars_per_lane = {lane: 0 for lane in self.neighbor_lights}
+        for car in self.model.get_agents_by_type("CarAgent"):
+            car: CarAgent
+            if car.position == self.position and car.waiting:
+                num_cars_per_lane[
+                    self.model.get_last_intersection_of_car(car.unique_id)
+                ] += 1
+
+        return num_cars_per_lane
+
     def get_centrality(self, grid: Graph) -> float:
         """Gets the centrality of the intersection a light is placed on.
 
@@ -479,23 +498,316 @@ class LightCooldown(Exception):
         return f"{self.message}"
 
 
-# @dataclass
-# class ArrivalsData(SimData):
-#     """Holds the number of cars arriving at a LightAgent instance at each step"""
+class Optimizer(ABC):
+    """Abstract base class for all optimizers"""
 
-#     data: pl.DataFrame = field(default_factory=pl.DataFrame)
+    @abstractmethod
+    def __init__(self, light: LightAgent):
+        """Calculates optimal lane to open
 
-#     def __post_init__(self):
-#         """Constructs the data schema"""
-#         self.data = pl.DataFrame(
-#             schema={
-#                 "Step": pl.Int32,
-#                 "Light_ID": pl.Int16,
-#                 "Time": pl.Int16,
-#                 "Arrivals": pl.Int16,
-#             },
-#             strict=False,
-#         )
+        Args:
+            light (LightAgent): LightAgent instance
+        """
+        pass
+
+    @abstractmethod
+    def get_cars_at_light(self) -> dict:
+        """Gets number of CarAgents per lane of LightAgent instance
+
+        Returns:
+            dict: Number of CarAgents per lane of LightAgent instance
+        """
+        pass
+
+    @abstractmethod
+    def get_dec_vars(self) -> list[str]:
+        """Gets all lanes of a LightAgent
+
+        Returns:
+            list[str]: List of all connected lanes from this intersection
+        """
+        pass
+
+    @abstractmethod
+    def init_model(self) -> None:
+        """Initializes and builds the underlying optimization model
+
+        - Silences model output
+        - Adds decision variables
+        - Adds constraints
+        - Defines objective
+        - Calculates optimal decision
+        """
+        pass
+
+    @abstractmethod
+    def get_optimal_lane(self) -> str:
+        """Retrieves the result of the optimizer
+
+        Returns:
+            str: Optimal lane to open
+        """
+        pass
+
+
+class SimpleOptimizer(Optimizer):
+    """Simple optimizer, calculating the best lane to open without considering time constraints or future arrivals"""
+
+    def __init__(self, light: LightAgent):
+        """Calculates optimal lane to open
+
+        Args:
+            light (LightAgent): LightAgent instance
+        """
+        self.light = light
+        self.cars_at_light = self.get_cars_at_light()
+        self.init_model()
+
+    def get_cars_at_light(self) -> dict:
+        """Gets number of CarAgents per lane of LightAgent instance
+
+        Returns:
+            dict: Number of CarAgents per lane of LightAgent instance
+        """
+        cars_at_light = self.light.model.get_cars_per_lane_of_light(
+            self.light.position, 0
+        )
+
+        return cars_at_light
+
+    def get_dec_vars(self) -> list[str]:
+        """Gets all lanes of a LightAgent
+
+        Returns:
+            list[str]: List of all connected lanes from this intersection
+        """
+        return self.light.neighbor_lights
+
+    def init_model(self) -> None:
+        """Initializes and builds the underlying optimization model
+
+        - Silences model output
+        - Adds decision variables
+            - Binary decision per lane -> 1: open lane 0: don't open lane
+        - Adds constraints
+            - Only one lane can be open at a time
+        - Defines objective
+            - Sum of cars able to cross intersection
+        - Calculates optimal decision
+        """
+        self.model = highs.Model()
+        self.model.set_model_attribute(poi.ModelAttribute.Silent, True)
+
+        lanes = self.model.add_variables(
+            self.get_dec_vars(), domain=poi.VariableDomain.Binary
+        )
+
+        self.model.add_linear_constraint(poi.quicksum(lanes), poi.Eq, 1)
+
+        objective = poi.quicksum(
+            lanes[lane] * self.cars_at_light[lane] for lane in lanes
+        )
+        self.model.set_objective(objective, poi.ObjectiveSense.Maximize)
+
+        self.model.optimize()
+
+    def get_optimal_lane(
+        self,
+    ) -> str:  # TODO: Glaube man kann die Decision eleganter retrieven
+        """Retrieves the result of the optimizer
+
+        Returns:
+            str: Optimal lane to open
+        """
+        optimal_value = self.model.get_obj_value()
+        optimal_lanes = [
+            lane
+            for lane in self.cars_at_light
+            if optimal_value == self.cars_at_light[lane]
+        ]
+        if len(optimal_lanes) > 1:
+            optimal_lane = random.choice(
+                optimal_lanes
+            )  # Randomly select one of the optimal lanes, if there are multiple (TODO: chose the one where the cars have waited the longest)
+        else:
+            optimal_lane = optimal_lanes[0]
+        self.light.model.update_lights_decision_log(
+            self.light, self.cars_at_light, optimal_lane, self.light.model.steps
+        )
+
+        return optimal_lane
+
+
+class AdvancedOptimizer(Optimizer):
+    def __init__(self, light: LightAgent, mode: str = "base"):
+        """Calculates optimal lane to open
+
+        Args:
+            light (LightAgent): LightAgent instance
+        """
+        self.light = light
+        self.mode = mode
+        self.time = range(-1, self.light.default_switching_cooldown + 1)
+        self.cars_at_light = self.get_cars_at_light()
+        self.init_model()
+
+    def get_cars_at_light(self):
+        if self.mode == "base":
+            return self._request_cars_at_light()
+        elif self.mode == "ml":
+            raise NotImplementedError()
+        else:
+            raise ValueError(
+                f"mode must be one of ['base'|'ml']. Got {self.mode} instead"
+            )
+
+    def get_dec_vars(self) -> tuple[list[int], list[str]]:
+        """Gets all lanes of a LightAgent
+
+        Returns:
+            tuple[list[int], list[str]: Tuple of time range and connected lanes
+        """
+        return self.time, self.light.neighbor_lights
+
+    def init_model(self):
+        """Initializes and builds the underlying optimization model
+
+        - Silences model output
+        - Adds decision variables
+            - Binary decision per lane -> 1: open lane 0: don't open lane
+        - Adds constraints
+            - Only one lane can be open at a time
+            - The LightAgent can only open a new lane after a cooldown
+        - Defines objective
+            - Sum of cars able to cross intersection
+        - Calculates optimal decision
+        """
+        self.model = gurobi.Model(self._init_env())
+        self.model.set_model_attribute(poi.ModelAttribute.Silent, True)
+
+        time, connected_lanes = self.get_dec_vars()
+        self.lanes = self.model.add_variables(
+            time, connected_lanes, domain=poi.VariableDomain.Binary
+        )
+        for lane in self.get_dec_vars()[1]:
+            self.lanes[-1, lane] = 1 if lane == self.light.open_lane else 0
+
+        for tick in time[1:]:
+            self.model.add_linear_constraint(
+                poi.quicksum(self.lanes[tick, lane] for lane in connected_lanes),
+                poi.Eq,
+                1,
+            )
+
+        for lane in connected_lanes:
+            self.model.add_quadratic_constraint(
+                poi.quicksum(
+                    (
+                        (self.lanes[tick - 1, lane] - self.lanes[tick, lane])
+                        * (self.lanes[tick - 1, lane] - self.lanes[tick, lane])
+                    )
+                    for tick in time[1:]
+                ),
+                poi.Leq,
+                1.0,
+            )
+
+        objective = poi.quicksum(
+            poi.quicksum(
+                self.lanes[tick, lane] * self.cars_at_light[tick][lane]
+                for lane in connected_lanes
+            )
+            for tick in time[1:]
+        )
+        self.model.set_objective(objective, poi.ObjectiveSense.Maximize)
+
+        self.model.optimize()
+
+    def get_optimal_lane(self):
+        for lane in self.light.neighbor_lights:
+            if self.model.get_value(self.lanes[0, lane]) > 0.1:
+                return lane
+
+    def _init_env(self) -> gurobi.Env:
+        """Initializes the Gurobi environment with the provided secrets.
+
+        Returns:
+            gurobi.Env: Object holding gurobi environment variables
+        """
+        secrets = self._load_secrets()
+        env = gurobi.Env(empty=True)
+        env.set_raw_parameter("WLSACCESSID", secrets.get("WLSACCESSID"))
+        env.set_raw_parameter("WLSSECRET", secrets.get("WLSSECRET"))
+        env.set_raw_parameter("LICENSEID", secrets.get("LICENSEID"))
+        env.set_raw_parameter("OutputFlag", 0)
+        env.start()
+
+        return env
+
+    def _load_secrets(self) -> dict:
+        """Loads Gurobi secrets from the gurobi.lic file.
+
+        - File must be located in a .secrets folder in the working directory
+
+        Returns:
+            dict: Gurobi Secrets
+        """
+        license_path = Path.joinpath(Path.cwd(), Path(".secrets/"), Path("gurobi.lic"))
+        secrets = {}
+        with open(license_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith("#") or not line:
+                    continue
+                try:
+                    key, value = line.split("=", 1)
+                    secrets[key.strip()] = value.strip()
+                except ValueError:
+                    pass
+
+        return secrets
+
+    def _request_cars_at_light(self) -> dict:
+        """Gets the number of cars at the LightAgent instance over the given time range
+
+        Returns:
+            dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
+        """
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        for tick in self.time[1:]:
+            cars_at_light[tick] = self.light.model.get_cars_per_lane_of_light(
+                self.light.position, tick
+            )
+
+        return cars_at_light
+
+    def _predict_cars_at_light(self) -> dict:
+        """Predicts the number of cars at the LightAgent instance over the given time range
+
+        Returns:
+            dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
+        """
+        pass
+
+
+@dataclass
+class ArrivalsData(SimData):
+    """Holds the number of cars arriving at a LightAgent instance at each step"""
+
+    #     data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Step": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Time": pl.Int16,
+                "Arrivals": pl.Int16,
+            },
+            strict=False,
+        )
+
 
 #     def update_data(self, light: LightAgent, steps: int) -> None:
 #         """Updates the data
@@ -522,8 +834,8 @@ class LightCooldown(Exception):
 #             in_place=True,
 #         )
 
-#     def get_data(self) -> pl.DataFrame:
-#         """Returns the data
+# #     def get_data(self) -> pl.DataFrame:
+# #         """Returns the data
 
 #         Returns:
 #             pl.DataFrame: Data
