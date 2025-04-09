@@ -236,6 +236,7 @@ class LightAgent(mesa.Agent):
             for neighbor in self.neighbor_lights:
                 model_time = 200 - (self.model.steps % 200)
                 centrality = self.get_centrality(grid=self.model.grid)
+                is_entrypoint = self.is_entrypoint(grid=self.model.grid)
                 distance = (
                     self.model.connections.data.filter(
                         (pl.col("Intersection_v") == self.position)
@@ -244,32 +245,9 @@ class LightAgent(mesa.Agent):
                     .select(pl.col("Distance"))
                     .item()
                 )
-                light_agent: LightAgent = self.model.get_agents_by_id(
-                    [
-                        self.model.light_intersection_mapping.data.filter(
-                            pl.col("Intersection") == neighbor
-                        )
-                        .select(pl.col("Light_ID"))
-                        .item()
-                    ]
-                )[0]
-                incoming_cars = (
-                    (
-                        light_agent.traffic.data.filter(
-                            pl.col("Step") == (self.model.steps - 5)
-                        )
-                        .select(pl.col("Num_Cars"))
-                        .item()
-                    )
-                    if light_agent.traffic.data.filter(
-                        pl.col("Step") == (self.model.steps - 5)
-                    ).height
-                    > 0
-                    else 0
-                )
 
                 cars_per_lane[neighbor] = self.model.regressor.predict(
-                    model_time, centrality, distance, incoming_cars
+                    model_time, centrality, is_entrypoint, distance
                 )
 
             cars_at_light[tick] = cars_per_lane
