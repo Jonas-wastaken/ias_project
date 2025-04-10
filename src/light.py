@@ -461,10 +461,14 @@ class AdvancedOptimizer(Optimizer):
         self.init_model()
 
     def get_cars_at_light(self):
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        cars_at_light[0] = self._get_cars_waiting()
         if self.mode == "base":
-            cars_at_light = self._approx_incoming_cars()
+            for tick in self.time[2:]:
+                cars_at_light[tick] = self._approx_incoming_cars()
         elif self.mode == "ml":
-            return self._predict_incoming_cars()
+            for tick in self.time[2:]:
+                cars_at_light[tick] = self._predict_incoming_cars()
         else:
             raise ValueError(
                 f"mode must be one of ['base'|'ml']. Got {self.mode} instead"
@@ -522,8 +526,6 @@ class AdvancedOptimizer(Optimizer):
                 poi.Leq,
                 1.0,
             )
-
-        print(self.cars_at_light)
 
         objective = poi.quicksum(
             poi.quicksum(
@@ -615,20 +617,15 @@ class AdvancedOptimizer(Optimizer):
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        cars_at_light = {tick: {} for tick in self.time[1:]}
-        cars_at_light[1] = self._get_cars_waiting()
-        for tick in self.time[2:]:
-            avg_traffic = {
-                lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
-                .select(pl.col("Num_Cars"))
-                .mean()
-                .item()
-                for lane in self.light.neighbor_lights
-            }
+        avg_traffic = {
+            lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
+            .select(pl.col("Num_Cars"))
+            .mean()
+            .item()
+            for lane in self.light.neighbor_lights
+        }
 
-            cars_at_light[tick] = avg_traffic
-
-        return cars_at_light
+        return avg_traffic
 
     def _predict_incoming_cars(self):
         """Predicts the number of cars at the LightAgent instance over the given time range
@@ -636,19 +633,17 @@ class AdvancedOptimizer(Optimizer):
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        for tick in self.time[2:]:
-            cars_per_lane = {neighbor: {} for neighbor in self.light.neighbor_lights}
-            for neighbor in self.light.neighbor_lights:
-                model_time = 200 - (self.light.model.steps % 200)
-                centrality = self.light.get_centrality(grid=self.light.model.grid)
-                is_entrypoint = self.light.is_entrypoint(grid=self.light.model.grid)
-                distance = self.light.lanes.get_distance(lane=neighbor)
+        cars_per_lane = {
+            neighbor: self.light.model.regressor.predict(
+                200 - (self.light.model.steps % 200),
+                self.light.get_centrality(grid=self.light.model.grid),
+                self.light.is_entrypoint(grid=self.light.model.grid),
+                self.light.lanes.get_distance(lane=neighbor),
+            )
+            for neighbor in self.light.neighbor_lights
+        }
 
-                cars_per_lane[neighbor] = self.light.model.regressor.predict(
-                    model_time, centrality, is_entrypoint, distance
-                )
-
-            self.cars_at_light[tick] = cars_per_lane
+        return cars_per_lane
 
 
 @dataclass
