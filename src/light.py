@@ -461,11 +461,8 @@ class AdvancedOptimizer(Optimizer):
         self.init_model()
 
     def get_cars_at_light(self):
-        cars_at_light = {tick: {} for tick in self.time[1:]}
-        cars_at_light[1] = self._get_cars_waiting()
         if self.mode == "base":
-            for tick in self.time[2:]:
-                cars_at_light[tick] = self._approx_incoming_cars()
+            cars_at_light = self._approx_incoming_cars()
         elif self.mode == "ml":
             return self._predict_incoming_cars()
         else:
@@ -525,6 +522,8 @@ class AdvancedOptimizer(Optimizer):
                 poi.Leq,
                 1.0,
             )
+
+        print(self.cars_at_light)
 
         objective = poi.quicksum(
             poi.quicksum(
@@ -616,15 +615,20 @@ class AdvancedOptimizer(Optimizer):
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        avg_traffic = {
-            lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
-            .select(pl.col("Num_Cars"))
-            .mean()
-            .item()
-            for lane in self.light.neighbor_lights
-        }
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        cars_at_light[1] = self._get_cars_waiting()
+        for tick in self.time[2:]:
+            avg_traffic = {
+                lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
+                .select(pl.col("Num_Cars"))
+                .mean()
+                .item()
+                for lane in self.light.neighbor_lights
+            }
 
-        return avg_traffic
+            cars_at_light[tick] = avg_traffic
+
+        return cars_at_light
 
     def _predict_incoming_cars(self):
         """Predicts the number of cars at the LightAgent instance over the given time range
