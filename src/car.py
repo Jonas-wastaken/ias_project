@@ -286,7 +286,7 @@ class WaitTimes(SimData):
             light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
         """
         for hop in car.path.keys():
-            self.data.vstack(
+            self.data.extend(
                 other=pl.DataFrame(
                     data={
                         "Car_ID": car.unique_id,
@@ -302,7 +302,6 @@ class WaitTimes(SimData):
                     },
                     strict=False,
                 ),
-                in_place=True,
             )
 
     def is_arrival(self, car: CarAgent, light) -> bool:

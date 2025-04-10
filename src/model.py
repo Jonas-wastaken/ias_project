@@ -391,13 +391,12 @@ class LightIntersectionMapping(SimData):
         Args:
             light (LightAgent): LightAgent instance
         """
-        self.data = self.data.vstack(
+        self.data = self.data.extend(
             other=pl.DataFrame(
                 data={"Light_ID": light.unique_id, "Intersection": light.position},
                 schema={"Light_ID": pl.Int16, "Intersection": pl.String},
                 strict=False,
             ),
-            in_place=True,
         )
 
     def get_data(self) -> pl.DataFrame:
@@ -537,7 +536,7 @@ class Connections(SimData):
             distance (int): Weight of edge between intersection_u and intersection_v
         """
 
-        self.data.vstack(
+        self.data.extend(
             other=pl.DataFrame(
                 data={
                     "Intersection_u": intersection_u,
@@ -551,7 +550,6 @@ class Connections(SimData):
                 },
                 strict=False,
             ),
-            in_place=True,
         )
 
     def get_data(self) -> pl.DataFrame:
