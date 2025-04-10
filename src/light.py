@@ -695,7 +695,7 @@ class TrafficData(SimData):
             steps (int): Internal step counter of TrafficModel instance
             lane (str): Lane of intersection
         """
-        self.data.vstack(
+        self.data.extend(
             other=pl.DataFrame(
                 data={
                     "Step": steps,
@@ -713,7 +713,6 @@ class TrafficData(SimData):
                 },
                 strict=False,
             ),
-            in_place=True,
         )
 
     def get_data(self) -> pl.DataFrame:
