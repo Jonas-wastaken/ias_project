@@ -105,7 +105,9 @@ class LightAgent(mesa.Agent):
                     AdvancedOptimizer(light=self, mode="base").get_optimal_lane()
                 )
             elif optimization_type == "advanced_ml":
-                self.change_open_lane(self.advanced_ml_optimizer())
+                self.change_open_lane(
+                    AdvancedOptimizer(light=self, mode="ml").get_optimal_lane()
+                )
         else:
             self.current_switching_cooldown -= 1
 
@@ -655,7 +657,7 @@ class AdvancedOptimizer(Optimizer):
         if self.mode == "base":
             return self._request_cars_at_light()
         elif self.mode == "ml":
-            raise NotImplementedError()
+            return self._predict_cars_at_light()
         else:
             raise ValueError(
                 f"mode must be one of ['base'|'ml']. Got {self.mode} instead"
@@ -787,7 +789,29 @@ class AdvancedOptimizer(Optimizer):
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        pass
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        for tick in self.time[1:]:
+            cars_per_lane = {neighbor: {} for neighbor in self.light.neighbor_lights}
+            for neighbor in self.light.neighbor_lights:
+                model_time = 200 - (self.light.model.steps % 200)
+                centrality = self.light.get_centrality(grid=self.light.model.grid)
+                is_entrypoint = self.light.is_entrypoint(grid=self.light.model.grid)
+                distance = (
+                    self.light.model.connections.data.filter(
+                        (pl.col("Intersection_v") == self.light.position)
+                        & (pl.col("Intersection_u") == neighbor)
+                    )
+                    .select(pl.col("Distance"))
+                    .item()
+                )
+
+                cars_per_lane[neighbor] = self.light.model.regressor.predict(
+                    model_time, centrality, is_entrypoint, distance
+                )
+
+            cars_at_light[tick] = cars_per_lane
+
+        return cars_at_light
 
 
 # @dataclass
