@@ -790,28 +790,28 @@ class AdvancedOptimizer(Optimizer):
         pass
 
 
-@dataclass
-class ArrivalsData(SimData):
-    """Holds the number of cars arriving at a LightAgent instance at each step"""
+# @dataclass
+# class ArrivalsData(SimData):
+#     """Holds the number of cars arriving at a LightAgent instance at each step"""
 
-    #     data: pl.DataFrame = field(default_factory=pl.DataFrame)
+#     #     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
-    def __post_init__(self):
-        """Constructs the data schema"""
-        self.data = pl.DataFrame(
-            schema={
-                "Step": pl.Int32,
-                "Light_ID": pl.Int16,
-                "Time": pl.Int16,
-                "Arrivals": pl.Int16,
-            },
-            strict=False,
-        )
-
-
+#     def __post_init__(self):
+#         """Constructs the data schema"""
+#         self.data = pl.DataFrame(
+#             schema={
+#                 "Step": pl.Int32,
+#                 "Light_ID": pl.Int16,
+#                 "Time": pl.Int16,
+#                 "Arrivals": pl.Int16,
+#             },
+#             strict=False,
+#         )
+#
+#
 #     def update_data(self, light: LightAgent, steps: int) -> None:
 #         """Updates the data
-
+#
 #         Args:
 #             light (LightAgent): LightAgent instance
 #             steps (int): Internal step counter of TrafficModel instance
@@ -833,10 +833,10 @@ class ArrivalsData(SimData):
 #             ),
 #             in_place=True,
 #         )
-
+#
 # #     def get_data(self) -> pl.DataFrame:
 # #         """Returns the data
-
+#
 #         Returns:
 #             pl.DataFrame: Data
 #         """
