@@ -140,11 +140,6 @@ class Sim:
         )
 
         self.data_path = DataPath()
-        # model.DataCollector(
-        #     agents=model.get_agents_by_type("LightAgent"), data_name="arrivals"
-        # ).get_data().write_parquet(
-        #     file=self.data_path.get_file_path("arrivals.parquet")
-        # )
         model.DataCollector(
             agents=model.get_agents_by_type("LightAgent"), data_name="traffic"
         ).get_data().write_parquet(file=self.data_path.get_file_path("traffic.parquet"))
