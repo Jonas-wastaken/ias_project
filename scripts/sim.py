@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from tqdm import tqdm
 import argparse
 import time
 import random
@@ -127,29 +128,18 @@ class Sim:
             max_distance=config["max_distance"],
         )
 
-        log_interval = 10 if config["optimization_type"] in ["none", "simple"] else 1
-
         start_time = time.time()
 
-        for _ in range(config["steps"]):
+        for _ in tqdm(range(config["steps"]), desc="Running simulation", unit="step"):
             model.step()
-            if model.steps % log_interval == 0:
-                print(f"Completed {model.steps} of {config['steps']} steps...")
-                print(
-                    f"Estimated time remaining: {int(((time.time() - start_time) / model.steps) * (config['steps'] - model.steps))} seconds..."
-                )
-                print(100 * "-")
+
+        print(100 * "-")
         print("Sim completed!")
         print(
-            f"Avg. time per 10 steps: {round((((time.time() - start_time) / model.steps) * 10), 2)}"
+            f"Avg. time per step: {round(((time.time() - start_time) / model.steps), 2)} seconds"
         )
 
         self.data_path = DataPath()
-        # model.DataCollector(
-        #     agents=model.get_agents_by_type("LightAgent"), data_name="arrivals"
-        # ).get_data().write_parquet(
-        #     file=self.data_path.get_file_path("arrivals.parquet")
-        # )
         model.DataCollector(
             agents=model.get_agents_by_type("LightAgent"), data_name="traffic"
         ).get_data().write_parquet(file=self.data_path.get_file_path("traffic.parquet"))
@@ -174,10 +164,11 @@ class Sim:
 
 if __name__ == "__main__":
     config = parse_args()
-    print(f"Starting simulation with config: {config}")
+    print("Starting simulation with config:")
+    for key, value in config.items():
+        print(f"{key}: {value}")
     print(100 * "-")
     sim = Sim(config)
     with open(file=sim.data_path.get_file_path("config.json"), mode="w") as file:
         json.dump(obj=config, fp=file, indent=4)
     print(f"Simulation data stored in: {sim.data_path.get_path()}")
-    print(f"Config: {config}")
