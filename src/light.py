@@ -461,14 +461,20 @@ class AdvancedOptimizer(Optimizer):
         self.init_model()
 
     def get_cars_at_light(self):
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        cars_at_light[0] = self._get_cars_waiting()
         if self.mode == "base":
-            return self._approximate_cars_at_light()
+            for tick in self.time[2:]:
+                cars_at_light[tick] = self._approx_incoming_cars()
         elif self.mode == "ml":
-            return self._predict_cars_at_light()
+            for tick in self.time[2:]:
+                cars_at_light[tick] = self._predict_incoming_cars()
         else:
             raise ValueError(
                 f"mode must be one of ['base'|'ml']. Got {self.mode} instead"
             )
+
+        return cars_at_light
 
     def get_dec_vars(self) -> tuple[list[int], list[str]]:
         """Gets all lanes of a LightAgent
@@ -579,6 +585,8 @@ class AdvancedOptimizer(Optimizer):
     def _request_cars_at_light(self) -> dict:
         """Gets the number of cars at the LightAgent instance over the given time range
 
+        **DEPRECATED**
+
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
@@ -590,13 +598,25 @@ class AdvancedOptimizer(Optimizer):
 
         return cars_at_light
 
-    def _approximate_cars_at_light(self) -> dict:
+    def _get_cars_waiting(self):
         """Gets the number of cars at the LightAgent instance over the given time range
 
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        cars_at_light = {tick: {} for tick in self.time[1:]}
+        waiting_cars = {
+            lane: self.light.traffic.get_current_cars(lane)
+            for lane in self.light.neighbor_lights
+        }
+
+        return waiting_cars
+
+    def _approx_incoming_cars(self):
+        """Gets the number of cars at the LightAgent instance over the given time range
+
+        Returns:
+            dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
+        """
         avg_traffic = {
             lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
             .select(pl.col("Num_Cars"))
@@ -604,33 +624,26 @@ class AdvancedOptimizer(Optimizer):
             .item()
             for lane in self.light.neighbor_lights
         }
-        for tick in self.time[1:]:
-            cars_at_light[tick] = avg_traffic
 
-        return cars_at_light
+        return avg_traffic
 
-    def _predict_cars_at_light(self) -> dict:
+    def _predict_incoming_cars(self):
         """Predicts the number of cars at the LightAgent instance over the given time range
 
         Returns:
             dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
         """
-        cars_at_light = {tick: {} for tick in self.time[1:]}
-        for tick in self.time[1:]:
-            cars_per_lane = {neighbor: {} for neighbor in self.light.neighbor_lights}
-            for neighbor in self.light.neighbor_lights:
-                model_time = 200 - (self.light.model.steps % 200)
-                centrality = self.light.get_centrality(grid=self.light.model.grid)
-                is_entrypoint = self.light.is_entrypoint(grid=self.light.model.grid)
-                distance = self.light.lanes.get_distance(lane=neighbor)
+        cars_per_lane = {
+            neighbor: self.light.model.regressor.predict(
+                200 - (self.light.model.steps % 200),
+                self.light.get_centrality(grid=self.light.model.grid),
+                self.light.is_entrypoint(grid=self.light.model.grid),
+                self.light.lanes.get_distance(lane=neighbor),
+            )
+            for neighbor in self.light.neighbor_lights
+        }
 
-                cars_per_lane[neighbor] = self.light.model.regressor.predict(
-                    model_time, centrality, is_entrypoint, distance
-                )
-
-            cars_at_light[tick] = cars_per_lane
-
-        return cars_at_light
+        return cars_per_lane
 
 
 @dataclass
@@ -714,6 +727,13 @@ class TrafficData(SimData):
                 strict=False,
             ),
         )
+
+    def get_current_cars(self, lane: str) -> int:
+        current_cars = (
+            self.data.filter(pl.col("Lane") == lane).select("Num_Cars").tail(1).item()
+        )
+
+        return current_cars
 
     def get_data(self) -> pl.DataFrame:
         """Returns the data
