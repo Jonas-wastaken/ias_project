@@ -72,14 +72,10 @@ class LightAgent(mesa.Agent):
         self.position = kwargs.get("position", None)
         self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
 
-        # self.arrivals = ArrivalsData()
         self.traffic = TrafficData()
 
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
-        self.open_lane = self.neighbor_lights[
-            random.randint(0, len(self.neighbor_lights) - 1)
-        ]  # Randomly select a neighbor light as the open lane
         self.open_lane = self.neighbor_lights[
             random.randint(0, len(self.neighbor_lights) - 1)
         ]  # Randomly select a neighbor light as the open lane
@@ -111,7 +107,6 @@ class LightAgent(mesa.Agent):
         else:
             self.current_switching_cooldown -= 1
 
-            # self.arrivals.update_data(light=self, steps=steps)
         for lane in self.neighbor_lights:
             self.traffic.update_data(light=self, steps=steps, lane=lane)
 
@@ -148,195 +143,6 @@ class LightAgent(mesa.Agent):
         next_index = (current_index + 1) % len(self.neighbor_lights)
 
         return self.neighbor_lights[next_index]
-
-    def optimize_open_lane(self) -> str:
-        """Decides which lane should be open based on the number of waiting cars."""
-        opt_model = highs.Model()
-
-        opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
-
-        possible_lanes = self.neighbor_lights
-        cars_at_light = self.model.get_cars_per_lane_of_light(self.position, 0)
-        lanes = opt_model.add_variables(
-            possible_lanes, domain=poi.VariableDomain.Binary
-        )
-
-        # Constraints
-        opt_model.add_linear_constraint(poi.quicksum(lanes), poi.Eq, 1)
-
-        # Objective
-        objective = poi.quicksum(lanes[lane] * cars_at_light[lane] for lane in lanes)
-        opt_model.set_objective(objective, poi.ObjectiveSense.Maximize)
-
-        opt_model.optimize()
-
-        # Decide which lane should be open
-        optimal_value = opt_model.get_obj_value()
-        optimal_lanes = [
-            lane for lane in cars_at_light if optimal_value == cars_at_light[lane]
-        ]
-
-        if len(optimal_lanes) > 1:
-            optimal_lane = random.choice(
-                optimal_lanes
-            )  # Randomly select one of the optimal lanes, if there are multiple (TODO: chose the one where the cars have waited the longest)
-        else:
-            optimal_lane = optimal_lanes[0]
-
-        # Log result
-        self.model.update_lights_decision_log(
-            self, cars_at_light, optimal_lane, self.model.steps
-        )
-
-        return optimal_lane
-
-    def optimize_open_lane_with_cooldown(self) -> str:
-        """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
-        light_cooldown = self.default_switching_cooldown
-        secrets = self._load_gurobi_secrets()
-        env = self._initialize_gurobi_env(secrets)
-        opt_model = gurobi.Model(env)
-        opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
-
-        possible_lanes = self.neighbor_lights
-        time = range(-1, light_cooldown + 1)
-        cars_at_light = self._get_cars_at_light_over_time(time)
-        current_open_lane = self.open_lane
-
-        lanes = self._initialize_lanes(
-            opt_model, time, possible_lanes, current_open_lane
-        )
-        self._add_constraints(opt_model, lanes, time, possible_lanes)
-        self._set_objective(opt_model, lanes, cars_at_light, time, possible_lanes)
-
-        opt_model.optimize()
-        return self._get_optimal_lane(opt_model, lanes, possible_lanes)
-
-    def advanced_ml_optimizer(self) -> str:
-        """Decides which lane should be open based on the number of waiting cars, taking the light cooldown into account."""
-        light_cooldown = self.default_switching_cooldown
-        secrets = self._load_gurobi_secrets()
-        env = self._initialize_gurobi_env(secrets)
-        opt_model = gurobi.Model(env)
-        opt_model.set_model_attribute(poi.ModelAttribute.Silent, True)
-
-        possible_lanes = self.neighbor_lights
-        time = range(-1, light_cooldown + 1)
-        cars_at_light = self.predict_cars_at_light(time)
-        current_open_lane = self.open_lane
-
-        lanes = self._initialize_lanes(
-            opt_model, time, possible_lanes, current_open_lane
-        )
-        self._add_constraints(opt_model, lanes, time, possible_lanes)
-        self._set_objective(opt_model, lanes, cars_at_light, time, possible_lanes)
-
-        opt_model.optimize()
-        return self._get_optimal_lane(opt_model, lanes, possible_lanes)
-
-    def predict_cars_at_light(self, time) -> dict:
-        cars_at_light = {tick: {} for tick in time[1:]}
-        for tick in time[1:]:
-            cars_per_lane = {neighbor: {} for neighbor in self.neighbor_lights}
-            for neighbor in self.neighbor_lights:
-                model_time = 200 - (self.model.steps % 200)
-                centrality = self.get_centrality(grid=self.model.grid)
-                is_entrypoint = self.is_entrypoint(grid=self.model.grid)
-                distance = (
-                    self.model.connections.data.filter(
-                        (pl.col("Intersection_v") == self.position)
-                        & (pl.col("Intersection_u") == neighbor)
-                    )
-                    .select(pl.col("Distance"))
-                    .item()
-                )
-
-                cars_per_lane[neighbor] = self.model.regressor.predict(
-                    model_time, centrality, is_entrypoint, distance
-                )
-
-            cars_at_light[tick] = cars_per_lane
-
-        return cars_at_light
-
-    def _load_gurobi_secrets(self) -> dict:
-        """Loads Gurobi secrets from the license file."""
-        license_path = Path.joinpath(Path.cwd(), Path(".secrets/"), Path("gurobi.lic"))
-        secrets = {}
-        with open(license_path, "r") as file:
-            for line in file:
-                line = line.strip()
-                if line.startswith("#") or not line:
-                    continue
-                try:
-                    key, value = line.split("=", 1)
-                    secrets[key.strip()] = value.strip()
-                except ValueError:
-                    pass
-        return secrets
-
-    def _initialize_gurobi_env(self, secrets: dict) -> gurobi.Env:
-        """Initializes the Gurobi environment with the provided secrets."""
-        env = gurobi.Env(empty=True)
-        env.set_raw_parameter("WLSACCESSID", secrets.get("WLSACCESSID"))
-        env.set_raw_parameter("WLSSECRET", secrets.get("WLSSECRET"))
-        env.set_raw_parameter("LICENSEID", secrets.get("LICENSEID"))
-        env.set_raw_parameter("OutputFlag", 0)
-        env.start()
-        return env
-
-    def _get_cars_at_light_over_time(self, time: range) -> dict:
-        """Gets the number of cars at the light over the given time range."""
-        cars_at_light = {tick: {} for tick in time[1:]}
-        for tick in time[1:]:
-            cars_at_light[tick] = self.model.get_cars_per_lane_of_light(
-                self.position, tick
-            )
-        return cars_at_light
-
-    def _initialize_lanes(self, opt_model, time, possible_lanes, current_open_lane):
-        """Initializes the lane variables for the optimization model."""
-        lanes = opt_model.add_variables(
-            time, possible_lanes, domain=poi.VariableDomain.Binary
-        )
-        for lane in possible_lanes:
-            lanes[-1, lane] = 1 if lane == current_open_lane else 0
-        return lanes
-
-    def _add_constraints(self, opt_model, lanes, time, possible_lanes):
-        """Adds constraints to the optimization model."""
-        for tick in time[1:]:
-            opt_model.add_linear_constraint(
-                poi.quicksum(lanes[tick, lane] for lane in possible_lanes), poi.Eq, 1
-            )
-        for lane in possible_lanes:
-            opt_model.add_quadratic_constraint(
-                poi.quicksum(
-                    (
-                        (lanes[tick - 1, lane] - lanes[tick, lane])
-                        * (lanes[tick - 1, lane] - lanes[tick, lane])
-                    )
-                    for tick in time[1:]
-                ),
-                poi.Leq,
-                1.0,
-            )
-
-    def _set_objective(self, opt_model, lanes, cars_at_light, time, possible_lanes):
-        """Sets the objective function for the optimization model."""
-        objective = poi.quicksum(
-            poi.quicksum(
-                lanes[tick, lane] * cars_at_light[tick][lane] for lane in possible_lanes
-            )
-            for tick in time[1:]
-        )
-        opt_model.set_objective(objective, poi.ObjectiveSense.Maximize)
-
-    def _get_optimal_lane(self, opt_model, lanes, possible_lanes) -> str:
-        """Determines the optimal lane from the optimization results."""
-        for lane in possible_lanes:
-            if opt_model.get_value(lanes[0, lane]) > 0.1:
-                return lane
 
     def get_num_connections(self, grid: Graph) -> int:
         """Gets the number of connected intersections.
@@ -812,59 +618,6 @@ class AdvancedOptimizer(Optimizer):
             cars_at_light[tick] = cars_per_lane
 
         return cars_at_light
-
-
-# @dataclass
-# class ArrivalsData(SimData):
-#     """Holds the number of cars arriving at a LightAgent instance at each step"""
-
-#     #     data: pl.DataFrame = field(default_factory=pl.DataFrame)
-
-#     def __post_init__(self):
-#         """Constructs the data schema"""
-#         self.data = pl.DataFrame(
-#             schema={
-#                 "Step": pl.Int32,
-#                 "Light_ID": pl.Int16,
-#                 "Time": pl.Int16,
-#                 "Arrivals": pl.Int16,
-#             },
-#             strict=False,
-#         )
-#
-#
-#     def update_data(self, light: LightAgent, steps: int) -> None:
-#         """Updates the data
-#
-#         Args:
-#             light (LightAgent): LightAgent instance
-#             steps (int): Internal step counter of TrafficModel instance
-#         """
-#         self.data.vstack(
-#             pl.DataFrame(
-#                 data={
-#                     "Step": steps,
-#                     "Light_ID": light.unique_id,
-#                     "Time": 200 - (steps % 200),
-#                     "Arrivals": light.get_num_arrivals(),
-#                 },
-#                 schema={
-#                     "Step": pl.Int32,
-#                     "Light_ID": pl.Int16,
-#                     "Time": pl.Int16,
-#                     "Arrivals": pl.Int16,
-#                 },
-#             ),
-#             in_place=True,
-#         )
-#
-# #     def get_data(self) -> pl.DataFrame:
-# #         """Returns the data
-#
-#         Returns:
-#             pl.DataFrame: Data
-#         """
-#         return self.data
 
 
 @dataclass
