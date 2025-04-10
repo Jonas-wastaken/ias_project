@@ -73,6 +73,7 @@ class LightAgent(mesa.Agent):
         self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
 
         self.traffic = TrafficData()
+        self.lanes = Lanes().construct(self)
 
         self.default_switching_cooldown = 5
         self.current_switching_cooldown = self.default_switching_cooldown
@@ -602,14 +603,7 @@ class AdvancedOptimizer(Optimizer):
                 model_time = 200 - (self.light.model.steps % 200)
                 centrality = self.light.get_centrality(grid=self.light.model.grid)
                 is_entrypoint = self.light.is_entrypoint(grid=self.light.model.grid)
-                distance = (
-                    self.light.model.connections.data.filter(
-                        (pl.col("Intersection_v") == self.light.position)
-                        & (pl.col("Intersection_u") == neighbor)
-                    )
-                    .select(pl.col("Distance"))
-                    .item()
-                )
+                distance = self.light.lanes.get_distance(lane=neighbor)
 
                 cars_per_lane[neighbor] = self.light.model.regressor.predict(
                     model_time, centrality, is_entrypoint, distance
@@ -618,6 +612,41 @@ class AdvancedOptimizer(Optimizer):
             cars_at_light[tick] = cars_per_lane
 
         return cars_at_light
+
+
+@dataclass
+class Lanes:
+    data: pl.DataFrame = field(
+        default_factory=lambda: pl.DataFrame(
+            schema={"Lane": pl.String, "Distance": pl.Int16}, strict=False
+        )
+    )
+
+    def construct(self, light: LightAgent):
+        self.data.extend(
+            other=pl.DataFrame(
+                data=[
+                    {
+                        "Lane": lane,
+                        "Distance": light.model.grid.get_edge_data(
+                            light.position, lane
+                        )["weight"],
+                    }
+                    for lane in light.neighbor_lights
+                ],
+                schema={"Lane": pl.String, "Distance": pl.Int16},
+                strict=False,
+            )
+        )
+
+        return self
+
+    def get_distance(self, lane: str) -> int:
+        distance = (
+            self.data.filter(pl.col("Lane") == lane).select(pl.col("Distance")).item()
+        )
+
+        return distance
 
 
 @dataclass
