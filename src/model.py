@@ -198,7 +198,7 @@ class TrafficModel(mesa.Model):
         if agent_type == "CarAgent":
             return self._agents_by_type[CarAgent]
         elif agent_type == "LightAgent":
-            return self.agents_by_type[LightAgent]
+            return self._agents_by_type[LightAgent]
         else:
             raise ValueError(f"Agent type {agent_type} not found")
 
