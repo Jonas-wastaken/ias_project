@@ -107,10 +107,10 @@ class TrafficModel(mesa.Model):
         self.create_lights()
         if self.optimization_type == "advanced_ml":
             self.regressor = Regressor()
-        self.car_paths = {}
-        self.update_car_paths()
         self.lights_decision_log = {}
         self.create_cars(self.num_cars)
+        self.car_paths = {}
+        self.update_car_paths()
         self.global_car_waiting_times = pl.DataFrame(
             schema={
                 "Car_ID": pl.Int32,
@@ -128,18 +128,17 @@ class TrafficModel(mesa.Model):
         - CarAgents are respawned based on current time and number of cars in the model
         """
         self.n_cars.update_data(
-            steps=self.steps, n_cars=len(self.get_agents_by_type("CarAgent"))
+            steps=self.steps, n_cars=self._agents_by_type[CarAgent].__len__()
         )
 
-        for light in self.get_agents_by_type("LightAgent"):
-            light: LightAgent
-            light.step(optimization_type=self.optimization_type, steps=self.steps)
+        self._agents_by_type[LightAgent].do(
+            LightAgent.step, optimization_type=self.optimization_type, steps=self.steps
+        )
 
-        for car in self.get_agents_by_type("CarAgent")[:]:
-            car: CarAgent
-            car.step()
+        self._agents_by_type[CarAgent].do(CarAgent.step)
 
         self.car_respawn()
+        self.update_car_paths()
 
     def create_cars(self, num_cars: int) -> None:
         """Function to add cars to the model.
@@ -150,7 +149,6 @@ class TrafficModel(mesa.Model):
             num_cars (int): Number of cars to add.
         """
         new_cars = CarAgent.create_agents(model=self, n=num_cars)
-        self.update_car_paths()
 
         for car in new_cars:
             car: CarAgent
@@ -165,7 +163,7 @@ class TrafficModel(mesa.Model):
             num_cars (int): Number of cars to remove.
         """
         for _ in range(num_cars):
-            car: CarAgent = random.choice(self.get_agents_by_type("CarAgent"))
+            car: CarAgent = random.choice(self._agents_by_type[CarAgent])
             self.agents.remove(car)
 
     def create_lights(self) -> None:
@@ -188,19 +186,19 @@ class TrafficModel(mesa.Model):
                         distance=connection[1],
                     )
 
-    def get_agents_by_type(self, agent_type: str) -> list[mesa.Agent]:
-        """Function to get all agents of a certain type.
+    def get_agents_by_type(self, agent_type: str):
+        """Wrapper around *mesa.Model._agents_by_type attributes
 
         Args:
             agent_type (str): Type of agents to get. [CarAgent, LightAgent]
 
         Returns:
-            list[mesa.Agent]: A list of agents of the given type.
+            AgentSet: A mesa AgentSet of the specified type
         """
         if agent_type == "CarAgent":
-            return [agent for agent in self.agents if isinstance(agent, CarAgent)]
+            return self._agents_by_type[CarAgent]
         elif agent_type == "LightAgent":
-            return [agent for agent in self.agents if isinstance(agent, LightAgent)]
+            return self.agents_by_type[LightAgent]
         else:
             raise ValueError(f"Agent type {agent_type} not found")
 
@@ -249,7 +247,7 @@ class TrafficModel(mesa.Model):
 
     def update_car_paths(self) -> None:
         """Function to update the paths of all cars."""
-        for car in self.get_agents_by_type("CarAgent"):
+        for car in self._agents_by_type[CarAgent]:
             car: CarAgent
             if car.unique_id not in list(self.car_paths.keys()):
                 self.car_paths[car.unique_id] = car.path.copy()
@@ -298,11 +296,11 @@ class TrafficModel(mesa.Model):
         }
 
         if tick == 0:
-            for car in self.get_agents_by_type("CarAgent"):
+            for car in self._agents_by_type[CarAgent]:
                 if car.position == light_position and car.waiting:
                     cars_per_lane[self.get_last_intersection_of_car(car.unique_id)] += 1
         else:
-            for car in self.get_agents_by_type("CarAgent"):
+            for car in self._agents_by_type[CarAgent]:
                 if (
                     list(car.path.keys())[0] == light_position
                     and list(car.path.values())[0] == tick

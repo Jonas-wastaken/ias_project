@@ -4,6 +4,8 @@
 import networkx as nx
 import plotly.graph_objects as go
 from model import TrafficModel
+from car import CarAgent
+from light import LightAgent
 import numpy as np
 
 
@@ -278,7 +280,7 @@ class TrafficGraph(go.Figure):
         car_x = np.empty(shape=(0,), dtype=np.float16)
         car_y = np.empty(shape=(0,), dtype=np.float16)
 
-        for car in self._model.get_agents_by_type("CarAgent"):
+        for car in self._model._agents_by_type[CarAgent]:
             try:
                 current_pos = car.position
                 next_pos = list(car.path.keys())[1]
@@ -354,7 +356,7 @@ class TrafficGraph(go.Figure):
         light_x = np.empty(shape=(0,), dtype=np.float16)
         light_y = np.empty(shape=(0,), dtype=np.float16)
 
-        for light in self._model.get_agents_by_type("LightAgent"):
+        for light in self._model._agents_by_type[LightAgent]:
             lane_origin_coords = np.array(
                 self._model.grid.nodes[light.open_lane]["pos"]
             )
