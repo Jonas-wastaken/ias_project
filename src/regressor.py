@@ -15,18 +15,18 @@ class Regressor:
         )
 
     def scale_input(
-        self, time: int, centrality: float, distance: int, incoming_cars: int
+        self, time: int, centrality: float, is_entrypoint: bool, distance: int
     ) -> np.array:
-        x = np.array([time, centrality, distance, incoming_cars]).reshape(1, -1)
+        x = np.array([time, centrality, is_entrypoint, distance]).reshape(1, -1)
         x = self.scaler.transform(x)
 
         return x
 
     def predict(
-        self, time: int, centrality: float, distance: int, incoming_cars: int
+        self, time: int, centrality: float, is_entrypoint: bool, distance: int
     ) -> int:
         y = self.model.predict(
-            self.scale_input(time, centrality, distance, incoming_cars)
+            self.scale_input(time, centrality, is_entrypoint, distance)
         )
 
         y = np.round(y, 0).astype(int)

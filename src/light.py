@@ -71,7 +71,7 @@ class LightAgent(mesa.Agent):
         self.position = kwargs.get("position", None)
         self.neighbor_lights = self.get_connected_intersections(grid=self.model.grid)
 
-        self.arrivals = ArrivalsData()
+        # self.arrivals = ArrivalsData()
         self.traffic = TrafficData()
 
         self.default_switching_cooldown = 5
@@ -106,8 +106,9 @@ class LightAgent(mesa.Agent):
         else:
             self.current_switching_cooldown -= 1
 
-            self.arrivals.update_data(light=self, steps=steps)
-            self.traffic.update_data(light=self, steps=steps)
+            # self.arrivals.update_data(light=self, steps=steps)
+        for lane in self.neighbor_lights:
+            self.traffic.update_data(light=self, steps=steps, lane=lane)
 
     def set_position(self, position: str) -> None:
         """Sets the position of the agent to the given node ID.
@@ -235,6 +236,7 @@ class LightAgent(mesa.Agent):
             for neighbor in self.neighbor_lights:
                 model_time = 200 - (self.model.steps % 200)
                 centrality = self.get_centrality(grid=self.model.grid)
+                is_entrypoint = self.is_entrypoint(grid=self.model.grid)
                 distance = (
                     self.model.connections.data.filter(
                         (pl.col("Intersection_v") == self.position)
@@ -243,32 +245,9 @@ class LightAgent(mesa.Agent):
                     .select(pl.col("Distance"))
                     .item()
                 )
-                light_agent: LightAgent = self.model.get_agents_by_id(
-                    [
-                        self.model.light_intersection_mapping.data.filter(
-                            pl.col("Intersection") == neighbor
-                        )
-                        .select(pl.col("Light_ID"))
-                        .item()
-                    ]
-                )[0]
-                incoming_cars = (
-                    (
-                        light_agent.traffic.data.filter(
-                            pl.col("Step") == (self.model.steps - 5)
-                        )
-                        .select(pl.col("Num_Cars"))
-                        .item()
-                    )
-                    if light_agent.traffic.data.filter(
-                        pl.col("Step") == (self.model.steps - 5)
-                    ).height
-                    > 0
-                    else 0
-                )
 
                 cars_per_lane[neighbor] = self.model.regressor.predict(
-                    model_time, centrality, distance, incoming_cars
+                    model_time, centrality, is_entrypoint, distance
                 )
 
             cars_at_light[tick] = cars_per_lane
@@ -430,16 +409,23 @@ class LightAgent(mesa.Agent):
 
         return num_arrivals
 
-    def get_num_cars(self) -> int:
-        """Gets the number of cars currently at the light.
+    def get_num_cars(self, lane: str) -> int:
+        """Gets the number of cars currently at the LightAgent instance
+
+        Args:
+            lane (str): Lane of LightAgent
 
         Returns:
-            int: Number of cars currently at the light
+            int: Number of cars currently at the LightAgent instance
         """
         num_cars = 0
         for car in self.model.get_agents_by_type("CarAgent"):
             car: CarAgent
-            if car.position == self.position:
+            if (
+                car.position == self.position
+                and car.check_if_car_at_light()
+                and self.model.get_last_intersection_of_car(car.unique_id) == lane
+            ):
                 num_cars += 1
 
         return num_cars
@@ -493,56 +479,56 @@ class LightCooldown(Exception):
         return f"{self.message}"
 
 
-@dataclass
-class ArrivalsData(SimData):
-    """Holds the number of cars arriving at a LightAgent instance at each step"""
+# @dataclass
+# class ArrivalsData(SimData):
+#     """Holds the number of cars arriving at a LightAgent instance at each step"""
 
-    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+#     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
-    def __post_init__(self):
-        """Constructs the data schema"""
-        self.data = pl.DataFrame(
-            schema={
-                "Step": pl.Int32,
-                "Light_ID": pl.Int16,
-                "Time": pl.Int16,
-                "Arrivals": pl.Int16,
-            },
-            strict=False,
-        )
+#     def __post_init__(self):
+#         """Constructs the data schema"""
+#         self.data = pl.DataFrame(
+#             schema={
+#                 "Step": pl.Int32,
+#                 "Light_ID": pl.Int16,
+#                 "Time": pl.Int16,
+#                 "Arrivals": pl.Int16,
+#             },
+#             strict=False,
+#         )
 
-    def update_data(self, light: LightAgent, steps: int) -> None:
-        """Updates the data
+#     def update_data(self, light: LightAgent, steps: int) -> None:
+#         """Updates the data
 
-        Args:
-            light (LightAgent): LightAgent instance
-            steps (int): Internal step counter of TrafficModel instance
-        """
-        self.data.vstack(
-            pl.DataFrame(
-                data={
-                    "Step": steps,
-                    "Light_ID": light.unique_id,
-                    "Time": 200 - (steps % 200),
-                    "Arrivals": light.get_num_arrivals(),
-                },
-                schema={
-                    "Step": pl.Int32,
-                    "Light_ID": pl.Int16,
-                    "Time": pl.Int16,
-                    "Arrivals": pl.Int16,
-                },
-            ),
-            in_place=True,
-        )
+#         Args:
+#             light (LightAgent): LightAgent instance
+#             steps (int): Internal step counter of TrafficModel instance
+#         """
+#         self.data.vstack(
+#             pl.DataFrame(
+#                 data={
+#                     "Step": steps,
+#                     "Light_ID": light.unique_id,
+#                     "Time": 200 - (steps % 200),
+#                     "Arrivals": light.get_num_arrivals(),
+#                 },
+#                 schema={
+#                     "Step": pl.Int32,
+#                     "Light_ID": pl.Int16,
+#                     "Time": pl.Int16,
+#                     "Arrivals": pl.Int16,
+#                 },
+#             ),
+#             in_place=True,
+#         )
 
-    def get_data(self) -> pl.DataFrame:
-        """Returns the data
+#     def get_data(self) -> pl.DataFrame:
+#         """Returns the data
 
-        Returns:
-            pl.DataFrame: Data
-        """
-        return self.data
+#         Returns:
+#             pl.DataFrame: Data
+#         """
+#         return self.data
 
 
 @dataclass
@@ -558,17 +544,19 @@ class TrafficData(SimData):
                 "Step": pl.Int32,
                 "Light_ID": pl.Int16,
                 "Time": pl.Int16,
+                "Lane": pl.String,
                 "Num_Cars": pl.Int16,
             },
             strict=False,
         )
 
-    def update_data(self, light: LightAgent, steps: int) -> None:
+    def update_data(self, light: LightAgent, steps: int, lane: str) -> None:
         """Updates the data
 
         Args:
             light (LightAgent): LightAgent instance
             steps (int): Internal step counter of TrafficModel instance
+            lane (str): Lane of intersection
         """
         self.data.vstack(
             other=pl.DataFrame(
@@ -576,12 +564,14 @@ class TrafficData(SimData):
                     "Step": steps,
                     "Light_ID": light.unique_id,
                     "Time": 200 - (steps % 200),
-                    "Num_Cars": light.get_num_cars(),
+                    "Lane": lane,
+                    "Num_Cars": light.get_num_cars(lane),
                 },
                 schema={
                     "Step": pl.Int32,
                     "Light_ID": pl.Int16,
                     "Time": pl.Int16,
+                    "Lane": pl.String,
                     "Num_Cars": pl.Int16,
                 },
                 strict=False,

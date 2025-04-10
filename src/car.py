@@ -45,6 +45,7 @@ class CarAgent(mesa.Agent):
         """
         super().__init__(model)
         self.start = self.model.grid.place_agent(agent_id=self.unique_id)
+        self.previous_position = None
         self.position = self.start
         self.goal = self.compute_goal()
         self.path = self.compute_path()
@@ -133,7 +134,7 @@ class CarAgent(mesa.Agent):
                 if self.path.get(self.position) == 1:
                     steps = list(self.path.keys())
                     next_index = steps.index(self.position) + 1
-                    self.path.pop(self.position)
+                    self.previous_position = self.path.pop(self.position)
                     self.position = steps[next_index]
                 else:
                     self.path[self.position] = self.path.get(self.position) - 1
@@ -148,7 +149,7 @@ class CarAgent(mesa.Agent):
         """
         current_intersection = list(
             self.model.get_agents_by_id([self.unique_id])[0].path
-        )[0]
+        )[0]  # TODO: list(self.path)[0]
         current_distance = list(
             self.model.get_agents_by_id([self.unique_id])[0].path.values()
         )[0]

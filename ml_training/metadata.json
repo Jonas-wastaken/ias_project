@@ -1,0 +1,10 @@
+{
+    "Sim Runs": 20,
+    "Avg. Intersections": 92.65,
+    "Avg. Cars": 688.95,
+    "Avg. Borders": 335.15,
+    "Avg. Min. Distance": 7.85,
+    "Avg. Max. Distance": 23.7,
+    "Optimization": "simple",
+    "Steps": 1000
+}
