@@ -462,7 +462,7 @@ class AdvancedOptimizer(Optimizer):
 
     def get_cars_at_light(self):
         if self.mode == "base":
-            return self._request_cars_at_light()
+            return self._approximate_cars_at_light()
         elif self.mode == "ml":
             return self._predict_cars_at_light()
         else:
@@ -590,6 +590,25 @@ class AdvancedOptimizer(Optimizer):
 
         return cars_at_light
 
+    def _approximate_cars_at_light(self) -> dict:
+        """Gets the number of cars at the LightAgent instance over the given time range
+
+        Returns:
+            dict: Dictionary holding the number of cars at the LightAgent instance over the given time range
+        """
+        cars_at_light = {tick: {} for tick in self.time[1:]}
+        avg_traffic = {
+            lane: self.light.traffic.data.filter(pl.col("Lane") == lane)
+            .select(pl.col("Num_Cars"))
+            .mean()
+            .item()
+            for lane in self.light.neighbor_lights
+        }
+        for tick in self.time[1:]:
+            cars_at_light[tick] = avg_traffic
+
+        return cars_at_light
+
     def _predict_cars_at_light(self) -> dict:
         """Predicts the number of cars at the LightAgent instance over the given time range
 
@@ -676,7 +695,7 @@ class TrafficData(SimData):
             steps (int): Internal step counter of TrafficModel instance
             lane (str): Lane of intersection
         """
-        self.data.vstack(
+        self.data.extend(
             other=pl.DataFrame(
                 data={
                     "Step": steps,
@@ -694,7 +713,6 @@ class TrafficData(SimData):
                 },
                 strict=False,
             ),
-            in_place=True,
         )
 
     def get_data(self) -> pl.DataFrame:
