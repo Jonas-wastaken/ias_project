@@ -695,6 +695,7 @@ class TrafficData(SimData):
                 "Light_ID": pl.Int16,
                 "Time": pl.Int16,
                 "Lane": pl.String,
+                "Open_Lane": pl.String,
                 "Num_Cars": pl.Int16,
             },
             strict=False,
@@ -715,6 +716,7 @@ class TrafficData(SimData):
                     "Light_ID": light.unique_id,
                     "Time": 200 - (steps % 200),
                     "Lane": lane,
+                    "Open_Lane": light.open_lane,
                     "Num_Cars": light.get_num_cars(lane),
                 },
                 schema={
@@ -722,6 +724,7 @@ class TrafficData(SimData):
                     "Light_ID": pl.Int16,
                     "Time": pl.Int16,
                     "Lane": pl.String,
+                    "Open_Lane": pl.String,
                     "Num_Cars": pl.Int16,
                 },
                 strict=False,

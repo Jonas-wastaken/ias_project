@@ -143,9 +143,7 @@ class Sim:
         model.DataCollector(
             agents=model.get_agents_by_type("LightAgent"), data_name="traffic"
         ).get_data().write_parquet(file=self.data_path.get_file_path("traffic.parquet"))
-        model.DataCollector(
-            agents=model.get_agents_by_type("CarAgent"), data_name="wait_times"
-        ).get_data().write_parquet(
+        model.global_wait_times.get_data().write_parquet(
             file=self.data_path.get_file_path("wait_times.parquet")
         )
         model.light_intersection_mapping.get_data().write_parquet(

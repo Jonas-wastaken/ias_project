@@ -76,9 +76,7 @@ class CarAgent(mesa.Agent):
                     light_intersection_mapping=self.model.light_intersection_mapping.data,
                 )
         except AgentArrived:
-            self.model.global_car_waiting_times.vstack(
-                other=self.wait_times.data, in_place=True
-            )
+            self.model.global_wait_times.update_data(self.wait_times.get_data())
             self.remove()
 
     def compute_goal(self) -> str:

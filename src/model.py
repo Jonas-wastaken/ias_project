@@ -111,14 +111,7 @@ class TrafficModel(mesa.Model):
         self.create_cars(self.num_cars)
         self.car_paths = {}
         self.update_car_paths()
-        self.global_car_waiting_times = pl.DataFrame(
-            schema={
-                "Car_ID": pl.Int32,
-                "Light_ID": pl.Int16,
-                "Wait_Time": pl.Int16,
-            },
-            strict=False,
-        )
+        self.global_wait_times = GlobalWaitTimes()
 
     def step(self) -> None:
         """Advances the environment to next state.
@@ -549,6 +542,35 @@ class Connections(SimData):
                 strict=False,
             ),
         )
+
+    def get_data(self) -> pl.DataFrame:
+        """Returns the data
+
+        Returns:
+            pl.DataFrame: Data
+        """
+        return self.data
+
+
+@dataclass
+class GlobalWaitTimes(SimData):
+    """Holds the wait time of CarAgent instance at each light"""
+
+    data: pl.DataFrame = field(default_factory=pl.DataFrame)
+
+    def __post_init__(self):
+        """Constructs the data schema"""
+        self.data = pl.DataFrame(
+            schema={
+                "Car_ID": pl.Int32,
+                "Light_ID": pl.Int16,
+                "Wait_Time": pl.Int16,
+            },
+            strict=False,
+        )
+
+    def update_data(self, wait_times: pl.DataFrame):
+        self.data = self.data.vstack(other=wait_times)
 
     def get_data(self) -> pl.DataFrame:
         """Returns the data
