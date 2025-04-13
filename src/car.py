@@ -1,47 +1,92 @@
-"""This module contains:
-- CarAgent class: Represents a car navigating an undirected graph.
-- AgentArrived exception: Raised when an car has reached it's goal."""
+"""
+car.py
 
-import mesa
+This module defines the `CarAgent` class, representing vehicles navigating the
+traffic simulation grid. It also includes the `AgentArrived` exception, raised
+when a car reaches its destination, and the `WaitTimes` dataclass for tracking
+how long cars wait at traffic lights.
+
+Classes:
+    - CarAgent: Represents a car agent in the simulation, handling movement,
+                pathfinding, and interaction with traffic lights.
+    - AgentArrived: Custom exception raised when a `CarAgent` reaches its goal node.
+    - WaitTimes: Dataclass inheriting from `SimData` to store and manage wait
+                 time data for individual cars at intersections.
+
+Dependencies:
+    - random: For random goal selection (`random.randint`).
+    - dataclasses: For creating the `WaitTimes` data class (`dataclass`, `field`).
+    - mesa: Core agent-based modeling framework (`mesa.Agent`, `mesa.Model`).
+    - polars: For efficient data handling in `WaitTimes` (`pl.DataFrame`, etc.).
+    - networkx: For pathfinding using Dijkstra's algorithm (`dijkstra_path`).
+    - data.SimData: Base class for `WaitTimes`.
+"""
+
 import random
 from dataclasses import dataclass, field
-import polars as pl
+
+import mesa
 from networkx import dijkstra_path
+import polars as pl
 
 from data import SimData
 
 
 class CarAgent(mesa.Agent):
-    """Agent, which represents a car navigating an undirected graph. It receives it's starting position from the graph instance and then computes a random node as it's goal. Path computation uses Dijkstra's algorithm.
+    """Represents a car agent navigating the traffic grid graph.
 
-    Inherits from mesa.Agent.
+    Each car is initialized at a random border node and assigned another random
+    border node as its destination. It calculates the shortest path using
+    Dijkstra's algorithm and attempts to follow this path step by step.
+    Cars interact with `LightAgent` instances at intersections, potentially
+    waiting if the required lane is not open. The agent tracks its travel time
+    and wait times at lights.
+
+    Inherits from `mesa.Agent`.
 
     Attributes:
-        start (str): The ID of the node, where the car starts.
-        goal (str): The ID of the node, which is the car's goal.
-        path (dict): A dictionary containing the steps in the car's path as keys and the distance to the next step as values.
-        position (str): The ID of the node, where the car is currently located.
-        waiting (bool): A flag indicating whether the car is waiting at a traffic light.
-        travel_time (int): The total time the car has spent traveling.
+        start (str): The ID of the border node where the agent was initialized.
+        goal (str): The ID of the border node assigned as the agent's destination.
+        path (dict): A dictionary representing the remaining path. Keys are node IDs
+                     along the path, and values are the remaining distance (steps)
+                     to reach the next node in the path. The value is `None` for
+                     the final goal node.
+        position (str): The ID of the node where the agent is currently located.
+                        Can be an intersection or border node.
+        previous_position (str | None): The ID of the node the agent was at in the
+                                        previous step. Initially None.
+        waiting (bool): Flag indicating if the agent is currently stopped at a
+                        traffic light (True) or allowed to move (False).
+        travel_time (int): The total number of simulation steps the agent has existed.
+        wait_times (WaitTimes): A `WaitTimes` instance tracking the agent's wait
+                                duration at each intersection it encounters.
 
-    ## Methods:
-        **compute_goal(self) -> str**:
-            Assigns a random border node, which is not the starting node, as the goal of the car.
-        **compute_path(self) -> dict**:
-            Computes the path the car takes to reach it's goal using Dijkstra's algorithm.
-        **move(self) -> None**:
-            Moves the car to it's next step on the path.
-        **set_wait_status(self, status: bool) -> None**:
-            Sets the waiting status of the car.
-        **check_lights(self) -> None**:
-            Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly.
+    Methods:
+        step(self) -> None:
+            Executes the agent's actions for one simulation step.
+        compute_goal(self) -> str:
+            Selects a random border node (different from the start) as the goal.
+        compute_path(self) -> dict:
+            Calculates the shortest path from the current position to the goal.
+        move(self) -> None:
+            Attempts to advance the agent along its path for one step.
+        check_if_car_at_light(self) -> bool:
+            Determines if the car is currently considered "at" an intersection light.
+        check_lights(self) -> None:
+            Checks the status of the traffic light if the car is at an intersection
+            and updates the `waiting` status accordingly.
     """
 
     def __init__(self, model: mesa.Model):
-        """Initializes a new CarAgent. The car is placed on a random border node, and computes a random goal and the best path there.
+        """Initializes a new CarAgent instance.
+
+        Assigns a unique ID, places the agent on a random border node using the
+        model's grid, computes a random goal node (another border node), and
+        calculates the shortest path using Dijkstra's algorithm.
+        Initializes travel time, waiting status, and the `WaitTimes` data collector.
 
         Args:
-            model (mesa.Model): The model instance in which the car lives.
+            model (mesa.Model): The `TrafficModel` instance the agent belongs to.
         """
         super().__init__(model)
         self.start = self.model.grid.place_agent(agent_id=self.unique_id)
@@ -55,21 +100,18 @@ class CarAgent(mesa.Agent):
         self.wait_times = WaitTimes()
 
     def step(self) -> None:
-        """Actions each CarAgent takes each step.
+        """Executes the agent's actions for a single simulation step.
 
-        - CarAgent moves to next position
-            - If CarAgent is between intersections, distance is decremented by one
-            - If CarAgent is at an intersection, it changes it's position to the intersection
-                - Only if it's lane is open
-            - Increments *travel_time* by 1
-            - If CarAgent reaches it's goal, it is removed from model
+        Attempts to move the agent along its path using the `move()` method.
+        If the agent is determined to be at a traffic light (`check_if_car_at_light`),
+        it updates its wait time statistics in its `wait_times` collector.
+        If the `move()` method raises an `AgentArrived` exception (meaning the
+        agent reached its goal), the agent's collected wait times are added to
+        the model's global collection, and the agent is removed from the simulation.
         """
         try:
             self.move()
-            if (
-                self.check_if_car_at_light()
-                # and self.position.startswith("intersection")
-            ):
+            if self.check_if_car_at_light():
                 self.wait_times.update_data(
                     car=self,
                     waiting=self.waiting,
@@ -80,10 +122,14 @@ class CarAgent(mesa.Agent):
             self.remove()
 
     def compute_goal(self) -> str:
-        """Assigns a random border node, which is not the starting node, as the goal of the car.
+        """Selects a random border node as the agent's destination.
+
+        Retrieves all border nodes from the model's grid, removes the agent's
+        starting node from the list, and randomly selects one of the remaining
+        border nodes as the goal.
 
         Returns:
-            str: ID of the node, which is the car's goal.
+            str: The ID of the randomly selected goal node.
         """
         borders = [node for node in self.model.grid if node.find("border") == 0]
         borders.remove(self.start)
@@ -92,10 +138,16 @@ class CarAgent(mesa.Agent):
         return assigned_goal
 
     def compute_path(self) -> dict:
-        """Computes the path the car takes to reach it's goal using Dijkstra's algorithm.
+        """Computes the shortest path from the agent's current position to its goal.
+
+        Uses `networkx.dijkstra_path` with edge weights ('weight') to find the
+        sequence of nodes representing the shortest path. Converts this sequence
+        into a dictionary where keys are the nodes in the path and values are the
+        distances (edge weights) to the *next* node in the path. The value for
+        the final goal node is `None`.
 
         Returns:
-            dict: A dictionary containing the steps in the car's path as keys and the distance to the next step as values.
+            dict: The calculated path dictionary {node_id: distance_to_next_node}.
         """
         steps = dijkstra_path(
             self.model.grid, self.position, self.goal, weight="weight"
@@ -114,13 +166,20 @@ class CarAgent(mesa.Agent):
         return path
 
     def move(self) -> None:
-        """Tries to move the car to it's next step on the path and sends updated position to the grid.
+        """Attempts to move the agent one step along its calculated path.
 
-        The car can only move if it is not waiting at a light (using check_lights function).
-        The car can only move if the distance to the next step in it's path is 0. Otherwise, the distance is decremented by 1.
+        First, calls `check_lights()` to update the `waiting` status based on the
+        traffic light at the current intersection (if applicable).
+        If the agent is not `waiting`:
+            - If the current `position` is the `goal`, raises `AgentArrived`.
+            - If the distance to the next node in `path` is 1, updates the agent's
+              `position` to the next node and removes the current node from `path`.
+            - Otherwise (distance > 1), decrements the distance to the next node
+              in the `path` dictionary by 1.
+        Increments the agent's `travel_time` by 1, regardless of whether it moved.
 
         Raises:
-            AgentArrived: If the car has reached it's goal, this exception is raised.
+            AgentArrived: If the agent's current `position` matches its `goal`.
         """
         self.check_lights()
         if not self.waiting:
@@ -140,14 +199,21 @@ class CarAgent(mesa.Agent):
         self.travel_time += 1
 
     def check_if_car_at_light(self) -> bool:
-        """Checks if the car is at a light.
+        """Determines if the car is currently considered "at" an intersection light.
+
+        A car is considered "at" a light if its current `position` is an
+        intersection node and the remaining distance to the next node in its
+        original path (`self.model.car_paths`) matches the current remaining
+        distance in its active path (`self.path`). This signifies it has just
+        arrived at the intersection node within its path segment.
 
         Returns:
-            bool: True if the car is at a light, False otherwise.
+            bool: True if the car is positioned at an intersection node and has
+                  just completed the travel segment leading to it, False otherwise.
         """
         current_intersection = list(
             self.model.get_agents_by_id([self.unique_id])[0].path
-        )[0]  # TODO: list(self.path)[0]
+        )[0]
         current_distance = list(
             self.model.get_agents_by_id([self.unique_id])[0].path.values()
         )[0]
@@ -163,9 +229,19 @@ class CarAgent(mesa.Agent):
         return at_light
 
     def check_lights(self) -> None:
-        """Checks if the car is standing at a light and if it is allowed to drive. Sets the waiting status accordingly."""
+        """Checks traffic light status if the car is at an intersection.
 
-        # Check if the car is standing at a light
+        Determines if the car is currently "at" an intersection light using
+        `check_if_car_at_light()`.
+        If it is at a light:
+            - Identifies the `LightAgent` at the current intersection.
+            - Compares the `open_lane` of the `LightAgent` with the car's
+              previous position (the lane it arrived from, obtained via
+              `model.get_last_intersection_of_car`).
+            - Sets the car's `waiting` status to `True` if the lanes do not match
+              (light is red for this car), and `False` otherwise (light is green).
+        If the car is not currently at a light, this method has no effect.
+        """
         current_intersection = list(
             self.model.get_agents_by_id([self.unique_id])[0].path
         )[0]
@@ -180,7 +256,6 @@ class CarAgent(mesa.Agent):
             )
         else:
             at_light = False
-        # at_light = self.check_if_car_at_light()
 
         if at_light:
             current_light = [
@@ -215,12 +290,39 @@ class AgentArrived(Exception):
 
 @dataclass
 class WaitTimes(SimData):
-    """Holds the wait time of CarAgent instance at each light"""
+    """Manages and stores wait time data for a single `CarAgent` at intersections.
+
+    This dataclass inherits from `SimData` and uses a Polars DataFrame to track
+    how many simulation steps a specific car spends waiting at each traffic light
+    (intersection) it encounters along its path.
+
+    Attributes:
+        data (pl.DataFrame): A Polars DataFrame holding the wait time records.
+                             Columns: 'Car_ID' (Int32), 'Light_ID' (Int16),
+                             'Wait_Time' (Int16).
+
+    ## Methods:
+        **__post_init__()**:
+            Initializes the Polars DataFrame with the wait time schema.
+        **update_data(car, waiting, light_intersection_mapping)**:
+            Updates the wait time for the car at its current intersection.
+        **get_data()**:
+            Returns the collected wait time data for the car.
+        **init_wait_times(car, light_intersection_mapping)**:
+            Initializes wait time records for all intersections in the car's path.
+        **is_arrival(car, light)**:
+            Checks if the car has just arrived at the specified light in the current step.
+    """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
 
     def __post_init__(self):
-        """Constructs the data schema"""
+        """Initializes the Polars DataFrame with the wait time schema.
+
+        Sets up the structure for storing wait time data, including the car's ID,
+        the ID of the light at the intersection, and the accumulated wait time
+        at that light.
+        """
         self.data = pl.DataFrame(
             schema={
                 "Car_ID": pl.Int32,
@@ -233,12 +335,21 @@ class WaitTimes(SimData):
     def update_data(
         self, car: CarAgent, waiting: bool, light_intersection_mapping: pl.DataFrame
     ) -> None:
-        """Updates the data
+        """Updates the wait time for the car at its current intersection.
+
+        Identifies the `Light_ID` corresponding to the car's current intersection
+        position using the provided mapping.
+        If the car is `waiting` (light is red), increments the 'Wait_Time' for the
+        corresponding Car_ID and Light_ID entry in the DataFrame.
+        If the car is not `waiting` (light is green or car is moving past), resets
+        the 'Wait_Time' for that entry to 0. Assumes an entry for the car/light
+        pair already exists (potentially created by `init_wait_times`).
 
         Args:
-            car (CarAgent): CarAgent instance
-            waiting (bool): Indicates whether the CarAgent instance is currently waiting at a light
-            light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
+            car (CarAgent): The `CarAgent` instance whose wait time is being updated.
+            waiting (bool): The current waiting status of the `car`.
+            light_intersection_mapping (pl.DataFrame): A DataFrame mapping
+                                                       'Intersection' IDs to 'Light_ID's.
         """
         light_id = (
             light_intersection_mapping.filter(pl.col("Intersection") == car.position)
@@ -267,21 +378,29 @@ class WaitTimes(SimData):
             )
 
     def get_data(self) -> pl.DataFrame:
-        """Returns the data
+        """Returns the collected wait time data for the car.
 
         Returns:
-            pl.DataFrame: Data
+            pl.DataFrame: A Polars DataFrame containing all recorded wait times
+                          (Car_ID, Light_ID, Wait_Time) for this car instance.
         """
         return self.data
 
     def init_wait_times(
         self, car: CarAgent, light_intersection_mapping: pl.DataFrame
     ) -> None:
-        """Adds blank entries for each step the CarAgent instance takes through the grid
+        """Initializes wait time records for all intersections in the car's path.
+
+        Iterates through the nodes (hops) in the car's planned path. For each hop
+        that corresponds to a known light intersection (found via the mapping),
+        it adds a new row to the `data` DataFrame with the car's ID, the light's ID,
+        and an initial 'Wait_Time' of `None` (or potentially 0 depending on Polars handling).
+        This pre-populates entries so `update_data` can increment/reset them.
 
         Args:
-            car (CarAgent): CarAgent instance
-            light_intersection_mapping (pl.DataFrame): Mapping table for LightAgents and their corresponding intersections
+            car (CarAgent): The `CarAgent` instance for which to initialize records.
+            light_intersection_mapping (pl.DataFrame): A DataFrame mapping
+                                                       'Intersection' IDs to 'Light_ID's.
         """
         for hop in car.path.keys():
             self.data.extend(
@@ -303,6 +422,21 @@ class WaitTimes(SimData):
             )
 
     def is_arrival(self, car: CarAgent, light) -> bool:
+        """Checks if the car has just arrived at the specified light in the current step.
+
+        Determines arrival by checking if the recorded 'Wait_Time' for the given
+        `car` and `light` is currently 0. This implies the car was not waiting in
+        the previous step(s) at this light and has just encountered it (or passed through).
+
+        Args:
+            car (CarAgent): The `CarAgent` instance to check.
+            light (LightAgent): The `LightAgent` instance representing the intersection
+                                to check arrival at.
+
+        Returns:
+            bool: True if the car's wait time for this light is currently 0,
+                  False otherwise.
+        """
         if (
             self.data.filter(
                 (pl.col("Car_ID") == car.unique_id)

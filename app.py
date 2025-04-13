@@ -1,29 +1,50 @@
 """
-This Streamlit app visualizes a traffic grid using NetworkX and Plotly.
-It allows users to step through the simulation of traffic agents and view their paths.
-This module contains:
-- App class: Represents the Streamlit application for visualizing a traffic grid.
-- GraphContainer class: Holds the visualization of the graph.
-- CarPathListContainer class: Container for a horizontally scrollable list of car agent information cards.
-- SettingsContainer class: Container for the settings form and reset button.
-- EdgesContainer class: Container for displaying the edges of the graph.
+app.py
+
+This module defines a Streamlit application for visualizing and interacting with
+the agent-based traffic simulation (`TrafficModel`). It uses Plotly via the
+`TrafficGraph` class for visualization and provides UI components for controlling
+the simulation, viewing agent details, and adjusting model parameters.
+
+Classes:
+    - App: The main Streamlit application class, orchestrating the UI layout and
+           interaction with the `TrafficModel`.
+    - CarPathContainer: A UI component displaying information about individual
+                        `CarAgent`s and `LightAgent`s, allowing users to scroll
+                        through agents.
+    - SettingsContainer: A UI component providing a form within a popover to
+                         adjust simulation parameters (e.g., number of agents,
+                         distances, optimization type) and reset the model.
+    - EdgesContainer: A UI component displaying a table of the edges (roads)
+                      in the simulation graph.
+
+Dependencies:
+    - streamlit: The web application framework.
+    - streamlit_js_eval: To get screen dimensions from the browser.
+    - pandas: Used by `EdgesContainer` to display graph edges.
+    - time: For handling timeouts and delays.
+    - sys, pathlib: For managing module imports from the 'src' directory.
+    - src.car.CarAgent: Agent class representing cars.
+    - src.graph_viz.TrafficGraph: Plotly-based visualization class.
+    - src.light.LightAgent: Agent class representing traffic lights.
+    - src.model.TrafficModel: The core simulation model class.
 """
 
 import sys
-import json
-from pathlib import Path
 import time
 from dataclasses import dataclass
+from pathlib import Path
+
+import pandas as pd
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
-import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parent / "src"))
 
-from model import TrafficModel
-from graph_viz import TrafficGraph
 from car import CarAgent
+from graph_viz import TrafficGraph
 from light import LightAgent
+from model import TrafficModel
 
 
 class App:
@@ -34,8 +55,10 @@ class App:
         screen_width (int): Width of the screen in pixels
 
     ## Methods:
-        **step(self) -> None**:
-            Advances the environment by one step.
+        **__init__(self, model: TrafficModel)**:
+            Initializes the application with a traffic model and sets up the UI elements.
+        **step(self, fig: TrafficGraph) -> None**:
+            Advances the environment by one step and refreshes the graph.
     """
 
     def __init__(self, model: TrafficModel):
@@ -122,14 +145,18 @@ class CarPathContainer:
     This class provides functionality to display a list of car agents in a horizontally scrollable manner. It includes methods to scroll the list left and right, render the current path of each car, and display detailed information about each car's path.
 
     ## Methods:
-        **scroll_left(self) -> None**:
+        **scroll_left(self, query_index) -> None**:
             Scrolls the car path list to the left.
-        **scroll_right(self) -> None**:
+        **scroll_right(self, query_index) -> None**:
             Scrolls the car path list to the right.
         **render_current_path(self, car: CarAgent) -> None**:
             Renders the current path of a given car agent.
         **render_full_path(self, car: CarAgent) -> None:**
             Renders the full path of a given car agent.
+        **render_lights_info(self, light: LightAgent) -> None**:
+            Renders the information of a given light agent.
+        **get_lights_info(self, light: LightAgent) -> dict**:
+            Returns the information of a light agent as a dictionary.
         **get_full_path(self, car_id: int) -> list[tuple[str, int]]**:
             Returns the full path of a car agent as a list of tuples containing node id and distance to the next step.
         **get_current_path(self, car: CarAgent) -> dict**:
@@ -194,11 +221,6 @@ class CarPathContainer:
             st.subheader(
                 f"Car {car.unique_id - st.session_state['env_config']['num_intersections']}"
             )
-        # with cols[1]:
-        #     num_cars = self.NumCars(st.session_state["model"]).num_cars
-        #     st.metric(label="Cars", value=num_cars, label_visibility="hidden")
-        # with cols[2]:
-        # self.render_full_path(car)
         with cols[3]:
             if st.button("<-", key="cars_left"):
                 self.scroll_left("scroll_index_cars")
@@ -246,26 +268,6 @@ class CarPathContainer:
             use_container_width=True,
             column_config={"value": st.column_config.TextColumn("")},
         )
-
-    # def get_full_path(self, car_id: int) -> str:
-    #     """Creates a List with the full path a car agent takes.
-
-    #     Args:
-    #         car_id (int): ID of CarAgent instance
-
-    #     Returns:
-    #         list[tuple[str, int]]: List of tuples with node id and distance to next step.
-    #     """
-    #     path = ""
-    #     for hop in st.session_state["model"].car_paths[car_id].items():
-    #         path += " "
-    #         path += str(hop[0]).title().replace("_", " ")
-    #         path += ": "
-    #         path += str(hop[1])
-    #         path += " ->"
-    #         path += "\n"
-
-    #     return path
 
     def get_current_path(self, car: CarAgent) -> dict:
         """Creates a dict with the current (last) position, next position, distance to next position, waiting status and waiting time of a car agent.
@@ -320,20 +322,6 @@ class CarPathContainer:
 
         return lights_info
 
-    # @dataclass
-    # class NumCars:
-    #     """Class to hold the current number of cars in the grid"""
-
-    #     num_cars: int
-
-    #     def __init__(self, model: TrafficModel):
-    #         """Gets the current number of cars in the grid
-
-    #         Args:
-    #             model (TrafficModel): Model
-    #         """
-    #         self.num_cars = len(model.get_agents_by_type("CarAgent"))
-
 
 class SettingsContainer:
     """Container for the settings form and reset button.
@@ -347,6 +335,8 @@ class SettingsContainer:
             Applies changes to the environment based on user input from the settings form.
         **reset_environment(self) -> None**:
             Resets the environment with user-specified config options.
+        **update_env_config(self, num_cars, num_intersections, num_borders, distance_range, optimization_type) -> None**:
+            Updates the environment configuration with user-specified parameters.
     """
 
     def __init__(self):

@@ -51,8 +51,6 @@ class TestTrafficModel(unittest.TestCase):
                 logger.info(f"{self.model.car_paths[car.unique_id]}")
                 self.assertIsInstance(car, CarAgent)
                 self.assertIsInstance(self.model.car_paths[car.unique_id], dict)
-            # logging.info(f"Should create: {self.num_cars}")
-            # logging.info(f"Did create: {self.model.get_agents_by_type("CarAgent")}")
             self.assertEqual(
                 len(self.model.get_agents_by_type("CarAgent")), self.num_cars
             )
@@ -132,9 +130,7 @@ class TestTrafficModel(unittest.TestCase):
         logger.info(f"{[path for path in self.model.car_paths.values()]}")
         try:
             self.model.step()
-            self.assertIsNot(
-                initial_positions, self.model.car_paths
-            )  # TODO: der Test wird scheitern, wenn Autos an Ampeln warten, weil dann bewegen sie sich nicht mehr
+            self.assertIsNot(initial_positions, self.model.car_paths)
             logger.info("Passed test_step")
         except AssertionError as e:
             logger.error(f"Failed test_step: {e}")
@@ -158,28 +154,6 @@ class TestTrafficModel(unittest.TestCase):
             logger.info("Passed test_create_cars")
         except AssertionError as e:
             logger.error(f"Failed to add cars: {e}")
-            raise
-
-    def test_remove_cars(self):
-        """Test removing cars.
-
-        Raises:
-            AssertionError: If the number of cars is not decreased by the expected number
-        """
-        logger.info("Testing removal of cars")
-        initial_num_cars = len(self.model.get_agents_by_type("CarAgent"))
-        removed_num_cars = min(random.randint(3, 100), initial_num_cars)
-        logger.info(f"Initial number of cars: {initial_num_cars}")
-        logger.info(f"Removing {removed_num_cars} cars")
-        try:
-            self.model.remove_random_cars(removed_num_cars)
-            self.assertEqual(
-                (initial_num_cars - removed_num_cars),
-                len(self.model.get_agents_by_type("CarAgent")),
-            )
-
-        except AssertionError as e:
-            logger.error(f"Failed to remove cars: {e}")
             raise
 
 

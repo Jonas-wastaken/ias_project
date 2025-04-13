@@ -1,46 +1,64 @@
-"""This module contains:
-- Graph class: Represents an undirected graph with intersection and border nodes. It creates edges between them with random weights and stores agent positions."""
+"""
+graph.py
+
+This module provides the Graph class, an extension of `networkx.Graph`, designed
+to represent a traffic network. It facilitates the creation and management of
+a graph structure composed of 'intersection' and 'border' nodes connected by
+weighted edges (roads).
+
+The Graph class includes functionalities for:
+- Adding and removing intersection and border nodes.
+- Establishing connections between nodes with randomized weights within specified bounds.
+- Modifying edge weights.
+- Placing agents (e.g., cars) onto random border nodes.
+- Retrieving nodes based on type and querying node connections.
+
+Classes:
+    - Graph: Represents the traffic grid as an undirected graph, extending networkx.Graph.
+
+Dependencies:
+    - networkx: Core graph manipulation library.
+    - random: For randomization in node connections and edge weights.
+    - pickle: For object serialization (saving/loading the graph).
+"""
+
+import pickle
+import random
 
 import networkx as nx
-import random
-import pickle
 
 
 class Graph(nx.Graph):
-    """A class to represent an undirected graph.
+    """Represents the traffic network as an undirected graph.
 
-    The class inherits from the networkx.Graph class.
-    The class creates nodes labeled as 'intersection' and 'border', and adds edges between them with random weights.
+    This class extends `networkx.Graph` to model a traffic grid. It manages
+    'intersection' and 'border' nodes, connecting them with weighted edges
+    representing roads. It provides methods for building, modifying, and
+    querying the graph structure, as well as saving/loading capabilities.
 
     Attributes:
-        min_distance (int): Minimum distance between two connected nodes.
-        max_distance (int): Maximum distance between two connected nodes.
+        min_distance (int): The minimum weight (distance) assigned to edges
+                            connecting intersection nodes. Must be >= 2.
+        max_distance (int): The maximum weight (distance) assigned to edges
+                            connecting intersection nodes.
 
-    ## Methods:
-        **add_intersections(self, num_intersections: int) -> None**:
-            Add intersection nodes to the graph.
-        **remove_intersections(self, num_intersections: int) -> None**:
-            Remove the last n intersection nodes from the graph.
-        **connect_intersections(self, new_intersections: list) -> None**:
-            Connects each intersection node to min. 2 and max. 4 other intersection nodes.
-        **add_borders(self, num_borders: int) -> None**:
-            Add border nodes to the graph.
-        **remove_borders(self, num_borders: int) -> None**:
-            Remove the last n border nodes from the graph.
-        **connect_borders(self) -> None**:
-            Connects each border between two connected intersections.
-        **change_weights(self, min_distance: int, max_distance: int) -> None**:
-            Change the weights of the edges in the graph.
-        **place_agent(self, agent_id: int) -> str**:
-            Place an agent on a random border node.
-        **save(self, filename: str = "graph.pickle") -> None**:
-            Save class instance to a pickle file.
-        **load(cls, filename: str = "graph.pickle") -> Graph**:
-            Load a class instance from a pickle file.
-        **get_nodes(self, type: str = None) -> list**:
-            Get all nodes of a specific type.
-        **get_connections(self, \*\*kwargs) -> dict**:
-            Get all connections between nodes.
+    Methods:
+        add_intersections(self, num_intersections: int) -> None:
+            Add intersection nodes and connect them.
+        connect_intersections(self, new_intersections: list) -> None:
+            Establish connections between intersection nodes.
+        add_borders(self, num_borders: int) -> None:
+            Add border nodes and connect them.
+        connect_borders(self) -> None:
+            Connect border nodes between intersection pairs.
+        save(self, filename: str = "graph.pickle") -> None:
+            Save the graph instance to a file.
+        load(cls, filename: str = "graph.pickle") -> "Graph":
+            Load a graph instance from a file.
+        get_nodes(self, type: str = None) -> list:
+            Retrieve node IDs, optionally filtered by type.
+        get_connections(self, **kwargs) -> dict:
+            Retrieve connections for specified nodes.
     """
 
     def __init__(
@@ -50,17 +68,19 @@ class Graph(nx.Graph):
         min_distance: int,
         max_distance: int,
     ):
-        """Initializes a new Graph instance with intersection and border nodes and edges between them.
+        """Initializes the Graph with intersections, borders, and connections.
 
-        Forces min_distance of 2, to ensure correct insertion of border node between intersection nodes.
+        Creates the specified number of intersection and border nodes, then
+        connects them according to the class logic. Ensures `min_distance` is
+        at least 2 to allow for border node insertion between intersections.
 
         Args:
             num_intersections (int): The number of intersection nodes to create.
             num_borders (int): The number of border nodes to create.
-            min_distance (int): The minimum distance between nodes.
-            max_distance (int): The maximum distance between nodes.
+            min_distance (int): The minimum distance for edges between intersections.
+                                If less than 2, it will be set to 2.
+            max_distance (int): The maximum distance for edges between intersections.
         """
-
         super().__init__()
         self.min_distance = min_distance if min_distance >= 2 else 2
         self.max_distance = max_distance
@@ -68,10 +88,14 @@ class Graph(nx.Graph):
         self.add_borders(num_borders)
 
     def add_intersections(self, num_intersections: int) -> None:
-        """Add intersection nodes to the graph.
+        """Adds a specified number of intersection nodes to the graph.
+
+        New intersection nodes are named sequentially (e.g., 'intersection_0',
+        'intersection_1', ...). After adding, it attempts to connect the new
+        intersections to existing ones.
 
         Args:
-            num_intersections (int): The number of intersection nodes to create.
+            num_intersections (int): The quantity of intersection nodes to add.
         """
         index = len(self.get_nodes("intersection"))
 
@@ -84,33 +108,59 @@ class Graph(nx.Graph):
 
         self.connect_intersections([node[0] for node in new_intersections])
 
-    def remove_intersections(self, num_intersections: int) -> None:
-        """Removes the last n intersection nodes from the graph.
-
-        Args:
-            num_intersections (int): The number of intersection nodes to remove.
-        """
-        intersections_to_remove = self.get_nodes("intersection")[-num_intersections:]
-
-        super().remove_nodes_from(intersections_to_remove)
-
-        self.connect_intersections(self.get_nodes("intersection"))
-        self.connect_borders()
-
     def connect_intersections(self, new_intersections: list) -> None:
-        """Connects each intersection node to min. 2 and max. 4 other intersection nodes.
+        """Connects intersection nodes, ensuring connectivity constraints are met.
 
-        - Initializes a list with all nodes of type intersection.
-        - Gets established connections between intersection nodes.
-        - For each new intersection node:
-            - Ensures it is connected to at least 2 and at most 4 other intersection nodes.
-            - Selects available nodes that are not already fully connected.
-            - Randomly selects a number of nodes to connect to, ensuring it does not exceed the limits.
-            - Adds the selected nodes to the connections of the current node and vice versa.
-        - Adds weighted edges between connected nodes with weights chosen from the specified range. Weights are chosen with an inversely proportional likelihood using a power distribution.
+        This method iterates through a list of specified intersection nodes (typically
+        newly added ones) and attempts to establish connections with other intersection
+        nodes within the graph. The primary goal is to ensure that every intersection
+        node adheres to the connectivity constraints: having a minimum of 2 and a
+        maximum of 4 connections to other intersections.
+
+        Connection Logic:
+        1.  Retrieves all current intersection nodes and their existing connections.
+        2.  For each node in `new_intersections`:
+            a.  It enters a loop that continues as long as the node has fewer than 2
+                intersection connections.
+            b.  Identifies potential `available_nodes` to connect to. These are
+                intersection nodes other than the current node that currently have
+                fewer than 4 connections.
+            c.  **Constraint Handling:** If no `available_nodes` are found (meaning all
+                other intersections already have 4 connections), the method attempts
+                to free up connection slots. It searches for an existing edge (u, v)
+                where both nodes `u` and `v` have more than 2 connections. If found,
+                this edge is removed (conceptually, within the temporary connection
+                tracking), making `u` and `v` available for new connections.
+                *Note: If no such edge can be found to break, the connection process
+                for the current node might halt before reaching the minimum of 2.*
+            d.  Calculates the number of new connections to add (`num_to_connect`),
+                considering the node's remaining capacity (up to 4), a random target
+                between 2 and 4, and the actual number of `available_nodes`.
+            e.  Randomly selects `num_to_connect` nodes from the `available_nodes`.
+            f.  Updates the temporary connection tracking by adding bidirectional links
+                between the current node and the selected target nodes.
+        3.  After processing all nodes in `new_intersections`, the method iterates
+            through the final connection map.
+        4.  For each node and its target connections, it generates weighted edges.
+            The edge weight is calculated using a formula that biases towards the
+            `self.min_distance`:
+            `weight = int((max_dist - min_dist) * (random.random()**2) + min_dist)`
+        5.  These weighted edges are then added to the graph using the parent class's
+            `add_weighted_edges_from` method, permanently modifying the graph structure.
 
         Args:
-            new_intersections (list): A list of new intersection nodes to connect to other intersection nodes
+            new_intersections (list[str]): A list of intersection node IDs (strings)
+                                           for which connections need to be established
+                                           or verified according to the constraints.
+
+        Notes:
+            - This method directly modifies the graph by adding edges.
+            - It relies on `self.get_nodes`, `self.get_connections`,
+              `self.min_distance`, and `self.max_distance`.
+            - The process prioritizes satisfying the minimum connection constraint (2)
+              and respects the maximum constraint (4).
+            - The edge weight calculation introduces randomness but favors shorter
+              distances due to squaring the random factor.
         """
         intersections = self.get_nodes("intersection")
         intersection_connections = {
@@ -169,10 +219,14 @@ class Graph(nx.Graph):
             super().add_weighted_edges_from(edges)
 
     def add_borders(self, num_borders: int) -> None:
-        """Add border nodes to the graph.
+        """Adds a specified number of border nodes to the graph.
+
+        New border nodes are named sequentially (e.g., 'border_0', 'border_1', ...).
+        After adding, it attempts to connect these border nodes between existing
+        connected intersection pairs.
 
         Args:
-            num_borders (int): The number of border nodes to create.
+            num_borders (int): The quantity of border nodes to add.
         """
         index = len(self.get_nodes("border"))
 
@@ -185,20 +239,34 @@ class Graph(nx.Graph):
 
         self.connect_borders()
 
-    def remove_borders(self, num_borders: int) -> None:
-        """Removes the last n border nodes from the graph.
-
-        Args:
-            num_borders (int): The number of border nodes to remove.
-        """
-
-        super().remove_nodes_from(self.get_nodes("border")[-num_borders:])
-
     def connect_borders(self) -> None:
-        """Connects each border between two connected intersections.
+        """Connects border nodes with fewer than two connections into the graph.
 
-        - Gets a random intersection
-        - Gets the second intersection randomly from first intersection's connections
+        This method iterates through all border nodes currently having 0 or 1
+        connections ('free' borders). For each free border, it aims to establish
+        exactly two connections, linking it to a pair of intersection nodes that
+        are already directly connected to each other.
+
+        Connection Logic:
+        1.  Identifies all border nodes with `self.degree(border) < 2`.
+        2.  For each such `border`:
+            a.  Determines the first connection point (`intersection_1`):
+                - If `degree == 0`, a random intersection node is chosen.
+                - If `degree == 1`, the existing neighbor (which must be an
+                  intersection based on graph structure rules) is used.
+            b.  Selects a second connection point (`intersection_2`) by randomly
+                choosing an intersection node that is a direct neighbor of
+                `intersection_1`. This ensures the border is placed logically
+                between two connected intersections.
+            c.  Retrieves the weight (`total_weight`) of the existing direct edge
+                between `intersection_1` and `intersection_2`.
+            d.  Calculates two new weights (`weight_1`, `weight_2`) such that
+                `weight_1 + weight_2 = total_weight`, and both `weight_1` and
+                `weight_2` are at least 1. This is done by choosing `weight_1`
+                randomly between 1 and `total_weight - 1`.
+            e.  Adds two new edges to the graph:
+                - (`border`, `intersection_1`) with weight `weight_1`.
+                - (`border`, `intersection_2`) with weight `weight_2`.
         """
         intersections = self.get_nodes("intersection")
 
@@ -241,67 +309,15 @@ class Graph(nx.Graph):
                 weight=weight_2,
             )
 
-    def change_weights(self, min_distance: int, max_distance: int) -> None:
-        """Change the weights of the edges in the graph.
-
-        Args:
-            min_distance (int): The new minimum distance between two connected nodes.
-            max_distance (int): The new maximum distance between two connected nodes.
-        """
-        [
-            nx.set_edge_attributes(
-                self,
-                {
-                    (edge[0], edge[1]): {
-                        "weight": random.randint(min_distance, max_distance)
-                    }
-                },
-            )
-            for edge in list(self.edges)
-            if edge[0].startswith("intersection") and edge[1].startswith("intersection")
-        ]
-
-        border_connections = self.get_connections(filter_by="border")
-        for key in border_connections.keys():
-            intersection_1 = border_connections[key][0]
-            intersection_2 = border_connections[key][1]
-            total_weight = self.get_edge_data(intersection_1, intersection_2)["weight"]
-            weight_1 = (
-                random.randint(min_distance, total_weight - 1)
-                if min_distance != total_weight
-                else total_weight - 1
-            )
-            weight_2 = total_weight - weight_1
-
-            nx.set_edge_attributes(
-                self,
-                {(key, intersection_1): {"weight": weight_1}},
-            )
-
-            nx.set_edge_attributes(
-                self,
-                {(key, intersection_2): {"weight": weight_2}},
-            )
-
-    def place_agent(self, agent_id: int) -> str:
-        """Places an agent on a random border node and stores position internally.
-
-        Args:
-            agent_id (id): ID of agent being placed
-
-        Returns:
-            str: ID of assigned node the agent spawns on
-        """
-        borders = self.get_nodes(type="border")
-        assigned_start = borders[random.randint(0, (len(borders) - 1))]
-
-        return assigned_start
-
     def save(self, filename: str = "graph.pickle") -> None:
-        """Save class instance to a pickle file.
+        """Saves the current Graph instance to a pickle file.
+
+        Serializes the Graph object, including its nodes, edges, attributes,
+        and internal state (`min_distance`, `max_distance`), into the specified file.
 
         Args:
-            filename (str, optional): The name of the file to save the class instance to.
+            filename (str, optional): The path and name of the file to save the
+                                      graph to. Defaults to "graph.pickle".
         """
         with open(filename, "wb") as file:
             pickle.dump(self, file)
@@ -309,44 +325,57 @@ class Graph(nx.Graph):
 
     @classmethod
     def load(cls, filename: str = "graph.pickle") -> "Graph":
-        """Load a class instance from a pickle file.
+        """Loads a Graph instance from a pickle file.
+
+        Deserializes a Graph object from the specified file, restoring its
+        structure and attributes.
 
         Args:
-            filename (str, optional): The name of the file to load the class instance from.
+            filename (str, optional): The path and name of the pickle file to
+                                      load the graph from. Defaults to "graph.pickle".
 
         Returns:
-            Graph: A new instance of the Graph class loaded from
-            the specified pickle file.
+            Graph: A new instance of the Graph class loaded from the file.
         """
-
         with open(filename, "rb") as file:
             return pickle.load(file)
 
     def get_nodes(self, type: str = None) -> list:
-        """Get all nodes of a specific type.
+        """Retrieves a list of node IDs, optionally filtered by type.
 
         Args:
-            type (str, optional): The type of nodes to get.
+            type (str, optional): The type of nodes to retrieve ('intersection'
+                                  or 'border'). If None, returns all node IDs.
+                                  Defaults to None.
 
         Returns:
-            list: A list of nodes of the specified type.
+            list: A list of node IDs (strings) matching the specified type, or
+                  all node IDs if no type is provided.
         """
         if type:
             return [node for node in self.nodes if node.startswith(type)]
         return self.nodes
 
     def get_connections(self, **kwargs) -> dict:
-        """Get all connections between nodes.
+        """Retrieves the connections for specified nodes.
+
+        Returns a dictionary where keys are node IDs and values are lists of
+        their neighbors. Can filter by node type/ID and optionally include edge weights.
 
         Args:
             **kwargs:
-            filter_by (str, optional): A string to filter nodes by type and optionally by ID, formatted as "type_id".
-                           If only type is provided, all nodes of that type are considered. Defaults to None.
-            weights (bool, optional): Specifies whether weights should be returned. Defaults to False.
+                filter_by (str, optional): A node ID (e.g., 'intersection_3') or
+                                           node type (e.g., 'border') to filter the
+                                           results. If None, returns connections for
+                                           all nodes. Defaults to None.
+                weights (bool, optional): If True, the neighbor list will contain
+                                          tuples of (neighbor_id, weight).
+                                          If False, it contains only neighbor IDs.
+                                          Defaults to False.
 
         Returns:
-            dict: A dictionary with nodes as keys and a list of their connected nodes as values.
-              If weights is True, the list will contain tuples with the connected node and the edge weight.
+            dict: A dictionary mapping node IDs to their connections. The format
+                  of the connection list depends on the `weights` argument.
         """
         filter_by = kwargs.get("filter_by", None)
         weights = kwargs.get("weights", False)
@@ -370,3 +399,17 @@ class Graph(nx.Graph):
             }
         else:
             return {node: [x[1] for x in list(self.edges(node))] for node in nodes}
+
+    def place_agent(self, agent_id: int) -> str:
+        """Places an agent on a random border node and stores position internally.
+
+        Args:
+            agent_id (id): ID of agent being placed
+
+        Returns:
+            str: ID of assigned node the agent spawns on
+        """
+        borders = self.get_nodes(type="border")
+        assigned_start = borders[random.randint(0, (len(borders) - 1))]
+
+        return assigned_start

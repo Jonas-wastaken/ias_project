@@ -1,12 +1,38 @@
-from pathlib import Path
-import sys
-from tqdm import tqdm
+"""
+sim.py
+
+This script runs a traffic simulation using the TrafficModel class. It allows users to
+configure the simulation parameters via command-line arguments, such as the number of
+intersections, cars, borders, and optimization type. The simulation collects data on
+traffic patterns, wait times, and other metrics, and stores the results in a structured
+directory with timestamped filenames.
+
+Classes:
+    - DataPath: Manages the directory and file paths for storing simulation data.
+    - Sim: Handles the initialization, execution, and data collection of the traffic simulation.
+
+Functions:
+    - parse_args: Parses command-line arguments to configure the simulation.
+
+Usage:
+    Run the script from the command line with optional arguments to customize the simulation.
+
+    **Important**: Run from parent directory of the project.
+
+    The simulation results, including configuration and collected data, will be stored in
+    a timestamped directory under the "data" folder.
+"""
+
 import argparse
-import time
-import random
-import json
-from dataclasses import dataclass, field
 import datetime
+import json
+import random
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
@@ -18,7 +44,8 @@ def parse_args() -> dict:
     """Parses command line arguments for the traffic simulation configuration.
 
     Returns:
-        dict: Parsed command line arguments as a dictionary.
+        dict: A dictionary containing the parsed command line arguments,
+              with default values applied where necessary.
     """
     parser = argparse.ArgumentParser(description="Traffic Simulation Configuration")
     parser.add_argument(
@@ -71,7 +98,13 @@ def parse_args() -> dict:
 
 @dataclass
 class DataPath:
-    """Holds a Path object representing the directory where sim data is stored in"""
+    """Manages the directory and file paths for storing simulation data.
+
+    Creates a timestamped directory within the 'data' folder upon instantiation.
+
+    Attributes:
+        path (Path): The Path object representing the timestamped data directory.
+    """
 
     path: Path = field(
         default_factory=lambda: Path.joinpath(
@@ -82,42 +115,46 @@ class DataPath:
     )
 
     def __post_init__(self):
-        """Create the directory"""
+        """Creates the data directory if it doesn't exist."""
         self.path.mkdir(parents=True, exist_ok=True)
 
     def get_path(self) -> Path:
-        """Get directory where data is stored
+        """Returns the Path object for the data directory.
 
         Returns:
-            Path: Path object
+            Path: The path to the simulation data directory.
         """
         return self.path
 
     def get_file_path(self, filename: str) -> Path:
-        """Constructs a file path from a directory
+        """Constructs the full path for a file within the data directory.
 
         Args:
-            filename (str): Name of the file to store
+            filename (str): The name of the file (e.g., 'traffic.parquet').
 
         Returns:
-            Path: Path object
+            Path: The full path to the specified file within the data directory.
         """
         file_path = Path.joinpath(self.path, filename)
         return file_path
 
 
 class Sim:
-    """Simulation class for running the traffic model.
+    """Handles the initialization, execution, and data saving of a traffic simulation.
+
+    Instantiating this class runs the entire simulation process based on the
+    provided configuration.
 
     Attributes:
-        data_path (str): Path where the simulation data is stored.
+        data_path (DataPath): An instance of DataPath managing the output directory.
     """
 
-    def __init__(self, config: argparse.Namespace):
-        """Initializes the simulation with the given configuration.
+    def __init__(self, config: dict):
+        """Initializes and runs the traffic simulation, then saves the results.
 
         Args:
-            config (argparse.Namespace): Configuration parameters for the simulation.
+            config (dict): A dictionary containing the simulation configuration
+                           parameters (e.g., num_cars, steps, optimization_type).
         """
         model = TrafficModel(
             num_cars=config["num_cars"],
@@ -166,7 +203,10 @@ if __name__ == "__main__":
     for key, value in config.items():
         print(f"{key}: {value}")
     print(100 * "-")
+
     sim = Sim(config)
+
     with open(file=sim.data_path.get_file_path("config.json"), mode="w") as file:
         json.dump(obj=config, fp=file, indent=4)
+
     print(f"Simulation data stored in: {sim.data_path.get_path()}")

@@ -1,0 +1,40 @@
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yaml
+.dockerignore
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE configuration
+.vscode/
+.idea/
+
+# ML Training
+ml_training/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+htmlcov/
+.coverage*
+pytest_cache/
+.pytest_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
