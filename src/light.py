@@ -81,30 +81,28 @@ class LightAgent(mesa.Agent):
                          which cars are currently allowed to cross.
 
     ## Methods:
+        **step(self, optimization_type: str, steps: int) -> None**:
+            Executes the agent's actions for a single simulation step.
         **set_position(self, position: str) -> None**:
-            Sets the position of the agent to the given node ID.
-        **update_waiting_cars(self) -> None**:
-            Updates the details of the cars waiting at the intersection (waiting_cars).
-        **change_open_lane (self) -> None**:
-            Changes from where cars are allowed to cross the intersection.
-        **rotate_in_open_lane_cycle(self) -> None**:
-            Rotates the open lane to the next neighbor light in the cycle.
-        **optimize_open_lane(self) -> str**:
-            Decides which lane should be open based on the number of waiting cars.
+            Sets the agent's position attribute.
+        **change_open_lane(self, lane: str) -> None**:
+            Changes the currently open lane to the specified lane.
+        **rotate_in_open_lane_cycle(self) -> str**:
+            Determines the next lane to open by simple rotation.
         **get_num_connections(self, grid: Graph) -> int**:
-            Gets the number of connected intersections.
+            Calculates the number of intersection nodes connected to this light's position.
         **get_avg_distance(self, grid: Graph) -> float**:
-            Gets the average distance to connected intersections.
-        **get_is_entrypoint(self, grid: Graph) -> bool**:
-            Checks if intersection is connected to a border.
-        **optimize_open_lane(self) -> str**:
-            Decides which lane should be open based on the number of waiting cars.
-        **get_num_connections(self, grid: Graph) -> int**:
-            Gets the number of connected intersections.
-        **get_avg_distance(self, grid: Graph) -> float**:
-            Gets the average distance to connected intersections.
-        **get_is_entrypoint(self, grid: Graph) -> bool**:
-            Checks if intersection is connected to a border.
+            Calculates the average distance (edge weight) to connected intersection nodes.
+        **is_entrypoint(self, grid: Graph) -> bool**:
+            Checks if the light's intersection is connected to any border node.
+        **get_num_arrivals(self) -> int**:
+            Counts the number of cars currently arriving at this light's intersection.
+        **get_num_cars(self, lane: str) -> int**:
+            Counts the number of cars currently waiting at this light from a specific lane.
+        **get_centrality(self, grid: Graph) -> float**:
+            Calculates the closeness centrality of the light's intersection node.
+        **get_connected_intersections(self, grid: Graph) -> list[str]**:
+            Retrieves the IDs of all neighboring nodes that are intersections.
     """
 
     def __init__(self, model: mesa.Model, **kwargs):
@@ -317,27 +315,6 @@ class LightAgent(mesa.Agent):
 
         return num_cars
 
-    def get_num_cars_per_lane(self) -> dict:
-        """Counts the number of waiting cars for each incoming lane.
-
-        Iterates through all `CarAgent` instances at this light's position that are
-        currently waiting and aggregates the counts based on the lane (last intersection)
-        they arrived from.
-
-        Returns:
-            dict: A dictionary where keys are lane IDs (neighboring intersection IDs)
-                  and values are the counts of waiting cars from that lane.
-        """
-        num_cars_per_lane = {lane: 0 for lane in self.neighbor_lights}
-        for car in self.model.get_agents_by_type("CarAgent"):
-            car: CarAgent
-            if car.position == self.position and car.waiting:
-                num_cars_per_lane[
-                    self.model.get_last_intersection_of_car(car.unique_id)
-                ] += 1
-
-        return num_cars_per_lane
-
     def get_centrality(self, grid: Graph) -> float:
         """Calculates the closeness centrality of the light's intersection node.
 
@@ -479,6 +456,17 @@ class SimpleOptimizer(Optimizer):
         cars_at_light (dict): A dictionary mapping lane IDs to the number of
                               cars currently waiting in that lane.
         model (highs.Model): The HiGHS optimization model instance.
+
+    ## Methods:
+        **get_cars_at_light(self) -> dict**:
+            Retrieves the current number of waiting cars for each lane.
+        **get_dec_vars(self) -> list[str]**:
+            Returns the list of incoming lane IDs for the associated `LightAgent`.
+        **init_model(self) -> None**:
+            Initializes, builds, and solves the HiGHS optimization model.
+        **get_optimal_lane(self) -> str**:
+            Extracts the optimal lane from the solved optimization model.
+
     """
 
     def __init__(self, light: LightAgent):
@@ -601,6 +589,29 @@ class AdvancedOptimizer(Optimizer):
         model (gurobi.Model): The Gurobi optimization model instance.
         lanes (poi.VariableMatrix): Decision variables representing whether a lane
                                     is open at a specific time tick.
+
+    ## Methods:
+        **get_cars_at_light(self) -> dict**:
+            Retrieves/estimates/predicts car counts for each lane over the time horizon.
+        **get_dec_vars(self) -> tuple[range, list[str]]**:
+            Returns the dimensions for the decision variables: time horizon and lanes.
+        **init_model(self) -> None**:
+            Initializes, builds, and solves the Gurobi optimization model.
+        **get_optimal_lane(self) -> str**:
+            Extracts the optimal lane for the current time step (t=0) from the solved model.
+        **_init_env(self) -> gurobi.Env**:
+            Initializes and configures the Gurobi optimization environment.
+        **_load_secrets(self) -> dict**:
+            Loads Gurobi license secrets from a 'gurobi.lic' file.
+        **_request_cars_at_light(self) -> dict**:
+            DEPRECATED: Gets car counts by directly querying the model for future ticks.
+        **_get_cars_waiting(self) -> dict**:
+            Gets the number of cars currently waiting at each incoming lane.
+        **_approx_incoming_cars(self) -> dict**:
+            Approximates the number of incoming cars for future steps based on historical averages.
+        **_predict_incoming_cars(self) -> dict**:
+            Predicts the number of incoming cars for future steps using a pre-trained model.
+        
     """
 
     def __init__(self, light: LightAgent, mode: str = "base"):
@@ -877,6 +888,12 @@ class Lanes:
         data (pl.DataFrame): A Polars DataFrame with columns 'Lane' (str) and
                              'Distance' (Int16), storing the ID and distance
                              for each incoming lane.
+
+    ## Methods:
+        **construct(self, light: LightAgent) -> Lanes**:
+            Populates the DataFrame with lane data for the given `LightAgent`.
+        **get_distance(self, lane: str) -> int**:
+            Retrieves the distance (edge weight) for a specific incoming lane.
     """
 
     data: pl.DataFrame = field(
@@ -955,6 +972,16 @@ class TrafficData(SimData):
         data (pl.DataFrame): A Polars DataFrame holding the traffic data.
                              Columns include 'Step', 'Light_ID', 'Time', 'Lane',
                              'Open_Lane', and 'Num_Cars'.
+
+    ## Methods:
+        **__post_init__(self) -> None**:
+            Initializes the Polars DataFrame with a predefined schema.
+        **update_data(self, light: LightAgent, steps: int, lane: str) -> None**:
+            Appends a new record of traffic data for a specific lane at the current step.
+        **get_current_cars(self, lane: str) -> int**:
+            Retrieves the most recently recorded number of cars for a specific lane.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the entire collected traffic data as a Polars DataFrame.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
