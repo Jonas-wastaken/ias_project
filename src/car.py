@@ -75,8 +75,6 @@ class CarAgent(mesa.Agent):
         check_lights(self) -> None:
             Checks the status of the traffic light if the car is at an intersection
             and updates the `waiting` status accordingly.
-        remove(self) -> None:
-            Removes the agent from the simulation model.
     """
 
     def __init__(self, model: mesa.Model):
@@ -302,6 +300,18 @@ class WaitTimes(SimData):
         data (pl.DataFrame): A Polars DataFrame holding the wait time records.
                              Columns: 'Car_ID' (Int32), 'Light_ID' (Int16),
                              'Wait_Time' (Int16).
+
+    ## Methods:
+        **__post_init__()**:
+            Initializes the Polars DataFrame with the wait time schema.
+        **update_data(car, waiting, light_intersection_mapping)**:
+            Updates the wait time for the car at its current intersection.
+        **get_data()**:
+            Returns the collected wait time data for the car.
+        **init_wait_times(car, light_intersection_mapping)**:
+            Initializes wait time records for all intersections in the car's path.
+        **is_arrival(car, light)**:
+            Checks if the car has just arrived at the specified light in the current step.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
