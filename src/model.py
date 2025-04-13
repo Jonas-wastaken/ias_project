@@ -85,30 +85,31 @@ class TrafficModel(mesa.Model):
                                             (Implicitly managed by Mesa).
         _agents_by_type (dict): Internal Mesa dictionary grouping agents by class.
 
-    Methods:
-        step():
-            Advances the simulation by one time step.
-        create_cars(num_cars):
-            Creates and adds a specified number of `CarAgent`s.
-        remove_random_cars(num_cars):
-            Randomly removes a specified number of `CarAgent`s.
-        create_lights():
+    ## Methods:
+        **step(self) -> None**:
+            Advances the simulation by one time step, updating car and light states.
+        **create_cars(self, num_cars: int) -> None**:
+            Creates and adds a specified number of `CarAgent`s to the model.
+        **remove_random_cars(self, num_cars: int) -> None**:
+            Randomly selects and removes a specified number of `CarAgent`s from the model.
+        **create_lights(self) -> None**:
             Creates `LightAgent`s for all intersection nodes in the grid.
-        get_agents_by_type(agent_type):
-            Returns a Mesa AgentSet of agents of the specified type.
-        get_agents_by_id(agent_id):
-            Returns a list of agents matching the provided IDs.
-        get_last_intersection_of_car(car_id):
-            Determines the intersection node a car arrived from.
-        update_car_paths():
-            Updates the `car_paths` dictionary with paths of newly added cars.
-        car_respawn():
-            Adds new cars based on a sine wave pattern relative to the current car count.
-        get_cars_per_lane_of_light(light_position, tick):
-            Counts cars waiting or arriving at a light.
-        update_lights_decision_log(light, cars_per_lane, decision_lane, model_step):
-            Logs a light's decision.
-        DataCollector (nested class):
+        **get_agents_by_type(self, agent_type: str) -> mesa.AgentSet**:
+            Retrieves all active agents of a specific type from the model.
+        **get_agents_by_id(self, agent_id: list) -> list[mesa.Agent]**:
+            Retrieves specific agents from the model based on their unique IDs.
+        **get_last_intersection_of_car(self, car_id: int) -> str**:
+            Determines the intersection node a car arrived from in the previous step.
+        **update_car_paths(self) -> None**:
+            Stores the initial, full path for any newly added `CarAgent`s.
+        **car_respawn(self) -> None**:
+            Adds new cars to the simulation based on a time-varying pattern.
+        **get_cars_per_lane_of_light(self, light_position: str, tick: int) -> dict**:
+            Counts cars waiting or arriving at a specific light's incoming lanes.
+        **update_lights_decision_log(self, light: LightAgent, cars_per_lane: dict,
+            decision_lane: str, model_step: int) -> None**:
+            Logs the decision made by a `LightAgent` at a specific step.
+        **DataCollector (nested class)**:
             Helper to aggregate data from multiple agents.
     """
 
@@ -498,6 +499,14 @@ class LightIntersectionMapping(SimData):
     Attributes:
         data (pl.DataFrame): A Polars DataFrame with columns 'Light_ID' (Int16)
                              and 'Intersection' (String).
+
+    ## Methods:
+        **__post_init__(self)**:
+            Initializes the Polars DataFrame with the mapping schema.
+        **update_data(self, light: LightAgent) -> None**:
+            Adds a new mapping entry for a given `LightAgent`.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the complete mapping data.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
@@ -554,6 +563,14 @@ class LightData(SimData):
         data (pl.DataFrame): A Polars DataFrame holding the light metadata.
                              Columns: 'Light_ID' (Int16), 'Centrality' (Float32),
                              'Is_Entrypoint' (Boolean).
+
+    ## Methods:
+        **__post_init__(self)**:
+            Initializes the Polars DataFrame with the light metadata schema.
+        **update_data(self, light: LightAgent, grid: Graph) -> None**:
+            Adds metadata for a newly created `LightAgent`.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the complete light metadata.                             
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
@@ -631,6 +648,14 @@ class NumCars(SimData):
         data (pl.DataFrame): A Polars DataFrame holding the car count history.
                              Columns: 'Time' (Int32, representing step within cycle),
                              'Num_Cars' (Int32).
+
+    ## Methods:
+        **__post_init__(self)**:
+            Initializes the Polars DataFrame with the car count schema.
+        **update_data(self, steps: int, n_cars: int) -> None**:
+            Appends a new record of the total car count at the current step.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the complete history of car counts over time.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
@@ -694,6 +719,15 @@ class Connections(SimData):
                              Columns: 'Intersection_u' (String, source node),
                              'Intersection_v' (String, target node),
                              'Distance' (Int16, edge weight).
+
+    ## Methods:
+        **__post_init__(self)**:
+            Initializes the Polars DataFrame with the connection schema.
+        **update_data(self, intersection_u: str, intersection_v: str,
+            distance: int) -> None**:
+            Appends a new connection record (edge) to the DataFrame.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the complete list of recorded connections.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
@@ -769,6 +803,14 @@ class GlobalWaitTimes(SimData):
         data (pl.DataFrame): A Polars DataFrame holding the aggregated wait times.
                              Columns: 'Car_ID' (Int32), 'Light_ID' (Int16),
                              'Wait_Time' (Int16).
+
+    ## Methods:
+        **__post_init__(self)**:
+            Initializes the Polars DataFrame with the global wait time schema.
+        **update_data(self, wait_times: pl.DataFrame) -> None**:
+            Appends new wait time records from a completed `CarAgent` journey.
+        **get_data(self) -> pl.DataFrame**:
+            Returns the aggregated wait time data for all completed car journeys.
     """
 
     data: pl.DataFrame = field(default_factory=pl.DataFrame)
