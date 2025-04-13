@@ -45,20 +45,12 @@ class Graph(nx.Graph):
     Methods:
         add_intersections(self, num_intersections: int) -> None:
             Add intersection nodes and connect them.
-        remove_intersections(self, num_intersections: int) -> None:
-            Remove intersection nodes and update connections.
         connect_intersections(self, new_intersections: list) -> None:
             Establish connections between intersection nodes.
         add_borders(self, num_borders: int) -> None:
             Add border nodes and connect them.
-        remove_borders(self, num_borders: int) -> None:
-            Remove border nodes.
         connect_borders(self) -> None:
             Connect border nodes between intersection pairs.
-        change_weights(self, min_distance: int, max_distance: int) -> None:
-            Update edge weights based on new distance bounds.
-        place_agent(self, agent_id: int) -> str:
-            Select a random border node for agent placement.
         save(self, filename: str = "graph.pickle") -> None:
             Save the graph instance to a file.
         load(cls, filename: str = "graph.pickle") -> "Graph":
@@ -115,23 +107,6 @@ class Graph(nx.Graph):
         super().add_nodes_from(new_intersections)
 
         self.connect_intersections([node[0] for node in new_intersections])
-
-    def remove_intersections(self, num_intersections: int) -> None:
-        """Removes the last 'n' intersection nodes added to the graph.
-
-        Removes the specified number of intersection nodes, starting from the
-        highest index. It then re-evaluates and potentially adjusts connections
-        for remaining intersections and borders.
-
-        Args:
-            num_intersections (int): The number of intersection nodes to remove.
-        """
-        intersections_to_remove = self.get_nodes("intersection")[-num_intersections:]
-
-        super().remove_nodes_from(intersections_to_remove)
-
-        self.connect_intersections(self.get_nodes("intersection"))
-        self.connect_borders()
 
     def connect_intersections(self, new_intersections: list) -> None:
         """Connects intersection nodes, ensuring connectivity constraints are met.
@@ -264,21 +239,34 @@ class Graph(nx.Graph):
 
         self.connect_borders()
 
-    def remove_borders(self, num_borders: int) -> None:
-        """Removes the last 'n' border nodes added to the graph.
-
-        Args:
-            num_borders (int): The number of border nodes to remove.
-        """
-
-        super().remove_nodes_from(self.get_nodes("border")[-num_borders:])
-
     def connect_borders(self) -> None:
-        """Connects unconnected border nodes between pairs of connected intersections.
+        """Connects border nodes with fewer than two connections into the graph.
 
-        Iterates through border nodes with fewer than two connections. For each,
-        it randomly selects a pair of connected intersection nodes and inserts
-        the border node between them, splitting the original edge weight.
+        This method iterates through all border nodes currently having 0 or 1
+        connections ('free' borders). For each free border, it aims to establish
+        exactly two connections, linking it to a pair of intersection nodes that
+        are already directly connected to each other.
+
+        Connection Logic:
+        1.  Identifies all border nodes with `self.degree(border) < 2`.
+        2.  For each such `border`:
+            a.  Determines the first connection point (`intersection_1`):
+                - If `degree == 0`, a random intersection node is chosen.
+                - If `degree == 1`, the existing neighbor (which must be an
+                  intersection based on graph structure rules) is used.
+            b.  Selects a second connection point (`intersection_2`) by randomly
+                choosing an intersection node that is a direct neighbor of
+                `intersection_1`. This ensures the border is placed logically
+                between two connected intersections.
+            c.  Retrieves the weight (`total_weight`) of the existing direct edge
+                between `intersection_1` and `intersection_2`.
+            d.  Calculates two new weights (`weight_1`, `weight_2`) such that
+                `weight_1 + weight_2 = total_weight`, and both `weight_1` and
+                `weight_2` are at least 1. This is done by choosing `weight_1`
+                randomly between 1 and `total_weight - 1`.
+            e.  Adds two new edges to the graph:
+                - (`border`, `intersection_1`) with weight `weight_1`.
+                - (`border`, `intersection_2`) with weight `weight_2`.
         """
         intersections = self.get_nodes("intersection")
 
@@ -320,71 +308,6 @@ class Graph(nx.Graph):
                 v_of_edge=intersection_2,
                 weight=weight_2,
             )
-
-    def change_weights(self, min_distance: int, max_distance: int) -> None:
-        """Updates the weights of all edges based on new distance bounds.
-
-        Reassigns random weights to all edges connecting intersection pairs
-        within the new `min_distance` and `max_distance`. It then recalculates
-        the weights for edges involving border nodes to maintain consistency
-        with the total distance between the intersections they connect.
-
-        Args:
-            min_distance (int): The new minimum distance for intersection edges.
-            max_distance (int): The new maximum distance for intersection edges.
-        """
-        [
-            nx.set_edge_attributes(
-                self,
-                {
-                    (edge[0], edge[1]): {
-                        "weight": random.randint(min_distance, max_distance)
-                    }
-                },
-            )
-            for edge in list(self.edges)
-            if edge[0].startswith("intersection") and edge[1].startswith("intersection")
-        ]
-
-        border_connections = self.get_connections(filter_by="border")
-        for key in border_connections.keys():
-            intersection_1 = border_connections[key][0]
-            intersection_2 = border_connections[key][1]
-            total_weight = self.get_edge_data(intersection_1, intersection_2)["weight"]
-            weight_1 = (
-                random.randint(min_distance, total_weight - 1)
-                if min_distance != total_weight
-                else total_weight - 1
-            )
-            weight_2 = total_weight - weight_1
-
-            nx.set_edge_attributes(
-                self,
-                {(key, intersection_1): {"weight": weight_1}},
-            )
-
-            nx.set_edge_attributes(
-                self,
-                {(key, intersection_2): {"weight": weight_2}},
-            )
-
-    def place_agent(self, agent_id: int) -> str:
-        """Selects a random border node as a starting position for an agent.
-
-        Does not modify the graph state but returns the ID of a randomly chosen
-        border node.
-
-        Args:
-            agent_id (int): The ID of the agent being placed (currently unused
-                            in the selection logic but kept for potential future use).
-
-        Returns:
-            str: The ID of the randomly selected border node (e.g., 'border_5').
-        """
-        borders = self.get_nodes(type="border")
-        assigned_start = borders[random.randint(0, (len(borders) - 1))]
-
-        return assigned_start
 
     def save(self, filename: str = "graph.pickle") -> None:
         """Saves the current Graph instance to a pickle file.
