@@ -53,6 +53,12 @@ class App:
     Attributes:
         screen_height (int): Height of the screen in pixels
         screen_width (int): Width of the screen in pixels
+
+    ## Methods:
+        **__init__(self, model: TrafficModel)**:
+            Initializes the application with a traffic model and sets up the UI elements.
+        **step(self, fig: TrafficGraph) -> None**:
+            Advances the environment by one step and refreshes the graph.
     """
 
     def __init__(self, model: TrafficModel):
@@ -139,14 +145,18 @@ class CarPathContainer:
     This class provides functionality to display a list of car agents in a horizontally scrollable manner. It includes methods to scroll the list left and right, render the current path of each car, and display detailed information about each car's path.
 
     ## Methods:
-        **scroll_left(self) -> None**:
+        **scroll_left(self, query_index) -> None**:
             Scrolls the car path list to the left.
-        **scroll_right(self) -> None**:
+        **scroll_right(self, query_index) -> None**:
             Scrolls the car path list to the right.
         **render_current_path(self, car: CarAgent) -> None**:
             Renders the current path of a given car agent.
         **render_full_path(self, car: CarAgent) -> None:**
             Renders the full path of a given car agent.
+        **render_lights_info(self, light: LightAgent) -> None**:
+            Renders the information of a given light agent.
+        **get_lights_info(self, light: LightAgent) -> dict**:
+            Returns the information of a light agent as a dictionary.
         **get_full_path(self, car_id: int) -> list[tuple[str, int]]**:
             Returns the full path of a car agent as a list of tuples containing node id and distance to the next step.
         **get_current_path(self, car: CarAgent) -> dict**:
@@ -325,6 +335,8 @@ class SettingsContainer:
             Applies changes to the environment based on user input from the settings form.
         **reset_environment(self) -> None**:
             Resets the environment with user-specified config options.
+        **update_env_config(self, num_cars, num_intersections, num_borders, distance_range, optimization_type) -> None**:
+            Updates the environment configuration with user-specified parameters.
     """
 
     def __init__(self):
