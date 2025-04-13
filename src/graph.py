@@ -399,3 +399,17 @@ class Graph(nx.Graph):
             }
         else:
             return {node: [x[1] for x in list(self.edges(node))] for node in nodes}
+
+    def place_agent(self, agent_id: int) -> str:
+        """Places an agent on a random border node and stores position internally.
+
+        Args:
+            agent_id (id): ID of agent being placed
+
+        Returns:
+            str: ID of assigned node the agent spawns on
+        """
+        borders = self.get_nodes(type="border")
+        assigned_start = borders[random.randint(0, (len(borders) - 1))]
+
+        return assigned_start
