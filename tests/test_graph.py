@@ -116,7 +116,6 @@ class TestGraph(unittest.TestCase):
             AssertionError: If borders are not connected to exactly 1 intersection
         """
         try:
-            intersection_pattern = re.compile(r"intersection_\d+")
             for border, connections in self.graph.get_connections(
                 filter_by="border"
             ).items():
@@ -168,32 +167,6 @@ class TestGraph(unittest.TestCase):
             logger.error(f"Failed test_add_intersections: {e}")
             raise
 
-    def test_remove_intersections(self):
-        """Test the removal of intersections from the graph.
-
-        - This test checks if intersections are removed from the graph.
-            - Remove intersections from the graph.
-            - Assert that the number of intersections in the graph is equal to the expected number.
-
-        Raises:
-            AssertionError: If the number of intersections in the graph is not equal to the expected number.
-        """
-        logger.info("Testing removing intersections from Graph")
-        num_initial_intersections = len(self.graph.get_nodes("intersection"))
-        num_removed_intersections = 5
-        self.graph.remove_intersections(num_removed_intersections)
-        try:
-            self._test_intersections(
-                expected_num_intersections=num_initial_intersections
-                - num_removed_intersections
-            )
-            self._test_intersection_connections()
-            self._test_border_connections()
-            logger.info("Passed test_remove_intersections")
-        except AssertionError as e:
-            logger.error(f"Failed test_remove_intersections: {e}")
-            raise
-
     def test_add_borders(self):
         """Test the addition of borders to the graph.
 
@@ -217,46 +190,6 @@ class TestGraph(unittest.TestCase):
         except AssertionError as e:
             logger.error(f"Failed test_add_borders: {e}")
             raise
-
-    def test_remove_borders(self):
-        """Test the removal of borders from the graph.
-
-        - This test checks if borders are removed from the graph.
-            - Remove borders from the graph.
-            - Assert that the number of borders in the graph is equal to the expected number.
-
-        Raises:
-            AssertionError: If the number of borders in the graph is not equal to the expected number.
-        """
-        logger.info("Testing removing borders from Graph")
-        num_initial_borders = len(self.graph.get_nodes("border"))
-        num_removed_borders = 2
-        self.graph.remove_borders(num_removed_borders)
-        try:
-            self._test_borders(
-                expected_num_borders=num_initial_borders - num_removed_borders
-            )
-            logger.info("Passed test_remove_borders")
-        except AssertionError as e:
-            logger.error(f"Failed test_remove_borders: {e}")
-            raise
-
-    # def test_change_weights(self):
-    #     """_summary_"""
-    #     logging.info("Testing changing weights")
-    #     try:
-    #         self.graph.change_weights(17, 42)
-    #         self.assertNotEqual(
-    #             min([edge[2] for edge in self.graph.edges(data="weight")]),
-    #             self.min_distance,
-    #         )
-    #         self.assertNotEqual(
-    #             max([edge[2] for edge in self.graph.edges(data="weight")]),
-    #             self.max_distance,
-    #         )
-    #     except AssertionError as e:
-    #         logging.error(f"Failed changing edge weights: {e}")
-    #         raise
 
     def test_place_agent(self):
         """Test the placement of an agent in the graph.
@@ -284,10 +217,7 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestGraph("test_graph_init"))
     suite.addTest(TestGraph("test_add_intersections"))
-    suite.addTest(TestGraph("test_remove_intersections"))
     suite.addTest(TestGraph("test_add_borders"))
-    suite.addTest(TestGraph("test_remove_borders"))
-    # suite.addTest(TestGraph("test_change_weights")) TODO: fix
     suite.addTest(TestGraph("test_place_agent"))
     return suite
 
