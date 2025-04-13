@@ -134,17 +134,58 @@ class Graph(nx.Graph):
         self.connect_borders()
 
     def connect_intersections(self, new_intersections: list) -> None:
-        """Connects intersection nodes, ensuring connectivity constraints.
+        """Connects intersection nodes, ensuring connectivity constraints are met.
 
-        Connects each intersection node (especially newly added ones) to a
-        minimum of 2 and a maximum of 4 other intersection nodes. It prioritizes
-        connecting nodes with fewer than 2 connections and avoids exceeding 4
-        connections per node. Edge weights are assigned randomly within the
-        `min_distance` and `max_distance` bounds, favoring smaller distances.
+        This method iterates through a list of specified intersection nodes (typically
+        newly added ones) and attempts to establish connections with other intersection
+        nodes within the graph. The primary goal is to ensure that every intersection
+        node adheres to the connectivity constraints: having a minimum of 2 and a
+        maximum of 4 connections to other intersections.
+
+        Connection Logic:
+        1.  Retrieves all current intersection nodes and their existing connections.
+        2.  For each node in `new_intersections`:
+            a.  It enters a loop that continues as long as the node has fewer than 2
+                intersection connections.
+            b.  Identifies potential `available_nodes` to connect to. These are
+                intersection nodes other than the current node that currently have
+                fewer than 4 connections.
+            c.  **Constraint Handling:** If no `available_nodes` are found (meaning all
+                other intersections already have 4 connections), the method attempts
+                to free up connection slots. It searches for an existing edge (u, v)
+                where both nodes `u` and `v` have more than 2 connections. If found,
+                this edge is removed (conceptually, within the temporary connection
+                tracking), making `u` and `v` available for new connections.
+                *Note: If no such edge can be found to break, the connection process
+                for the current node might halt before reaching the minimum of 2.*
+            d.  Calculates the number of new connections to add (`num_to_connect`),
+                considering the node's remaining capacity (up to 4), a random target
+                between 2 and 4, and the actual number of `available_nodes`.
+            e.  Randomly selects `num_to_connect` nodes from the `available_nodes`.
+            f.  Updates the temporary connection tracking by adding bidirectional links
+                between the current node and the selected target nodes.
+        3.  After processing all nodes in `new_intersections`, the method iterates
+            through the final connection map.
+        4.  For each node and its target connections, it generates weighted edges.
+            The edge weight is calculated using a formula that biases towards the
+            `self.min_distance`:
+            `weight = int((max_dist - min_dist) * (random.random()**2) + min_dist)`
+        5.  These weighted edges are then added to the graph using the parent class's
+            `add_weighted_edges_from` method, permanently modifying the graph structure.
 
         Args:
-            new_intersections (list): A list of intersection node IDs (strings)
-                                      that need connection establishment or verification.
+            new_intersections (list[str]): A list of intersection node IDs (strings)
+                                           for which connections need to be established
+                                           or verified according to the constraints.
+
+        Notes:
+            - This method directly modifies the graph by adding edges.
+            - It relies on `self.get_nodes`, `self.get_connections`,
+              `self.min_distance`, and `self.max_distance`.
+            - The process prioritizes satisfying the minimum connection constraint (2)
+              and respects the maximum constraint (4).
+            - The edge weight calculation introduces randomness but favors shorter
+              distances due to squaring the random factor.
         """
         intersections = self.get_nodes("intersection")
         intersection_connections = {
